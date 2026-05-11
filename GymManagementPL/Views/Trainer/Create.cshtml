@@ -1,0 +1,105 @@
+﻿@using GymManagementDAL.Entities.Enums
+@model CreateTrainerViewModel
+<div class="container mt-4">
+    <header class="mb-4">
+        <h3 class="text-primary-color">Add New Trainer</h3>
+    </header>
+
+    @Html.ValidationMessage("wrongData",new{@class="text-danger"})
+    <form method="post" asp-action="CreateTrainer">
+
+        <!-- Trainer Info -->
+        <div class="section-header mb-3">
+            <h5 class="text-primary fw-bold">Personal Information</h5>
+            <hr class="mt-2">
+        </div>
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Name"></label>
+                <input asp-for="Name" type="text" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Email"></label>
+                <input asp-for="Email" type="text" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Phone"></label>
+                <input asp-for="Phone" type="text" class="form-control" />
+                <span asp-validation-for="Phone" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="DateOfBirth"></label>
+                <input asp-for="DateOfBirth" type="date" class="form-control" />
+                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label">Gender</label>
+                <select asp-for="Gender" class="form-select" asp-items="@Html.GetEnumSelectList<Gender>()">
+                    <option value="">-- Select Gender --</option>
+                </select>
+            </div>
+
+        </div>
+        <div class="section-header mb-3 mt-4">
+            <h5 class="text-primary fw-bold">Address Information</h5>
+            <hr class="mt-2">
+        </div>
+        <div class="row g-3">
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="BuildingNumber"></label>
+                <input asp-for="BuildingNumber" type="text" class="form-control" />
+                <span asp-validation-for="BuildingNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="Street"></label>
+                <input asp-for="Street" type="text" class="form-control" />
+                <span asp-validation-for="Street" class="text-danger"></span>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="City"></label>
+                <input asp-for="City" type="text" class="form-control" />
+                <span asp-validation-for="City" class="text-danger"></span>
+            </div>
+        </div>
+        <!-- Professional Information -->
+        <div class="section-header mb-3">
+            <h5 class="text-primary fw-bold">Professional Information</h5>
+            <hr class="mt-2">
+        </div>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold" asp-for="Specialities">
+                    
+                </label>
+
+                @foreach(var speciality in Html.GetEnumSelectList<Specialities>())
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" asp-for="Specialities"
+                               value="@speciality.Value"
+                               id="@speciality.Value"/>
+                        <label class="form-check-label" asp-for="@speciality.Value">@speciality.Text</label>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        <footer class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-fill">Add</button>
+        </footer>
+    </form>
+
+</div>
+@section Scripts{
+    <partial name="_ValidationScriptsPartial" />
+}
