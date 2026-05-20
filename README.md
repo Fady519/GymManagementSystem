@@ -100,4 +100,4 @@ dotnet run
 
 ## 📬 Contact
 
-**Fady** — [LinkedIn](https://linkedin.com/in/your-profile) · [GitHub](https://github.com/Fady519)
+**Fady Kaiser** — [LinkedIn](https://www.linkedin.com/in/fady-kaiser/) · [GitHub](https://github.com/Fady519)
