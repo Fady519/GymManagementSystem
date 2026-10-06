@@ -43,6 +43,7 @@ namespace GymManagementPL
             builder.Services.AddAutoMapper(X => X.AddProfile(new MappingProfile()));
 
             builder.Services.AddScoped<IMemberService,MemberService>();
+            builder.Services.AddSingleton<GymManagementBLL.Abstractions.IClock, GymManagementBLL.Abstractions.SystemClock>();
             builder.Services.AddScoped<IPlanService, PlanService>();
             builder.Services.AddScoped<ISessionService,SessionService>();
             builder.Services.AddScoped<IAttachementService, AttachementService>();

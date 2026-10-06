@@ -1,9 +1,8 @@
-﻿using AutoMapper;
+using AutoMapper;
 using GymManagementBLL.BusinessServices.Implementation;
 using GymManagementBLL.View_Models.BookingVms;
 using GymManagementBLL.View_Models.MembershipsVms;
 using GymManagementBLL.View_Models.MemberVm;
-using GymManagementBLL.View_Models.PlanVm;
 using GymManagementBLL.View_Models.SessionVms;
 using GymManagementBLL.View_Models.TrainerVm;
 using GymManagementDAL.Entities;
@@ -17,7 +16,6 @@ namespace GymManagementBLL.Mapping
 
             MapSession();
             MapMember();
-            MapPlan();
             MapTrainer();
             MapMembership();
             MapBooking();
@@ -91,16 +89,6 @@ namespace GymManagementBLL.Mapping
                 });
         }
 
-        private void MapPlan()
-        {
-            CreateMap<Plan, PlanViewModel>();
-
-            CreateMap<Plan, PlanToUpdateViewModel>();
-
-            CreateMap<PlanToUpdateViewModel, Plan>()
-                .ForMember(dest => dest.Name, opt => opt.Ignore())
-                .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.Now));
-        }
         private void MapTrainer()
         {
             CreateMap<CreateTrainerViewModel, Trainer>()

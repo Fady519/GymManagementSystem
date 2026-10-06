@@ -1,152 +1,142 @@
-﻿using AutoMapper;
+using GymManagementBLL.Abstractions;
 using GymManagementBLL.BusinessServices.Interfaces;
-using GymManagementBLL.View_Models.PlanVm;
+using GymManagementBLL.Common;
+using GymManagementBLL.DTOs.Plans;
+using GymManagementBLL.Errors;
+using GymManagementBLL.Mapping;
 using GymManagementDAL.Entities;
 using GymManagementDAL.UnitOfWorkPattern;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GymManagementBLL.BusinessServices.Implementation
 {
     public class PlanService : IPlanService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
+        private readonly IClock _clock;
 
-        public PlanService(IUnitOfWork unitOfWork,IMapper mapper)
+        public PlanService(IUnitOfWork unitOfWork, IClock clock)
         {
             _unitOfWork = unitOfWork;
-            _mapper = mapper;
-        }
-        public IEnumerable<PlanViewModel> GetAllPlans()
-        {
-            var plans = _unitOfWork.GetRepository<Plan>().GetAll();
-
-            if (plans is null || !plans.Any())
-                return [];
-
-            #region Manual Mapping
-            //return plans.Select(P => new PlanViewModel
-            //{
-            //    Id = P.Id,
-            //    Name = P.Name,
-            //    Description = P.Description,
-            //    Price = P.Price,
-            //    IsActive = P.IsActive,
-            //    DurationDays = P.DurationDays,
-            //}); 
-            #endregion
-
-            return _mapper.Map<IEnumerable<PlanViewModel>>(plans);
+            _clock = clock;
         }
 
-        public PlanViewModel? GetPlanDetails(int PlanId)
+        public async Task<IReadOnlyList<PlanResponse>> GetAllAsync(bool? isActive = null, CancellationToken ct = default)
         {
-            var plan = _unitOfWork.GetRepository<Plan>().GetById(PlanId);
+            var plans = isActive is null
+                ? await _unitOfWork.GetRepository<Plan>().ListAsync(ct: ct)
+                : await _unitOfWork.GetRepository<Plan>().ListAsync(p => p.IsActive == isActive.Value, ct);
 
-            if (plan is null) return null;
-
-            #region Manual Mapping
-            //return new PlanViewModel
-            //{
-            //    Id = plan.Id,
-            //    Name = plan.Name,
-            //    Description = plan.Description,
-            //    Price = plan.Price,
-            //    IsActive = plan.IsActive,
-            //    DurationDays = plan.DurationDays,
-            //}; 
-            #endregion
-
-            return _mapper.Map<PlanViewModel>(plan);
+            return plans.OrderBy(p => p.Price).Select(p => p.ToResponse()).ToList();
         }
 
-        public PlanToUpdateViewModel? GetPlanToUpdate(int PlanId)
+        public async Task<Result<PlanResponse>> GetByIdAsync(int id, CancellationToken ct = default)
         {
-            var plan = _unitOfWork.GetRepository<Plan>().GetById(PlanId);
+            var plan = await _unitOfWork.GetRepository<Plan>().GetByIdAsync(id, ct);
 
-            if (plan is null || plan.IsActive == false || HasActiveMemberships(PlanId))
-                return null;
+            if (plan is null)
+                return PlanErrors.NotFound(id);
 
-            #region Manual Mapping
-            //return new PlanToUpdateViewModel
-            //{
-            //    Name = plan.Name,
-            //    Description = plan.Description,
-            //    Price = plan.Price,
-            //    DurationDays = plan.DurationDays,
-            //}; 
-            #endregion
-
-            return _mapper.Map<PlanToUpdateViewModel>(plan);
+            return plan.ToResponse();
         }
 
-        public bool ToggleStatus(int planId)
+        public async Task<Result<PlanResponse>> CreateAsync(CreatePlanRequest request, CancellationToken ct = default)
         {
-            var planRepo = _unitOfWork.GetRepository<Plan>();
-            var plan = planRepo.GetById(planId);
+            var repo = _unitOfWork.GetRepository<Plan>();
+            var name = request.Name.Trim();
 
-            if (plan is null || HasActiveMemberships(planId))
-                return false;
+            if (await repo.AnyAsync(p => p.Name == name, ct))
+                return PlanErrors.NameTaken(name);
 
-            plan.IsActive = plan.IsActive == true ? false : true;
-
-            plan.UpdatedAt = DateTime.Now;
-
-            planRepo.Update(plan);
-
-            return _unitOfWork.SaveChanges() > 0;
-        }
-
-        public bool UpdatePlan(int planId, PlanToUpdateViewModel planToUpdate)
-        {
-            var planRepo = _unitOfWork.GetRepository<Plan>();
-            var plan = planRepo.GetById(planId);
-
-            if (plan is null || planToUpdate is null)
-                return false;
-
-            //Description
-            //Price
-            //DurationDays
-            #region Manual Mapping
-
-            //(plan.Description, plan.DurationDays, plan.Price)
-            //    = (planToUpdate.Description, planToUpdate.DurationDays, planToUpdate.Price);
-
-            //plan.UpdatedAt = DateTime.Now; 
-            #endregion
-
-            _mapper.Map(planToUpdate, plan);
-
-            try
+            var plan = new Plan
             {
+                Name = name,
+                Description = request.Description.Trim(),
+                DurationDays = request.DurationDays,
+                Price = request.Price,
+                IsActive = true,
+                CreatedAt = _clock.UtcNow,
+            };
 
-                planRepo.Update(plan);
+            repo.Add(plan);
+            await _unitOfWork.SaveChangesAsync(ct);
 
-                return _unitOfWork.SaveChanges() > 0;
-            }
-            catch (Exception)
+            return plan.ToResponse();
+        }
+
+        public async Task<Result<PlanResponse>> UpdateAsync(int id, UpdatePlanRequest request, CancellationToken ct = default)
+        {
+            var repo = _unitOfWork.GetRepository<Plan>();
+            var plan = await repo.GetByIdAsync(id, ct);
+
+            if (plan is null)
+                return PlanErrors.NotFound(id);
+
+            var name = request.Name.Trim();
+
+            if (await repo.AnyAsync(p => p.Id != id && p.Name == name, ct))
+                return PlanErrors.NameTaken(name);
+
+            // Until memberships store a price/duration snapshot (B6), editing a plan
+            // would silently change existing subscriptions, so it is blocked.
+            if (await HasActiveMembershipsAsync(id, ct))
+                return PlanErrors.HasActiveMemberships;
+
+            plan.Name = name;
+            plan.Description = request.Description.Trim();
+            plan.DurationDays = request.DurationDays;
+            plan.Price = request.Price;
+            plan.UpdatedAt = _clock.UtcNow;
+
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            return plan.ToResponse();
+        }
+
+        public async Task<Result<PlanResponse>> SetStatusAsync(int id, bool isActive, CancellationToken ct = default)
+        {
+            var plan = await _unitOfWork.GetRepository<Plan>().GetByIdAsync(id, ct);
+
+            if (plan is null)
+                return PlanErrors.NotFound(id);
+
+            // Deactivating only hides the plan from new subscriptions;
+            // existing memberships keep running, so it is always allowed.
+            if (plan.IsActive != isActive)
             {
-
-                return false;
+                plan.IsActive = isActive;
+                plan.UpdatedAt = _clock.UtcNow;
+                await _unitOfWork.SaveChangesAsync(ct);
             }
 
+            return plan.ToResponse();
         }
 
+        public async Task<Result> DeleteAsync(int id, CancellationToken ct = default)
+        {
+            var repo = _unitOfWork.GetRepository<Plan>();
+            var plan = await repo.GetByIdAsync(id, ct);
+
+            if (plan is null)
+                return PlanErrors.NotFound(id);
+
+            if (await _unitOfWork.GetRepository<Membership>().AnyAsync(m => m.PlanId == id, ct))
+                return PlanErrors.HasMemberships;
+
+            repo.Delete(plan);
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            return Result.Success();
+        }
 
         #region Helper Methods
 
-        private bool HasActiveMemberships(int planId)
+        private Task<bool> HasActiveMembershipsAsync(int planId, CancellationToken ct)
         {
-            var activeMemberships = _unitOfWork.GetRepository<Membership>()
-                .GetAll(X => X.PlanId == planId && X.Status == "Active");
-
-            return activeMemberships.Any();
+            var now = _clock.UtcNow;
+            return _unitOfWork.GetRepository<Membership>()
+                .AnyAsync(m => m.PlanId == planId && m.EndDate > now, ct);
         }
+
         #endregion
     }
 }

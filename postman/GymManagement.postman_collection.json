@@ -1,0 +1,110 @@
+{
+  "info": {
+    "name": "Gym Management API",
+    "description": "Requests for the Gym Management REST API. Select the 'Gym Management - Local' environment first (baseUrl = http://localhost:5080).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health check",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        }
+      ]
+    },
+    {
+      "name": "Plans",
+      "item": [
+        {
+          "name": "List plans",
+          "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/plans", "host": ["{{baseUrl}}"], "path": ["api", "plans"] } }
+        },
+        {
+          "name": "List active plans",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/plans?isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "plans"],
+              "query": [{ "key": "isActive", "value": "true" }]
+            }
+          }
+        },
+        {
+          "name": "Get plan by id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/plans/{{planId}}" }
+        },
+        {
+          "name": "Create plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('planId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Student Plan {{$randomInt}}\",\n  \"description\": \"Gym access for students with a valid ID\",\n  \"durationDays\": 30,\n  \"price\": 250\n}"
+            },
+            "url": "{{baseUrl}}/api/plans"
+          }
+        },
+        {
+          "name": "Create plan (invalid -> 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"x\",\n  \"description\": \"\",\n  \"durationDays\": 0,\n  \"price\": -5\n}" },
+            "url": "{{baseUrl}}/api/plans"
+          }
+        },
+        {
+          "name": "Update plan",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Student Plan Plus {{$randomInt}}\",\n  \"description\": \"Gym access and 2 classes per week for students\",\n  \"durationDays\": 30,\n  \"price\": 320\n}"
+            },
+            "url": "{{baseUrl}}/api/plans/{{planId}}"
+          }
+        },
+        {
+          "name": "Deactivate plan",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" },
+            "url": "{{baseUrl}}/api/plans/{{planId}}/status"
+          }
+        },
+        {
+          "name": "Activate plan",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" },
+            "url": "{{baseUrl}}/api/plans/{{planId}}/status"
+          }
+        },
+        {
+          "name": "Delete plan",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/plans/{{planId}}" }
+        }
+      ]
+    }
+  ]
+}

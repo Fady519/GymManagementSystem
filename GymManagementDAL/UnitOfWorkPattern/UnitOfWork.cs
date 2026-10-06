@@ -1,4 +1,4 @@
-﻿using GymManagementDAL.Data.Contexts;
+using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Entities;
 using GymManagementDAL.Repositories.Implementation;
 using GymManagementDAL.Repositories.Interfaces;
@@ -50,5 +50,8 @@ namespace GymManagementDAL.UnitOfWorkPattern
         {
             return _dbContext.SaveChanges();
         }
+
+        public Task<int> SaveChangesAsync(CancellationToken ct = default)
+            => _dbContext.SaveChangesAsync(ct);
     }
 }

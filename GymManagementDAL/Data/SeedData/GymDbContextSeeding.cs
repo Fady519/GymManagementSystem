@@ -1,80 +1,73 @@
-﻿using GymManagementDAL.Data.Contexts;
+using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace GymManagementDAL.Data.SeedData
 {
+    /// <summary>
+    /// Seeds reference data (plans, categories) from JSON files that are copied
+    /// to the output folder (bin/.../SeedData). Safe to run on every startup:
+    /// each table is only seeded when it is empty.
+    /// </summary>
     public static class GymDbContextSeeding
     {
-
-        public static bool SeedData(GymDbContext dbContext)
+        private static readonly JsonSerializerOptions JsonOptions = new()
         {
-            try
-            {
-                var hasPlans = dbContext.Plans.Any();
-                var hasCategories = dbContext.Categories.Any();
+            PropertyNameCaseInsensitive = true,
+        };
 
-                if (hasPlans && hasCategories)
-                    return false;
+        public static string DefaultSeedFolder => Path.Combine(AppContext.BaseDirectory, "SeedData");
 
-                if (!hasPlans)
-                {
-                    var plans = LoadDataFromJson<Plan>("plans.json");
+        public static async Task<bool> SeedAsync(GymDbContext dbContext, string? seedFolder = null, CancellationToken ct = default)
+        {
+            seedFolder ??= DefaultSeedFolder;
 
-                    if (plans.Any())
-                        dbContext.AddRange(plans);
+            var hasPlans = await dbContext.Plans.AnyAsync(ct);
+            var hasCategories = await dbContext.Categories.AnyAsync(ct);
 
-
-
-                }
-
-                if (!hasCategories)
-                {
-                    var categories = LoadDataFromJson<Category>("categories.json");
-
-                    if (categories.Any())
-                        dbContext.AddRange(categories);
-                }
-
-
-                return dbContext.SaveChanges() > 0;
-            }
-            catch (Exception)
-            {
-
-                Console.WriteLine("Seeding Failed");
-
+            if (hasPlans && hasCategories)
                 return false;
+
+            var now = DateTime.UtcNow;
+
+            if (!hasPlans)
+            {
+                var plans = await LoadDataFromJsonAsync<Plan>(seedFolder, "plans.json", ct);
+                foreach (var plan in plans)
+                    plan.CreatedAt = now;
+
+                dbContext.Plans.AddRange(plans);
             }
 
+            if (!hasCategories)
+            {
+                var categories = await LoadDataFromJsonAsync<Category>(seedFolder, "categories.json", ct);
+                foreach (var category in categories)
+                    category.CreatedAt = now;
 
+                dbContext.Categories.AddRange(categories);
+            }
+
+            return await dbContext.SaveChangesAsync(ct) > 0;
         }
 
+        /// <summary>
+        /// Synchronous wrapper kept for the legacy MVC project (removed in B2).
+        /// </summary>
+        public static bool SeedData(GymDbContext dbContext)
+            => SeedAsync(dbContext).GetAwaiter().GetResult();
 
-        private static List<T>  LoadDataFromJson<T>(string fileName)
+        private static async Task<List<T>> LoadDataFromJsonAsync<T>(string folder, string fileName, CancellationToken ct)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot\\SeedFiles", fileName);
+            var filePath = Path.Combine(folder, fileName);
 
             if (!File.Exists(filePath))
-                return [];
+                throw new FileNotFoundException($"Seed file not found: {filePath}", filePath);
 
-            var jsonData=File.ReadAllText(filePath);
+            await using var stream = File.OpenRead(filePath);
 
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            };
-
-
-            return JsonSerializer.Deserialize<List<T>>(jsonData)??new List<T>();
-
+            return await JsonSerializer.DeserializeAsync<List<T>>(stream, JsonOptions, ct) ?? [];
         }
-        
     }
 }
