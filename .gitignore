@@ -496,3 +496,7 @@ node_modules/
 out/
 .env*.local
 .vercel/
+
+# API logs (Serilog file sink)
+logs/
+

@@ -1,4 +1,4 @@
-﻿using GymManagementDAL.Entities;
+using GymManagementDAL.Entities;
 using GymManagementDAL.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -19,5 +19,7 @@ namespace GymManagementDAL.UnitOfWorkPattern
             where TEntity : BaseEntity, new();
 
         int SaveChanges();
+
+        Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

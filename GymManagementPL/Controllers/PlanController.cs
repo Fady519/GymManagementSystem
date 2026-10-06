@@ -1,9 +1,13 @@
-﻿using GymManagementBLL.BusinessServices.Interfaces;
+using GymManagementBLL.BusinessServices.Interfaces;
+using GymManagementBLL.DTOs.Plans;
 using GymManagementBLL.View_Models.PlanVm;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymManagementPL.Controllers
 {
+    // LEGACY (MVC): kept working on top of the new async IPlanService until the
+    // MVC project is removed from the solution in B2. The API equivalent is
+    // GymManagementAPI/Controllers/PlansController.cs.
     public class PlanController : Controller
     {
         private readonly IPlanService _planService;
@@ -18,10 +22,10 @@ namespace GymManagementPL.Controllers
         //Post :Submit Update
         //Post :Activate
         #region Get All Plans Action
-        public ActionResult Index()
+        public async Task<ActionResult> Index()
         {
-            var plans = _planService.GetAllPlans();
-            return View(plans);
+            var plans = await _planService.GetAllAsync();
+            return View(plans.Select(ToViewModel));
         }
         #endregion
 
@@ -29,7 +33,7 @@ namespace GymManagementPL.Controllers
         #region Details Action
 
         //Plan/Details/5
-        public ActionResult Details(int id)
+        public async Task<ActionResult> Details(int id)
         {
             if(id<=0)
             {
@@ -38,16 +42,16 @@ namespace GymManagementPL.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var plan=_planService.GetPlanDetails(id);
+            var result = await _planService.GetByIdAsync(id);
 
-            if(plan is null)
+            if(result.IsFailure)
             {
-                TempData["ErrorMessage"] = "Plan Not Found";
+                TempData["ErrorMessage"] = result.Error.Message;
                 return RedirectToAction(nameof(Index));
 
             }
 
-            return View(plan);
+            return View(ToViewModel(result.Value));
         }
         #endregion
 
@@ -57,7 +61,7 @@ namespace GymManagementPL.Controllers
         //GET:Edit
 
         //Plan/Edit/5
-        public ActionResult Edit(int id)
+        public async Task<ActionResult> Edit(int id)
         {
             if (id <= 0)
             {
@@ -65,19 +69,27 @@ namespace GymManagementPL.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var plan=_planService.GetPlanToUpdate(id);
+            var result = await _planService.GetByIdAsync(id);
 
-            if(plan is null)
+            if(result.IsFailure || !result.Value.IsActive)
             {
-                TempData["ErrorMessage"] = "Plan Not Found";
+                TempData["ErrorMessage"] = result.IsFailure ? result.Error.Message : "Inactive plans cannot be edited";
                 return RedirectToAction(nameof(Index));
             }
 
-            return View(plan);
+            var plan = result.Value;
+
+            return View(new PlanToUpdateViewModel
+            {
+                Name = plan.Name,
+                Description = plan.Description,
+                DurationDays = plan.DurationDays,
+                Price = plan.Price,
+            });
         }
 
         [HttpPost]
-        public ActionResult Edit([FromRoute] int id,PlanToUpdateViewModel UpdatedPlan)
+        public async Task<ActionResult> Edit([FromRoute] int id,PlanToUpdateViewModel UpdatedPlan)
         {
             if(!ModelState.IsValid)
             {
@@ -85,15 +97,16 @@ namespace GymManagementPL.Controllers
                 return View(UpdatedPlan);
             }
 
-            var result=_planService.UpdatePlan(id, UpdatedPlan);
+            var result = await _planService.UpdateAsync(id, new UpdatePlanRequest(
+                UpdatedPlan.Name, UpdatedPlan.Description, UpdatedPlan.DurationDays, UpdatedPlan.Price));
 
-            if(result)
+            if(result.IsSuccess)
             {
                 TempData["SuccessMessage"] = "Plan Succes To Update";
             }
             else
             {
-                TempData["ErrorMessage"] = "Plan Failed To Update";
+                TempData["ErrorMessage"] = result.Error.Message;
             }
 
             return RedirectToAction(nameof(Index));
@@ -102,23 +115,40 @@ namespace GymManagementPL.Controllers
 
 
         [HttpPost]
-        public ActionResult Activate(int id)
+        public async Task<ActionResult> Activate(int id)
         {
-            var result=_planService.ToggleStatus(id);
+            var current = await _planService.GetByIdAsync(id);
 
-            if (result)
+            if (current.IsFailure)
+            {
+                TempData["ErrorMessage"] = current.Error.Message;
+                return RedirectToAction(nameof(Index));
+            }
+
+            var result = await _planService.SetStatusAsync(id, !current.Value.IsActive);
+
+            if (result.IsSuccess)
             {
                 TempData["SuccessMessage"] = "Plan Toggled Succesfully";
             }
             else
             {
-                TempData["ErrorMessage"] = "Plan Failed to Toggle";
+                TempData["ErrorMessage"] = result.Error.Message;
             }
 
             return RedirectToAction(nameof(Index));
         }
 
 
+        private static PlanViewModel ToViewModel(PlanResponse plan) => new()
+        {
+            Id = plan.Id,
+            Name = plan.Name,
+            Description = plan.Description,
+            DurationDays = plan.DurationDays,
+            Price = plan.Price,
+            IsActive = plan.IsActive,
+        };
 
     }
 }
