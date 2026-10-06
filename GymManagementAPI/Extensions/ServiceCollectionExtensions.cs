@@ -6,7 +6,9 @@ using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.Validators.Plans;
 using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Data.SeedData;
+using GymManagementDAL.Entities.Identity;
 using GymManagementDAL.UnitOfWorkPattern;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using System.Diagnostics;
@@ -42,6 +44,9 @@ namespace GymManagementAPI.Extensions
             services.AddSingleton<IClock, SystemClock>();
 
             services.AddScoped<IPlanService, PlanService>();
+            services.AddScoped<ITokenService, TokenService>();
+            services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IUserService, UserService>();
 
             services.AddValidatorsFromAssemblyContaining<CreatePlanRequestValidator>();
 
@@ -66,6 +71,18 @@ namespace GymManagementAPI.Extensions
                 {
                     context.ProblemDetails.Instance ??= $"{context.HttpContext.Request.Method} {context.HttpContext.Request.Path}";
                     context.ProblemDetails.Extensions.TryAdd("traceId", Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
+
+                    // Empty 401/403/429 responses (from the JWT handler, [Authorize] or the rate limiter)
+                    // also get a machine-readable code, like every other error of this API.
+                    var code = context.ProblemDetails.Status switch
+                    {
+                        StatusCodes.Status401Unauthorized => "Auth.Unauthenticated",
+                        StatusCodes.Status403Forbidden => "Auth.Forbidden",
+                        StatusCodes.Status429TooManyRequests => "RateLimit.Exceeded",
+                        _ => null
+                    };
+                    if (code is not null)
+                        context.ProblemDetails.Extensions.TryAdd("code", code);
                 });
 
             services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -83,6 +100,19 @@ namespace GymManagementAPI.Extensions
                 var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
                 if (File.Exists(xmlFile))
                     options.IncludeXmlComments(xmlFile);
+
+                // Adds the "Authorize" button: paste the accessToken from /api/auth/login.
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "Paste the accessToken returned by POST /api/auth/login (without the word Bearer).",
+                });
+                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
             });
 
             services.AddHealthChecks()
@@ -91,7 +121,7 @@ namespace GymManagementAPI.Extensions
             return services;
         }
 
-        /// <summary>Applies pending EF Core migrations and seeds reference data.</summary>
+        /// <summary>Applies pending EF Core migrations and seeds reference data, roles and the first SuperAdmin.</summary>
         public static async Task MigrateAndSeedAsync(this WebApplication app)
         {
             await using var scope = app.Services.CreateAsyncScope();
@@ -99,6 +129,16 @@ namespace GymManagementAPI.Extensions
 
             await db.Database.MigrateAsync();
             await GymDbContextSeeding.SeedAsync(db);
+
+            var config = app.Configuration;
+            var message = await IdentitySeeding.SeedAsync(
+                scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>(),
+                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                config["SuperAdmin:Email"],
+                config["SuperAdmin:Password"],
+                config["SuperAdmin:FullName"] ?? "Super Admin");
+
+            app.Logger.LogInformation("Identity seeding: {Result}", message);
         }
     }
 }

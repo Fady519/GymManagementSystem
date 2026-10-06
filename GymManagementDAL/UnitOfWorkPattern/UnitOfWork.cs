@@ -2,6 +2,7 @@ using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Entities;
 using GymManagementDAL.Repositories.Implementation;
 using GymManagementDAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace GymManagementDAL.UnitOfWorkPattern
 {
@@ -29,5 +30,8 @@ namespace GymManagementDAL.UnitOfWorkPattern
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
             => _dbContext.SaveChangesAsync(ct);
+
+        public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
+            => _dbContext.Database.BeginTransactionAsync(ct);
     }
 }

@@ -1,4 +1,5 @@
 using GymManagementDAL.Entities;
+using GymManagementDAL.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,8 +15,12 @@ namespace GymManagementDAL.Data.Configurations
 
             builder.Property(x => x.Photo).HasMaxLength(200);
 
-            // One login account per member (the FK to the users table is added in B3).
+            // One login account per member (optional: members added by reception have none yet).
             builder.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
+            builder.HasOne<ApplicationUser>()
+                .WithOne()
+                .HasForeignKey<Member>(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

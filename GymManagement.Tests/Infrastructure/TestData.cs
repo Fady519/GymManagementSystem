@@ -12,9 +12,9 @@ namespace GymManagement.Tests.Infrastructure
         public static string UniqueName(string prefix = "Plan") =>
             $"{prefix} {Guid.NewGuid().ToString("N")[..8]}";
 
-        private static string UniqueEmail() => $"u{Interlocked.Increment(ref _counter)}.{Guid.NewGuid().ToString("N")[..10]}@test.com";
+        public static string UniqueEmail() => $"u{Interlocked.Increment(ref _counter)}.{Guid.NewGuid().ToString("N")[..10]}@test.com";
 
-        private static string UniquePhone() => $"010{Random.Shared.Next(10_000_000, 99_999_999)}";
+        public static string UniquePhone() => $"010{Random.Shared.Next(10_000_000, 99_999_999)}";
 
         public static async Task<Member> AddMemberAsync(GymDbContext db, string? name = null, bool withDetails = false)
         {

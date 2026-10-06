@@ -1,23 +1,29 @@
+using GymManagementAPI.Infrastructure;
 using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.DTOs.Plans;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GymManagementAPI.Controllers
 {
     /// <summary>Membership plans (e.g. Basic, Premium) that members can subscribe to.</summary>
+    /// <remarks>Anyone can read plans (the public pricing page). Only admins can change them.</remarks>
     [Route("api/plans")]
+    [Authorize(Policy = AppPolicies.AdminAccess)]
     public sealed class PlansController(IPlanService planService) : ApiControllerBase
     {
         /// <summary>Lists plans, cheapest first.</summary>
         /// <param name="isActive">Optional filter: true = active only, false = inactive only.</param>
         /// <param name="ct">Cancellation token.</param>
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType<IReadOnlyList<PlanResponse>>(StatusCodes.Status200OK)]
         public async Task<ActionResult<IReadOnlyList<PlanResponse>>> GetAll([FromQuery] bool? isActive, CancellationToken ct)
             => Ok(await planService.GetAllAsync(isActive, ct));
 
         /// <summary>Gets a single plan.</summary>
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType<PlanResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
         public async Task<ActionResult<PlanResponse>> GetById(int id, CancellationToken ct)
