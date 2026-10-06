@@ -1,3 +1,7 @@
+> [!NOTE]
+> **🚧 Work in progress:** this project is being migrated from ASP.NET Core MVC to a full stack architecture (ASP.NET Core Web API + Next.js).
+> The original MVC version is preserved under the [1-mvc](https://github.com/Fady519/GymManagementSystem/tree/v1-mvc) tag. Some sections below describe planned features.
+
 <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:16A34A,50:15803D,100:14532D&height=220&section=header&text=Gym%20Management%20System&fontSize=52&fontColor=ffffff&fontAlignY=38&desc=ASP.NET%20Core%20MVC%20%7C%20EF%20Core%20%7C%20SQL%20Server%20%7C%20ASP.NET%20Identity&descSize=16&descAlignY=58&descColor=ffffff" width="100%"/>
