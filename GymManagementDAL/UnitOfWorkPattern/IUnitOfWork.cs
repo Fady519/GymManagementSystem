@@ -1,24 +1,15 @@
 using GymManagementDAL.Entities;
 using GymManagementDAL.Repositories.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GymManagementDAL.UnitOfWorkPattern
 {
+    /// <summary>
+    /// Gives access to the repositories and saves all their changes together
+    /// in one database transaction (SaveChangesAsync).
+    /// </summary>
     public interface IUnitOfWork
     {
-
-        ISessionRepository SessionRepository { get; }
-        IMembershipRepository MembershipRepository { get; }
-        IBookingRepository BookingRepository { get; }
-
-        IGenericRepository<TEntity> GetRepository<TEntity>()
-            where TEntity : BaseEntity, new();
-
-        int SaveChanges();
+        IGenericRepository<TEntity> GetRepository<TEntity>() where TEntity : BaseEntity;
 
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }

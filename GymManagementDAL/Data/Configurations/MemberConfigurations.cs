@@ -1,27 +1,21 @@
-﻿using GymManagementDAL.Entities;
+using GymManagementDAL.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GymManagementDAL.Data.Configurations
 {
-    internal class MemberConfigurations : GymUserConfigurations<Member>,IEntityTypeConfiguration<Member>
+    internal class MemberConfigurations : GymUserConfigurations<Member>
     {
-        public new void Configure(EntityTypeBuilder<Member> builder)
+        protected override string TableName => "Members";
+
+        public override void Configure(EntityTypeBuilder<Member> builder)
         {
-
-
-
-            builder.Property(X => X.CreatedAt)
-                 .HasColumnName("JoinDate")
-                 .HasDefaultValueSql("GETDATE()");
             base.Configure(builder);
 
+            builder.Property(x => x.Photo).HasMaxLength(200);
 
+            // One login account per member (the FK to the users table is added in B3).
+            builder.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
         }
     }
 }

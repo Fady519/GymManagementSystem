@@ -1,22 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace GymManagementDAL.Entities
 {
-    public class Category:BaseEntity
+    public class Category : BaseEntity, ISoftDeletable
     {
-        public string CategoryName { get; set; } = null!;
+        public string Name { get; set; } = null!;
 
-        #region Relationships
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
-
-        #region Category-Session
-
-        public ICollection<Session> Sessions { get; set; }
-        #endregion
-        #endregion
+        public ICollection<Session> Sessions { get; set; } = new List<Session>();
     }
 }

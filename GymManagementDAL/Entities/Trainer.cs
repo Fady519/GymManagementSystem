@@ -1,21 +1,12 @@
-﻿using GymManagementDAL.Entities.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using GymManagementDAL.Entities.Enums;
 
 namespace GymManagementDAL.Entities
 {
-    public class Trainer:GymUser
+    public class Trainer : GymUser
     {
-        //HireDate==CreatedAt
+        // B4: replaced by a link to Category.
         public Specialities Specialities { get; set; }
 
-        #region Trainer-Session
-
-
-        public ICollection<Session> Sessions { get; set; }
-        #endregion
+        public ICollection<Session> Sessions { get; set; } = new List<Session>();
     }
 }

@@ -1,11 +1,6 @@
-﻿using GymManagementDAL.Entities;
+using GymManagementDAL.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GymManagementDAL.Data.Configurations
 {
@@ -13,18 +8,19 @@ namespace GymManagementDAL.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Plan> builder)
         {
-            builder.Property(X => X.Name)
-                 .HasColumnType("varchar(50)");
-            builder.Property(X => X.Description)
-                 .HasColumnType("varchar(200)");
+            builder.Property(x => x.Name).HasMaxLength(50).IsUnicode();
+            builder.Property(x => x.Description).HasMaxLength(200).IsUnicode();
+            builder.Property(x => x.Price).HasPrecision(10, 2);
 
-            builder.Property(X => X.Price)
-                .HasPrecision(10, 2);
+            builder.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Plans_DurationDays", "DurationDays BETWEEN 1 AND 365");
+                t.HasCheckConstraint("CK_Plans_Price", "Price > 0");
+            });
 
-            builder.ToTable(Tb => Tb.HasCheckConstraint("DurationDaysConstraint",
-                "DurationDays between 1 and 365"));
+            builder.HasIndex(x => x.Name).IsUnique().HasFilter("[IsDeleted] = 0");
 
-
+            builder.HasQueryFilter(x => !x.IsDeleted);
         }
     }
 }

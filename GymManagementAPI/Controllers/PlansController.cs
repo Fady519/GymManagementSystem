@@ -40,7 +40,7 @@ namespace GymManagementAPI.Controllers
                 : Problem(result.Error);
         }
 
-        /// <summary>Updates a plan. Blocked (409) while the plan has active memberships.</summary>
+        /// <summary>Updates a plan. Existing memberships keep the price/duration they were bought with.</summary>
         [HttpPut("{id:int}")]
         [ProducesResponseType<PlanResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -62,7 +62,7 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
 
-        /// <summary>Deletes a plan that has never been used. Used plans must be deactivated instead (409).</summary>
+        /// <summary>Soft-deletes a plan. Blocked (409) while the plan has active memberships; deactivate it instead.</summary>
         [HttpDelete("{id:int}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
