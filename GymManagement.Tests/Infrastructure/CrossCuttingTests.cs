@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Net;
 
 namespace GymManagement.Tests.Infrastructure
@@ -34,6 +35,15 @@ namespace GymManagement.Tests.Infrastructure
             var response = await _client.SendAsync(request);
 
             Assert.Equal("test-correlation-123", response.Headers.GetValues("X-Correlation-Id").Single());
+        }
+
+        [Fact]
+        public async Task Dates_AreReturnedAsUtc()
+        {
+            var json = await _client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/plans");
+
+            var createdAt = json.EnumerateArray().First().GetProperty("createdAt").GetString();
+            Assert.EndsWith("Z", createdAt);
         }
     }
 }

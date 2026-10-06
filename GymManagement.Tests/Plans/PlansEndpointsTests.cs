@@ -1,5 +1,7 @@
 using GymManagement.Tests.Infrastructure;
 using GymManagementBLL.DTOs.Plans;
+using GymManagementDAL.Entities.Enums;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -145,27 +147,25 @@ namespace GymManagement.Tests.Plans
         }
 
         [Fact]
-        public async Task Update_WithActiveMembership_Returns409()
+        public async Task Update_WithActiveMembership_Returns200_AndMembershipKeepsItsSnapshot()
         {
-            var plan = await CreatePlanAsync();
-            await factory.WithDbAsync(db => TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(10)));
+            var plan = await CreatePlanAsync(price: 450m);
+            var membershipId = 0;
+            await factory.WithDbAsync(async db =>
+                membershipId = (await TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(10))).Id);
 
             var response = await _client.PutAsJsonAsync($"/api/plans/{plan.Id}",
-                new UpdatePlanRequest(plan.Name, "Changed description", 30, 1000m));
-
-            await AssertProblemCodeAsync(response, HttpStatusCode.Conflict, "Plan.HasActiveMemberships");
-        }
-
-        [Fact]
-        public async Task Update_WithOnlyExpiredMemberships_Returns200()
-        {
-            var plan = await CreatePlanAsync();
-            await factory.WithDbAsync(db => TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(-1)));
-
-            var response = await _client.PutAsJsonAsync($"/api/plans/{plan.Id}",
-                new UpdatePlanRequest(plan.Name, "Changed description", 30, 1000m));
+                new UpdatePlanRequest(plan.Name, "Changed description", 60, 1000m));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // The member keeps the price and duration they paid for.
+            await factory.WithDbAsync(async db =>
+            {
+                var membership = await db.Memberships.FindAsync(membershipId);
+                Assert.Equal(450m, membership!.PricePaid);
+                Assert.Equal(30, membership.DurationDays);
+            });
         }
 
         [Fact]
@@ -196,7 +196,7 @@ namespace GymManagement.Tests.Plans
         }
 
         [Fact]
-        public async Task Delete_UnusedPlan_Returns204ThenNotFound()
+        public async Task Delete_UnusedPlan_SoftDeletes_AndNameCanBeReused()
         {
             var plan = await CreatePlanAsync();
 
@@ -205,17 +205,62 @@ namespace GymManagement.Tests.Plans
 
             var after = await _client.GetAsync($"/api/plans/{plan.Id}");
             Assert.Equal(HttpStatusCode.NotFound, after.StatusCode);
+
+            // The row is still in the database, only marked as deleted.
+            await factory.WithDbAsync(async db =>
+            {
+                var row = await db.Plans.IgnoreQueryFilters().SingleAsync(p => p.Id == plan.Id);
+                Assert.True(row.IsDeleted);
+                Assert.NotNull(row.DeletedAt);
+            });
+
+            // The unique name index ignores deleted rows.
+            await CreatePlanAsync(plan.Name);
         }
 
         [Fact]
-        public async Task Delete_PlanWithMemberships_Returns409()
+        public async Task Delete_PlanWithOnlyExpiredMemberships_Returns204()
         {
             var plan = await CreatePlanAsync();
             await factory.WithDbAsync(db => TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(-30)));
 
             var response = await _client.DeleteAsync($"/api/plans/{plan.Id}");
 
-            await AssertProblemCodeAsync(response, HttpStatusCode.Conflict, "Plan.HasMemberships");
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Delete_PlanWithActiveMembership_Returns409()
+        {
+            var plan = await CreatePlanAsync();
+            await factory.WithDbAsync(db => TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(30)));
+
+            var response = await _client.DeleteAsync($"/api/plans/{plan.Id}");
+
+            await AssertProblemCodeAsync(response, HttpStatusCode.Conflict, "Plan.HasActiveMemberships");
+        }
+
+        [Fact]
+        public async Task Delete_PlanWithCancelledMembership_Returns204()
+        {
+            var plan = await CreatePlanAsync();
+            await factory.WithDbAsync(db =>
+                TestData.AddMembershipAsync(db, plan.Id, DateTime.UtcNow.AddDays(30), MembershipStatus.Cancelled));
+
+            var response = await _client.DeleteAsync($"/api/plans/{plan.Id}");
+
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Create_ArabicName_IsStoredCorrectly()
+        {
+            var name = $"باقة الطلبة {Guid.NewGuid().ToString("N")[..4]}";
+
+            var created = await CreatePlanAsync(name);
+            var fetched = await _client.GetFromJsonAsync<PlanResponse>($"/api/plans/{created.Id}");
+
+            Assert.Equal(name, fetched!.Name);
         }
     }
 }

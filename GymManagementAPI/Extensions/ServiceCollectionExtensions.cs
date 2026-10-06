@@ -6,8 +6,6 @@ using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.Validators.Plans;
 using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Data.SeedData;
-using GymManagementDAL.Repositories.Implementation;
-using GymManagementDAL.Repositories.Interfaces;
 using GymManagementDAL.UnitOfWorkPattern;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -33,10 +31,6 @@ namespace GymManagementAPI.Extensions
 
                 options.UseSqlServer(connectionString);
             });
-
-            services.AddScoped<ISessionRepository, SessionRepository>();
-            services.AddScoped<IMembershipRepository, MembershipRepository>();
-            services.AddScoped<IBookingRepository, BookingRepository>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;

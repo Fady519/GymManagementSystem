@@ -1,26 +1,9 @@
-﻿using GymManagementDAL.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using GymManagementDAL.Entities;
 
 namespace GymManagementDAL.Data.Configurations
 {
-    internal class TrainerConfigurations : GymUserConfigurations<Trainer>,IEntityTypeConfiguration<Trainer>
+    internal class TrainerConfigurations : GymUserConfigurations<Trainer>
     {
-        public new void Configure(EntityTypeBuilder<Trainer> builder)
-        {
-            builder.Property(X => X.CreatedAt)
-                .HasColumnName("HireDate")
-                .HasDefaultValueSql("GetDate()");
-
-            
-            
-           base.Configure(builder);
-
-        }
+        protected override string TableName => "Trainers";
     }
 }

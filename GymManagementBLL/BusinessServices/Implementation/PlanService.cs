@@ -5,6 +5,7 @@ using GymManagementBLL.DTOs.Plans;
 using GymManagementBLL.Errors;
 using GymManagementBLL.Mapping;
 using GymManagementDAL.Entities;
+using GymManagementDAL.Entities.Enums;
 using GymManagementDAL.UnitOfWorkPattern;
 
 namespace GymManagementBLL.BusinessServices.Implementation
@@ -54,7 +55,6 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 DurationDays = request.DurationDays,
                 Price = request.Price,
                 IsActive = true,
-                CreatedAt = _clock.UtcNow,
             };
 
             repo.Add(plan);
@@ -76,16 +76,12 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (await repo.AnyAsync(p => p.Id != id && p.Name == name, ct))
                 return PlanErrors.NameTaken(name);
 
-            // Until memberships store a price/duration snapshot (B6), editing a plan
-            // would silently change existing subscriptions, so it is blocked.
-            if (await HasActiveMembershipsAsync(id, ct))
-                return PlanErrors.HasActiveMemberships;
-
+            // Editing is always allowed: existing memberships keep their own copy
+            // (snapshot) of the plan's name, price and duration.
             plan.Name = name;
             plan.Description = request.Description.Trim();
             plan.DurationDays = request.DurationDays;
             plan.Price = request.Price;
-            plan.UpdatedAt = _clock.UtcNow;
 
             await _unitOfWork.SaveChangesAsync(ct);
 
@@ -104,7 +100,6 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (plan.IsActive != isActive)
             {
                 plan.IsActive = isActive;
-                plan.UpdatedAt = _clock.UtcNow;
                 await _unitOfWork.SaveChangesAsync(ct);
             }
 
@@ -119,10 +114,12 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (plan is null)
                 return PlanErrors.NotFound(id);
 
-            if (await _unitOfWork.GetRepository<Membership>().AnyAsync(m => m.PlanId == id, ct))
-                return PlanErrors.HasMemberships;
+            if (await HasActiveMembershipsAsync(id, ct))
+                return PlanErrors.HasActiveMemberships;
 
-            repo.Delete(plan);
+            // Soft delete: the row stays in the database (IsDeleted = true),
+            // so old memberships and revenue reports still work.
+            repo.Remove(plan);
             await _unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success();
@@ -130,11 +127,14 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
         #region Helper Methods
 
+        /// <summary>Active = not cancelled and not expired yet (frozen memberships count as active).</summary>
         private Task<bool> HasActiveMembershipsAsync(int planId, CancellationToken ct)
         {
             var now = _clock.UtcNow;
             return _unitOfWork.GetRepository<Membership>()
-                .AnyAsync(m => m.PlanId == planId && m.EndDate > now, ct);
+                .AnyAsync(m => m.PlanId == planId
+                               && m.Status != MembershipStatus.Cancelled
+                               && m.EndDate > now, ct);
         }
 
         #endregion

@@ -23,40 +23,22 @@ namespace GymManagementDAL.Data.SeedData
         {
             seedFolder ??= DefaultSeedFolder;
 
-            var hasPlans = await dbContext.Plans.AnyAsync(ct);
-            var hasCategories = await dbContext.Categories.AnyAsync(ct);
+            // IgnoreQueryFilters: soft-deleted rows still count, so deleted plans are not re-seeded.
+            var hasPlans = await dbContext.Plans.IgnoreQueryFilters().AnyAsync(ct);
+            var hasCategories = await dbContext.Categories.IgnoreQueryFilters().AnyAsync(ct);
 
             if (hasPlans && hasCategories)
                 return false;
 
-            var now = DateTime.UtcNow;
-
             if (!hasPlans)
-            {
-                var plans = await LoadDataFromJsonAsync<Plan>(seedFolder, "plans.json", ct);
-                foreach (var plan in plans)
-                    plan.CreatedAt = now;
-
-                dbContext.Plans.AddRange(plans);
-            }
+                dbContext.Plans.AddRange(await LoadDataFromJsonAsync<Plan>(seedFolder, "plans.json", ct));
 
             if (!hasCategories)
-            {
-                var categories = await LoadDataFromJsonAsync<Category>(seedFolder, "categories.json", ct);
-                foreach (var category in categories)
-                    category.CreatedAt = now;
+                dbContext.Categories.AddRange(await LoadDataFromJsonAsync<Category>(seedFolder, "categories.json", ct));
 
-                dbContext.Categories.AddRange(categories);
-            }
-
+            // CreatedAt is filled automatically by GymDbContext.SaveChangesAsync.
             return await dbContext.SaveChangesAsync(ct) > 0;
         }
-
-        /// <summary>
-        /// Synchronous wrapper kept for the legacy MVC project (removed in B2).
-        /// </summary>
-        public static bool SeedData(GymDbContext dbContext)
-            => SeedAsync(dbContext).GetAwaiter().GetResult();
 
         private static async Task<List<T>> LoadDataFromJsonAsync<T>(string folder, string fileName, CancellationToken ct)
         {
