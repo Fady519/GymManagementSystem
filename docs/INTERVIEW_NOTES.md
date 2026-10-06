@@ -166,3 +166,138 @@
 4. اتجربت على نسخة من الداتا بيز الأول، وبعدين على الأصلية.
 
 > I never trust a generated migration blindly. I review it, add SQL to move or fix existing data, and test it on a copy of the real database before running it on the real one.
+
+---
+
+# B3 — Authentication & Authorization
+
+## 19. Authentication vs Authorization
+
+**يعني إيه:**
+- **Authentication** = إنت مين؟ (بنتأكد من الإيميل والباسورد، أو من الـ token).
+- **Authorization** = مسموحلك تعمل إيه؟ (حسب الـ role بتاعك).
+
+في الـ pipeline: `UseAuthentication()` الأول، وبعدها `UseAuthorization()`.
+
+> Authentication answers "who are you?" — we check the password at login, then the JWT on every request. Authorization answers "what are you allowed to do?" — we check the user's role against a policy. 401 means "not logged in", 403 means "logged in but not allowed".
+
+---
+
+## 20. ASP.NET Core Identity
+
+**يعني إيه:** مكتبة جاهزة من مايكروسوفت للمستخدمين: بتعمل hash للباسورد، وبتقفل الحساب بعد محاولات غلط، وبتدير الـ roles. إحنا مكتبناش ده بإيدينا.
+
+**عملنا إيه:**
+- `ApplicationUser : IdentityUser<int>`، وضفنا بس `FullName` و `IsActive` و `MustChangePassword`.
+- بيانات الجيم (التليفون، تاريخ الميلاد...) فضلت في جدول `Members`، ومربوطة بالحساب عن طريق `UserId`.
+- استخدمنا `AddIdentityCore` (من غير cookies ومن غير UI)، لأننا بنستخدم JWT.
+
+> I didn't write my own password hashing. Identity hashes passwords with PBKDF2 and a salt, handles lockout and roles, and it's battle-tested. I kept the login account (AspNetUsers) separate from the gym profile (Members), linked by UserId, so a member can exist without an account (added by reception).
+
+---
+
+## 21. JWT (JSON Web Token)
+
+**يعني إيه:** نص فيه 3 أجزاء: `header.payload.signature`.
+- الـ payload فيه الـ claims: `sub` (رقم المستخدم)، `role`، `memberId`، ووقت الانتهاء `exp`.
+- الـ signature بتتعمل بمفتاح سري موجود على السيرفر بس. لو حد غيّر حرف واحد في الـ token، الـ signature مش هتطابق، والـ API هيرفضه.
+
+**مهم:** الـ payload **مش متشفّر**، أي حد يقدر يقراه (جرّب jwt.io). عشان كده مفيش أي حاجة سرية جواه.
+
+> A JWT is signed, not encrypted. The server can trust its claims without a database call because only the server knows the signing key. I never put secrets inside it. The key is at least 256 bits and lives in User Secrets locally and in an environment variable in production.
+
+---
+
+## 22. Access Token + Refresh Token
+
+| | Access token | Refresh token |
+|---|---|---|
+| المدة | 15 دقيقة | 7 أيام |
+| بيتبعت فين | Header: `Authorization: Bearer ...` | Cookie اسمها `gym_refresh` |
+| بيتخزن في الداتا بيز؟ | لأ | آه، بس الـ hash بتاعه (SHA-256) |
+
+**ليه اتنين؟** الـ access token مايتلغيش قبل ما وقته يخلص. فبنخليه قصير (15 دقيقة). والـ refresh token بيجيب access token جديد من غير ما المستخدم يكتب الباسورد تاني.
+
+> Short-lived access tokens limit the damage if one is stolen. The refresh token is long-lived but it's stored as a hash in the database, so we can revoke it (logout, disable user, password change).
+
+---
+
+## 23. Refresh Token Rotation & Reuse Detection
+
+**Rotation:** كل مرة نستخدم الـ refresh token، بيتلغي، وبناخد واحد جديد.
+
+**Reuse detection:** لو refresh token **اتستخدم قبل كده** رجع تاني، يبقى غالباً حد سرقه. فبنلغي **كل** الـ sessions بتاعة المستخدم ده، وهو يعمل login تاني.
+
+> Each refresh token works once. If an already-used token comes back, either the attacker or the real user is holding a stolen copy, and we can't tell which. So we revoke all of that user's sessions and force a new login.
+
+---
+
+## 24. Why an httpOnly Cookie for the Refresh Token?
+
+| Flag | بيعمل إيه |
+|---|---|
+| `HttpOnly` | الـ JavaScript مايقدرش يقراها، فهي في أمان من XSS |
+| `Secure` | بتتبعت على HTTPS بس |
+| `SameSite=Lax` | مابتتبعتش مع POST جاي من موقع تاني، فهي في أمان من CSRF |
+| `Path=/api/auth` | بتتبعت لـ endpoints الـ auth بس، مش مع كل request |
+
+> If the refresh token were in localStorage, any XSS bug could steal it. An httpOnly cookie can't be read by JavaScript. The access token is kept in memory on the frontend, so it's gone when the tab closes, and the cookie silently gets a new one.
+
+---
+
+## 25. Roles & Policies
+
+**الـ roles:** `SuperAdmin`، `Admin`، `Trainer`، `Member`.
+
+**الـ policies (قواعد ليها اسم):**
+
+| Policy | مين مسموحله |
+|---|---|
+| `SuperAdminOnly` | SuperAdmin |
+| `AdminAccess` | SuperAdmin, Admin |
+| `TrainerAccess` | SuperAdmin, Admin, Trainer |
+| `MemberAccess` | Member |
+
+**Secure by default:** فيه `FallbackPolicy` بتقول إن أي endpoint محتاج login، إلا لو مكتوب عليه `[AllowAnonymous]` (زي login وعرض الباقات).
+
+> I use named policies instead of repeating role lists in every controller. The fallback policy makes every endpoint require authentication by default, so forgetting an attribute fails safe, not open.
+
+---
+
+## 26. Account Lockout & Rate Limiting
+
+- **Lockout:** بعد 5 باسوردات غلط ورا بعض، الحساب بيتقفل 15 دقيقة (Identity).
+- **Rate limiting:** أقصى 10 requests في الدقيقة لكل IP على login / register / refresh. لو زاد، بيرجع `429` (built-in في .NET).
+- **رسالة واحدة** لـ "الإيميل مش موجود" و"الباسورد غلط"، عشان محدش يعرف مين عنده حساب.
+
+> Lockout protects one account from password guessing. Rate limiting protects the server from one IP hammering the login endpoint. And the same error for a wrong email or a wrong password prevents account enumeration.
+
+---
+
+## 27. Temporary Passwords (Admins & Trainers)
+
+**يعني إيه:** الـ SuperAdmin بيعمل حساب Admin، فالسيستم بيعمل باسورد عشوائي (`RandomNumberGenerator`) ويظهر **مرة واحدة بس**. وأول ما الـ Admin يعمل login، بيكون `MustChangePassword = true`، ولازم يغيّره.
+
+لما الباسورد بيتغيّر، كل الـ sessions القديمة بتتلغي.
+
+> The temporary password is generated with a cryptographic RNG, shown once, and never stored in plain text. The user must change it on first login. Changing the password revokes all other sessions.
+
+---
+
+## 28. Register = 2 Tables in 1 Transaction
+
+**المشكلة:** التسجيل بيكتب في جدولين: `AspNetUsers` و `Members`. ولو الأول نجح والتاني فشل، هيبقى عندنا حساب من غير member.
+
+**الحل:** `BeginTransactionAsync` ثم `CommitAsync` في الآخر. لو حصل أي خطأ قبل الـ commit، الاتنين بيتلغوا.
+
+**قرار business:** لو الإيميل موجود أصلاً كـ member (الريسبشن ضافه)، التسجيل بيرجع `409`، ولازم يكلّم الريسبشن. (B7: الأدمن هيبعتله invite بالإيميل). ده بيمنع إن حد ياخد بيانات member تاني.
+
+> Registration writes two tables, so I wrap it in a transaction: either both rows are saved or neither. And if the email already belongs to a gym member, self-registration is refused, so nobody can take over someone else's membership by guessing their email.
+
+---
+
+## 29. Known Trade-off: Disabled User Still Has ≤ 15 Minutes
+
+**يعني إيه:** لما نعمل disable لمستخدم، الـ refresh tokens بتاعته بتتلغي فوراً. بس الـ access token اللي معاه يفضل شغال لحد ما وقته يخلص (أقصى 15 دقيقة)، لأن الـ API مابيسألش الداتا بيز مع كل request.
+
+> That's the classic JWT trade-off: stateless tokens are fast but can't be revoked instantly. With a 15-minute lifetime the window is small. If needed, I could check a "security stamp" on each request, at the cost of one database call per request.

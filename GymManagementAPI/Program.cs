@@ -13,6 +13,7 @@ builder.Services.AddSerilog((services, logger) => logger
 builder.Services
     .AddPersistence()
     .AddBusinessServices()
+    .AddAuth()
     .AddApiServices();
 
 var app = builder.Build();
@@ -34,10 +35,12 @@ else
     app.UseHttpsRedirection();
 }
 
-app.UseAuthorization();
+app.UseAuthentication();   // who are you? (reads the JWT)
+app.UseAuthorization();    // are you allowed? (roles / policies)
+app.UseRateLimiter();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await app.MigrateAndSeedAsync();

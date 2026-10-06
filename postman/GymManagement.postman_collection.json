@@ -1,10 +1,129 @@
 {
   "info": {
     "name": "Gym Management API",
-    "description": "Requests for the Gym Management REST API. Select the 'Gym Management - Local' environment first (baseUrl = http://localhost:5080).",
+    "description": "Requests for the Gym Management REST API. Select the 'Gym Management - Local' environment first (baseUrl = https://localhost:7080; https is needed for the Secure refresh cookie). Run 'Auth > Login' first: it saves the access token, and every request sends it as a Bearer token.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
   "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (SuperAdmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.environment.set('accessToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{superAdminEmail}}\",\n  \"password\": \"{{superAdminPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Register member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('accessToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ahmed Ali\",\n  \"email\": \"ahmed{{$randomInt}}@example.com\",\n  \"phone\": \"01098765432\",\n  \"password\": \"Member@123\",\n  \"dateOfBirth\": \"2000-05-20\",\n  \"gender\": \"Male\"\n}" },
+            "url": "{{baseUrl}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" }
+        },
+        {
+          "name": "Refresh (uses the cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 200) { pm.environment.set('accessToken', pm.response.json().accessToken); }"]
+              }
+            }
+          ],
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/refresh" }
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"Old@12345\",\n  \"newPassword\": \"New@12345\"\n}" },
+            "url": "{{baseUrl}}/api/auth/change-password"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": { "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/logout" }
+        }
+      ]
+    },
+    {
+      "name": "Users (SuperAdmin)",
+      "item": [
+        {
+          "name": "List users",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/users?page=1&pageSize=20" }
+        },
+        {
+          "name": "Create admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 201) { pm.environment.set('userId', pm.response.json().user.id); }"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Reception Admin\",\n  \"email\": \"admin{{$randomInt}}@example.com\"\n}" },
+            "url": "{{baseUrl}}/api/users/admins"
+          }
+        },
+        {
+          "name": "Disable user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" },
+            "url": "{{baseUrl}}/api/users/{{userId}}/status"
+          }
+        }
+      ]
+    },
     {
       "name": "System",
       "item": [

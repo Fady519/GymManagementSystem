@@ -1,4 +1,7 @@
 using GymManagementDAL.Entities;
+using GymManagementDAL.Entities.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -6,7 +9,11 @@ using System.Reflection;
 
 namespace GymManagementDAL.Data.Contexts
 {
-    public class GymDbContext : DbContext
+    /// <summary>
+    /// One database for everything: the gym tables + the Identity tables (AspNetUsers, AspNetRoles...).
+    /// IdentityDbContext&lt;User, Role, int&gt; = Identity with int keys (same as our other tables).
+    /// </summary>
+    public class GymDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
     {
         public GymDbContext(DbContextOptions<GymDbContext> options) : base(options)
         {
@@ -24,6 +31,7 @@ namespace GymManagementDAL.Data.Contexts
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<Membership> Memberships => Set<Membership>();
         public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -44,6 +52,9 @@ namespace GymManagementDAL.Data.Contexts
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Identity configures its tables (AspNetUsers, AspNetRoles...) first, then we add ours.
+            base.OnModelCreating(modelBuilder);
+
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
             // Safety net for rows inserted with plain SQL: the database fills CreatedAt in UTC.

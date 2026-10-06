@@ -1,5 +1,6 @@
 using GymManagementBLL.Common;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GymManagementAPI.Controllers
 {
@@ -10,6 +11,9 @@ namespace GymManagementAPI.Controllers
     [ApiController]
     public abstract class ApiControllerBase : ControllerBase
     {
+        /// <summary>Id of the logged-in user, read from the "sub" claim of the access token.</summary>
+        protected int CurrentUserId => int.Parse(User.FindFirstValue(AppClaims.UserId)!);
+
         protected ObjectResult Problem(Error error)
         {
             var (status, title) = error.Type switch

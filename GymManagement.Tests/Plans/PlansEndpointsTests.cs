@@ -1,6 +1,7 @@
 using GymManagement.Tests.Infrastructure;
 using GymManagementBLL.DTOs.Plans;
 using GymManagementDAL.Entities.Enums;
+using GymManagementDAL.Entities.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Json;
@@ -9,9 +10,15 @@ using System.Text.Json;
 namespace GymManagement.Tests.Plans
 {
     [Collection(ApiCollection.Name)]
-    public sealed class PlansEndpointsTests(ApiFactory factory)
+    public sealed class PlansEndpointsTests(ApiFactory factory) : IAsyncLifetime
     {
-        private readonly HttpClient _client = factory.CreateClient();
+        // Reading plans is public; changing them needs an Admin token.
+        private readonly HttpClient _anonymous = factory.CreateHttpsClient();
+        private HttpClient _client = null!;
+
+        public async Task InitializeAsync() => _client = await factory.CreateClientForRoleAsync(AppRoles.Admin);
+
+        public Task DisposeAsync() => Task.CompletedTask;
 
         #region Helpers
 
@@ -43,11 +50,54 @@ namespace GymManagement.Tests.Plans
         [Fact]
         public async Task GetAll_ReturnsSeededPlans()
         {
-            var plans = await _client.GetFromJsonAsync<List<PlanResponse>>("/api/plans");
+            var plans = await _anonymous.GetFromJsonAsync<List<PlanResponse>>("/api/plans");
 
             Assert.NotNull(plans);
             Assert.Contains(plans, p => p.Name == "Basic Plan");
             Assert.Contains(plans, p => p.Name == "Annual Plan");
+        }
+
+        [Fact]
+        public async Task GetById_IsPublic()
+        {
+            var plan = await CreatePlanAsync();
+
+            var response = await _anonymous.GetAsync($"/api/plans/{plan.Id}");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Create_WithoutToken_Returns401()
+        {
+            var response = await _anonymous.PostAsJsonAsync("/api/plans",
+                new CreatePlanRequest(TestData.UniqueName(), "A plan created by a test", 30, 100m));
+
+            await AssertProblemCodeAsync(response, HttpStatusCode.Unauthorized, "Auth.Unauthenticated");
+        }
+
+        [Theory]
+        [InlineData(AppRoles.Member)]
+        [InlineData(AppRoles.Trainer)]
+        public async Task Create_AsNonAdmin_Returns403(string role)
+        {
+            var client = await factory.CreateClientForRoleAsync(role);
+
+            var response = await client.PostAsJsonAsync("/api/plans",
+                new CreatePlanRequest(TestData.UniqueName(), "A plan created by a test", 30, 100m));
+
+            await AssertProblemCodeAsync(response, HttpStatusCode.Forbidden, "Auth.Forbidden");
+        }
+
+        [Fact]
+        public async Task Delete_AsSuperAdmin_IsAllowed()
+        {
+            var plan = await CreatePlanAsync();
+            var superAdmin = await factory.CreateClientForRoleAsync(AppRoles.SuperAdmin);
+
+            var response = await superAdmin.DeleteAsync($"/api/plans/{plan.Id}");
+
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         }
 
         [Fact]
