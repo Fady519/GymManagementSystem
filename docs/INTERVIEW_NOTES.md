@@ -898,3 +898,93 @@
 ده مشروع Portfolio، فالـ Swagger هو **واجهة العرض** للي بيراجع الشغل: يقدر يشوف كل Endpoint ويجربه بحساب الديمو. ده آمن لأن الحماية في الـ Authorization نفسه (كل Endpoint عليه Policy ومتراجع بالتست)، مش في إخفاء الـ Docs. في شركة حقيقية ممكن نقفله أو نحطه ورا تسجيل دخول.
 
 > This is a portfolio project, so Swagger in production is the showcase where reviewers can try every endpoint with a demo account. It is safe because security comes from authorization on each endpoint, which is tested, not from hiding the docs. A real company might disable it or put it behind login.
+
+---
+
+# F0: Frontend Setup and Design System
+
+## 82. One Repo, Two Apps, One Origin
+
+الواجهة في فولدر `gym-web` جوه نفس الـ Repo (Monorepo)، منفصلة تماماً عن الباك. المتصفح **مبيكلمش الـ API مباشرة**: بيبعت لـ `/api/...` على نفس عنوان الواجهة، و`next.config.ts` فيه **Rewrites** بتحوّل الطلب للـ API.
+
+الفايدة:
+- مفيش **CORS** خالص، لأن المتصفح شايف عنوان واحد.
+- الـ Refresh Token Cookie بقت **First-party**، فمش هتتقفل من المتصفحات اللي بتمنع Third-party Cookies.
+- عنوان الـ API متغير واحد `API_URL`، بنغيره وقت النشر بس.
+
+> The frontend lives in the same repo but is a separate app. The browser only calls its own origin, and Next.js rewrites /api to the ASP.NET Core API. That removes CORS entirely and keeps the refresh cookie first-party. The API address is one environment variable.
+
+---
+
+## 83. TypeScript Types Generated From the API Contract
+
+مبنكتبش Types الـ DTOs بإيدينا. `npm run gen:api` بيقرا `docs/openapi.json` (اللي الباك بيطلعه ومتراجع بتست) ويولّد `src/types/api.d.ts`. لو الباك غيّر اسم Field، بنعمل Regenerate والـ Build بيفشل في كل مكان بيستخدم الاسم القديم.
+
+وعشان الأنواع تطلع مظبوطة، فعّلنا في Swagger `SupportNonNullableReferenceTypes()`: كده `string` في C# بقت `string` في TypeScript، و`string?` بقت `string | null`. قبلها كل النصوص كانت `string | null` والكود كان هيتملي Checks ملهاش لازمة.
+
+> DTO types are generated from openapi.json, never written by hand, so a renamed field breaks the frontend build instead of production. We enabled non-nullable reference type support in Swagger so C# nullability maps exactly to TypeScript.
+
+---
+
+## 84. Server State vs Client State
+
+فيه نوعين داتا، وكل نوع ليه أداة:
+- **Server State** (الأعضاء، الخطط، الحجوزات): بتيجي من الـ API وممكن تتغير من حد تاني. دي مع **TanStack Query**: Cache، Loading/Error، Retry، وتحديث بعد أي تعديل.
+- **Client State** (مين مسجل دخول، السايدبار مفتوح ولا لأ): ملك المتصفح بس. دي مع **Redux Toolkit**.
+
+ومبنحطش داتا السيرفر في Redux، عشان مايبقاش عندنا نسختين من نفس الداتا.
+
+الـ Access Token متخزن **في الذاكرة بس** (Redux)، مش في `localStorage`، عشان أي Script غريب (XSS) ميقدرش يقراه من الـ Storage. ولما الصفحة تتعمل Refresh، الـ Cookie بتجيب Token جديد (ده في F1).
+
+> Server data (members, plans) lives in TanStack Query, which handles caching, loading and error states, and refetching. Client-only state (the logged-in user, UI toggles) lives in Redux Toolkit. Server data is never copied into Redux. The access token is kept in memory, not localStorage, so an injected script can't read it from storage.
+
+---
+
+## 85. One Axios Client, One Error Type
+
+فيه Axios Instance واحد للتطبيق كله:
+- **Request Interceptor** بيضيف `Authorization: Bearer ...` لوحده.
+- **Response Interceptor** بيحوّل أي Error لـ `ApiError` واحد فيه `status` و`code` (زي `Membership.Overlap`) ورسالة مفهومة و Errors لكل Field.
+
+فالصفحات عمرها ما بتتعامل مع Axios Errors ولا بتفك JSON الـ ProblemDetails بنفسها. والـ QueryClient مبيعملش Retry لأي 4xx، لأن 404 أو 403 مش هيتصلحوا بالإعادة.
+
+> A single Axios instance adds the bearer token and converts every failure into one typed ApiError (status, API error code, message, field errors), so components never parse Problem Details themselves. Queries don't retry 4xx errors because they won't succeed on retry.
+
+---
+
+## 86. Design Tokens and Dark Mode
+
+الألوان كلها **CSS Variables** في `globals.css` (`--primary`، `--success`، `--warning`...)، وكل Component في shadcn/ui بيستخدمها. اللون الأساسي هو أزرق اللوجو بتاع النسخة القديمة (`#1E1EB4`). تغيير لون في مكان واحد بيغيّره في الموقع كله.
+
+الـ Dark Mode بـ `next-themes`: بيحط Class اسمه `dark` على الصفحة **قبل** ما React يشتغل، فمفيش وميض أبيض. والـ shadcn/ui مش مكتبة بنعملها Install، دي Components بتتنسخ جوه المشروع، فنقدر نعدّل فيها براحتنا.
+
+> All colors are CSS variables used by every shadcn/ui component, so the brand blue is defined once. Dark mode uses next-themes, which sets the class before React loads to avoid a flash. shadcn/ui components are copied into the project, so we fully own them.
+
+---
+
+## 87. A Next.js 16 Gotcha: No Random Values While Prerendering
+
+Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت الـ Build، وبيرفض أي قيمة عشوائية (`Math.random()`) تتحسب وقت الـ Render، لأنها هتتجمد في الـ HTML. الـ Build وقع لأن `combineReducers` في Redux بيستخدم `Math.random()` جواه. الحل: نعمل `combineReducers` مرة واحدة على مستوى الملف، و`configureStore` بس جوه الـ Component.
+
+والـ Store نفسه بيتعمل **مرة لكل Tab** جوه `useState`، مش Global، لأن السيرفر بيعمل Render لمستخدمين كتير في نفس الوقت، وStore مشترك ممكن يسرّب بيانات مستخدم لمستخدم تاني.
+
+> With Cache Components, Next.js 16 rejects random values computed during prerendering. Redux's combineReducers calls Math.random, so we build the root reducer once at module level and only create the store inside the component. The store is created per browser tab, never shared on the server, so one user's state can't leak to another.
+
+---
+
+## 88. Calling a Local HTTPS API From Node.js
+
+المتصفح بيثق في شهادة الـ HTTPS بتاعة ASP.NET على الجهاز، لكن Node.js (اللي بيعمل الـ Rewrite) مبيثقش فيها، فكان بيرجع 500. الحل: Script صغير بيشتغل قبل `npm run dev` ويطلّع الجزء العام من الشهادة لفولدر `.certs` (متجاهل في Git)، وبعدين `NODE_EXTRA_CA_CERTS` بيقول لـ Node يثق فيها. **مقفلناش التحقق من الشهادات**، وده الحل الآمن.
+
+> The browser trusts the ASP.NET Core dev certificate but Node.js didn't, so the proxy failed. A pre-dev script exports the certificate's public part to a git-ignored folder, and NODE_EXTRA_CA_CERTS tells Node to trust it. TLS verification is never disabled.
+---
+
+## 89. No Dead UI: Everything on Screen Is Real
+
+قاعدة في المشروع: **أي حاجة المستخدم بيشوفها لازم تكون حقيقية**. كل رقم وخطة وبرنامج وحصة في الصفحة الرئيسية جاي من الـ API (أقل سعر في الشهر، عدد المدربين، عدد الحصص الجاية، الأماكن الفاضية في كل حصة). وكل زرار بيعمل حاجة فعلاً. زراير زي "اشترك" و"احجز" مش هتظهر غير لما الصفحة بتاعتها تبقى جاهزة.
+
+ومثال على إن الداتا بتتحسب مش بتتكتب: علامة "Best value" بتروح للخطة اللي **سعرها في الشهر أقل**، مش لأغلى خطة، وكل خطة بتعرض بتوفر كام في المية مقارنة بأغلى سعر شهري.
+
+وكل جزء بيحمّل داتا ليه 3 حالات: Skeleton وهو بيحمّل، ورسالة واضحة وزرار Try again لو فشل، وحالة فاضية بكلام مناسب لو مفيش داتا.
+
+> Everything a visitor sees is real: every number, plan, program and class comes from the API, and every button works. Actions like sign-up or booking only appear once their pages exist. Values are computed, not hard-coded; for example, "Best value" goes to the lowest price per month. Every data section has loading, error-with-retry and empty states.
