@@ -131,10 +131,12 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (bookedCount >= session.Capacity)
                 return SessionErrors.Full;
 
-            // Active (not frozen) and valid for the whole session.
+            // Valid for the whole session and not frozen at that time
+            // (a frozen membership is fine if the freeze is over before the session starts).
             var hasValidMembership = await _unitOfWork.GetRepository<Membership>().AnyAsync(m =>
                 m.MemberId == memberId
-                && m.Status == MembershipStatus.Active
+                && (m.Status == MembershipStatus.Active
+                    || (m.Status == MembershipStatus.Frozen && m.FrozenUntil <= session.StartDate))
                 && m.StartDate <= session.StartDate
                 && m.EndDate >= session.EndDate, ct);
 

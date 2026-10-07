@@ -188,8 +188,10 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             // C7 fix: the old code compared with an id that was always 0,
             // so members who had already booked still appeared in the list.
+            // A frozen membership is fine if the freeze is over before the session starts.
             var members = _unitOfWork.GetRepository<Member>().Query()
-                .Where(m => m.Memberships.Any(x => x.Status == MembershipStatus.Active
+                .Where(m => m.Memberships.Any(x => (x.Status == MembershipStatus.Active
+                                                    || (x.Status == MembershipStatus.Frozen && x.FrozenUntil <= session.StartDate))
                                                    && x.StartDate <= session.StartDate
                                                    && x.EndDate >= session.EndDate))
                 .Where(m => !m.Bookings.Any(b => b.SessionId == id && b.Status != BookingStatus.Cancelled));

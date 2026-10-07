@@ -505,6 +505,88 @@
           "request": { "method": "POST", "url": "{{baseUrl}}/api/bookings/{{bookingId}}/attend" }
         }
       ]
+    },
+    {
+      "name": "Memberships",
+      "item": [
+        {
+          "name": "List memberships (state, memberId, search, paging)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/memberships?state=Active&page=1&pageSize=20" }
+        },
+        {
+          "name": "Expiring soon (next 7 days, not renewed)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/memberships/expiring-soon?days=7" }
+        },
+        {
+          "name": "Sell a membership (starts now, payment saved with it)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('membershipId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"memberId\": {{memberId}},\n  \"planId\": {{planId}},\n  \"paymentMethod\": \"Cash\",\n  \"notes\": \"Paid at the reception\"\n}" },
+            "url": "{{baseUrl}}/api/memberships"
+          }
+        },
+        {
+          "name": "Get membership (with payments and freezes)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/memberships/{{membershipId}}" }
+        },
+        {
+          "name": "Renew (planId empty = same plan)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"planId\": null,\n  \"paymentMethod\": \"Card\"\n}" },
+            "url": "{{baseUrl}}/api/memberships/{{membershipId}}/renew"
+          }
+        },
+        {
+          "name": "Freeze 10 days",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"days\": 10,\n  \"reason\": \"Travel\"\n}" },
+            "url": "{{baseUrl}}/api/memberships/{{membershipId}}/freeze"
+          }
+        },
+        {
+          "name": "Unfreeze early (unused days are taken back)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/memberships/{{membershipId}}/unfreeze" }
+        },
+        {
+          "name": "Cancel with refund (row is kept)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refundAmount\": 100,\n  \"refundMethod\": \"Cash\",\n  \"reason\": \"Moved to another city\"\n}" },
+            "url": "{{baseUrl}}/api/memberships/{{membershipId}}/cancel"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "List payments (from/to UTC, method, type)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/payments?method=Cash&type=Purchase&page=1&pageSize=20" }
+        },
+        {
+          "name": "Payments of a member",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/members/{{memberId}}/payments" }
+        }
+      ]
     }
   ]
 }

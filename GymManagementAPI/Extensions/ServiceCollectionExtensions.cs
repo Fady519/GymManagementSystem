@@ -53,11 +53,21 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<IMemberService, MemberService>();
             services.AddScoped<ISessionService, SessionService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IMembershipService, MembershipService>();
+            services.AddScoped<IPaymentService, PaymentService>();
 
             // Session / booking rules from appsettings ("SessionRules"); invalid values stop the app at startup.
             services.AddOptions<SessionRulesOptions>()
                 .BindConfiguration(SessionRulesOptions.SectionName)
                 .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            // Freeze limits and the "expiring soon" window ("MembershipRules").
+            services.AddOptions<MembershipRulesOptions>()
+                .BindConfiguration(MembershipRulesOptions.SectionName)
+                .ValidateDataAnnotations()
+                .Validate(o => o.MinFreezeDays <= o.MaxFreezeDays && o.MaxFreezeDays <= o.MaxTotalFreezeDays,
+                    "MembershipRules: MinFreezeDays <= MaxFreezeDays <= MaxTotalFreezeDays.")
                 .ValidateOnStart();
 
             // Uploaded files go to a local folder; the path is read lazily so tests can change it.

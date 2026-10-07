@@ -3,6 +3,7 @@ using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.Common;
 using GymManagementBLL.DTOs.Common;
 using GymManagementBLL.DTOs.Members;
+using GymManagementBLL.DTOs.Payments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -104,6 +105,17 @@ namespace GymManagementAPI.Controllers
         {
             var result = await memberService.DeletePhotoAsync(id, ct);
             return result.IsSuccess ? NoContent() : Problem(result.Error);
+        }
+
+        /// <summary>All payments of the member (purchases, renewals, refunds), newest first.</summary>
+        [HttpGet("{id:int}/payments")]
+        [ProducesResponseType<IReadOnlyList<PaymentResponse>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+        public async Task<ActionResult<IReadOnlyList<PaymentResponse>>> GetPayments(int id,
+            [FromServices] IPaymentService paymentService, CancellationToken ct)
+        {
+            var result = await paymentService.GetByMemberAsync(id, ct);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
     }
 }

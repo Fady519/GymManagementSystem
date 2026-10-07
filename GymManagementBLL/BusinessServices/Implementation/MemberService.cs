@@ -47,14 +47,17 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             // The state is not a column, so each filter describes it with the member's memberships.
             // A "running" membership = not cancelled and not ended yet.
+            // "Frozen now" = Status is Frozen and FrozenUntil is still in the future (a freeze ends by itself).
             members = query.MembershipState switch
             {
                 MemberMembershipState.Active => members.Where(m =>
-                    m.Memberships.Any(x => x.Status == MembershipStatus.Active && x.EndDate > now)),
+                    m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled && x.StartDate <= now && x.EndDate > now
+                                           && !(x.Status == MembershipStatus.Frozen && x.FrozenUntil > now))),
 
                 MemberMembershipState.Frozen => members.Where(m =>
-                    !m.Memberships.Any(x => x.Status == MembershipStatus.Active && x.EndDate > now) &&
-                    m.Memberships.Any(x => x.Status == MembershipStatus.Frozen && x.EndDate > now)),
+                    !m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled && x.StartDate <= now && x.EndDate > now
+                                            && !(x.Status == MembershipStatus.Frozen && x.FrozenUntil > now)) &&
+                    m.Memberships.Any(x => x.Status == MembershipStatus.Frozen && x.FrozenUntil > now && x.EndDate > now)),
 
                 MemberMembershipState.Expired => members.Where(m =>
                     !m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled && x.EndDate > now) &&
@@ -79,8 +82,9 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 .Select(m => new MemberListItem(
                     m.Id, m.Name, m.Email, m.Phone, m.Gender,
                     m.Photo, // file name for now; turned into a URL below
-                    m.Memberships.Any(x => x.Status == MembershipStatus.Active && x.EndDate > now) ? MemberMembershipState.Active
-                    : m.Memberships.Any(x => x.Status == MembershipStatus.Frozen && x.EndDate > now) ? MemberMembershipState.Frozen
+                    m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled && x.StartDate <= now && x.EndDate > now
+                                           && !(x.Status == MembershipStatus.Frozen && x.FrozenUntil > now)) ? MemberMembershipState.Active
+                    : m.Memberships.Any(x => x.Status == MembershipStatus.Frozen && x.FrozenUntil > now && x.EndDate > now) ? MemberMembershipState.Frozen
                     : m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled) ? MemberMembershipState.Expired
                     : MemberMembershipState.None,
                     m.CreatedAt))
@@ -283,10 +287,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
             var memberships = await _unitOfWork.GetRepository<Membership>()
                 .ListAsync(x => x.MemberId == memberId && x.Status != MembershipStatus.Cancelled, ct);
 
-            if (memberships.Any(x => x.Status == MembershipStatus.Active && x.EndDate > now))
+            // In C# (not SQL) here: the member's memberships are already loaded.
+            bool IsFrozenNow(Membership x) => x.Status == MembershipStatus.Frozen && x.FrozenUntil > now;
+
+            if (memberships.Any(x => x.StartDate <= now && x.EndDate > now && !IsFrozenNow(x)))
                 return MemberMembershipState.Active;
 
-            if (memberships.Any(x => x.Status == MembershipStatus.Frozen && x.EndDate > now))
+            if (memberships.Any(x => x.EndDate > now && IsFrozenNow(x)))
                 return MemberMembershipState.Frozen;
 
             return memberships.Count > 0 ? MemberMembershipState.Expired : MemberMembershipState.None;

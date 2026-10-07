@@ -15,12 +15,18 @@ namespace GymManagementDAL.Data.Configurations
 
             builder.Property(x => x.PlanName).HasMaxLength(50).IsUnicode();
             builder.Property(x => x.PricePaid).HasPrecision(10, 2);
+            builder.Property(x => x.CancellationReason).HasMaxLength(200).IsUnicode();
+            builder.Property(x => x.TotalFrozenDays).HasDefaultValue(0);
 
             builder.ToTable(t =>
             {
                 t.HasCheckConstraint("CK_Memberships_EndDate", "EndDate > StartDate");
                 t.HasCheckConstraint("CK_Memberships_PricePaid", "PricePaid >= 0");
                 t.HasCheckConstraint("CK_Memberships_DurationDays", "DurationDays BETWEEN 1 AND 365");
+                t.HasCheckConstraint("CK_Memberships_TotalFrozenDays", "TotalFrozenDays >= 0");
+
+                // A frozen membership must know until when it is frozen.
+                t.HasCheckConstraint("CK_Memberships_FrozenUntil", "Status <> 'Frozen' OR FrozenUntil IS NOT NULL");
             });
 
             builder.HasOne(x => x.Member)
