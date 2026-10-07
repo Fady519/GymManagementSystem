@@ -15,12 +15,15 @@ namespace GymManagementBLL.BusinessServices.Implementation
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailSender _sender;
         private readonly EmailOptions _options;
+        private readonly GymTimeZone _gymTime;
 
-        public AppEmailService(UserManager<ApplicationUser> userManager, IEmailSender sender, IOptions<EmailOptions> options)
+        public AppEmailService(UserManager<ApplicationUser> userManager, IEmailSender sender, IOptions<EmailOptions> options,
+            GymTimeZone gymTime)
         {
             _userManager = userManager;
             _sender = sender;
             _options = options.Value;
+            _gymTime = gymTime;
         }
 
         public async Task<bool> SendInviteAsync(ApplicationUser user, string role, CancellationToken ct = default)
@@ -67,17 +70,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
                + "&token=" + AccountTokens.Encode(token);
 
         /// <summary>Emails show the gym's local time (the database keeps UTC).</summary>
-        private DateTime ToGymTime(DateTime utc)
-        {
-            try
-            {
-                return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById(_options.TimeZoneId));
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                return utc;
-            }
-        }
+        private DateTime ToGymTime(DateTime utc) => _gymTime.ToLocal(utc);
 
         #endregion
     }

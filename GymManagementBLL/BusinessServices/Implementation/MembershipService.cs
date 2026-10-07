@@ -38,6 +38,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
         #region Queries
 
         public async Task<PagedResult<MembershipResponse>> GetAllAsync(MembershipQuery query, CancellationToken ct = default)
+            => await ListQuery(query).ToPagedResultAsync(query.Page, query.PageSize, ct);
+
+        public async Task<Result<IReadOnlyList<MembershipResponse>>> GetForExportAsync(MembershipQuery query, int maxRows, CancellationToken ct = default)
+            => await ListQuery(query).ToExportListAsync(maxRows, ct);
+
+        /// <summary>The memberships list as one SQL query (shared by the page and the export).</summary>
+        private IQueryable<MembershipResponse> ListQuery(MembershipQuery query)
         {
             var now = _clock.UtcNow;
 
@@ -66,10 +73,9 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 _ => memberships
             };
 
-            return await memberships
+            return memberships
                 .OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id)
-                .Select(MembershipMappings.ToResponse(now))
-                .ToPagedResultAsync(query.Page, query.PageSize, ct);
+                .Select(MembershipMappings.ToResponse(now));
         }
 
         public async Task<Result<MembershipDetailsResponse>> GetByIdAsync(int id, CancellationToken ct = default)

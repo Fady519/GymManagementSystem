@@ -7,6 +7,9 @@ namespace GymManagementBLL.BusinessServices.Interfaces
     public interface IMemberService
     {
         Task<PagedResult<MemberListItem>> GetAllAsync(MemberQuery query, CancellationToken ct = default);
+
+        /// <summary>Same filters and order as the list, all rows (for Excel/CSV), or Export.TooManyRows. Paging is ignored.</summary>
+        Task<Result<IReadOnlyList<MemberListItem>>> GetForExportAsync(MemberQuery query, int maxRows, CancellationToken ct = default);
         Task<Result<MemberResponse>> GetByIdAsync(int id, CancellationToken ct = default);
         Task<Result<MemberResponse>> CreateAsync(CreateMemberRequest request, CancellationToken ct = default);
         Task<Result<MemberResponse>> UpdateAsync(int id, UpdateMemberRequest request, CancellationToken ct = default);

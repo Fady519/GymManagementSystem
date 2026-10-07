@@ -22,6 +22,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
         }
 
         public async Task<PagedResult<PaymentResponse>> GetAllAsync(PaymentQuery query, CancellationToken ct = default)
+            => await ListQuery(query).ToPagedResultAsync(query.Page, query.PageSize, ct);
+
+        public async Task<Result<IReadOnlyList<PaymentResponse>>> GetForExportAsync(PaymentQuery query, int maxRows, CancellationToken ct = default)
+            => await ListQuery(query).ToExportListAsync(maxRows, ct);
+
+        /// <summary>The payments list as one SQL query (shared by the page and the export).</summary>
+        private IQueryable<PaymentResponse> ListQuery(PaymentQuery query)
         {
             // IgnoreQueryFilters: money received from a member who was deleted later is still revenue.
             var payments = _unitOfWork.GetRepository<Payment>().Query().IgnoreQueryFilters();
@@ -37,10 +44,9 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (query.MemberId is not null)
                 payments = payments.Where(p => p.Membership.MemberId == query.MemberId);
 
-            return await payments
+            return payments
                 .OrderByDescending(p => p.PaidAt).ThenByDescending(p => p.Id)
-                .Select(MembershipMappings.PaymentToResponse)
-                .ToPagedResultAsync(query.Page, query.PageSize, ct);
+                .Select(MembershipMappings.PaymentToResponse);
         }
 
         public async Task<Result<IReadOnlyList<PaymentResponse>>> GetByMemberAsync(int memberId, CancellationToken ct = default)

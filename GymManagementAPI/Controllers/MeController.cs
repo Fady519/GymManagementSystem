@@ -2,6 +2,7 @@ using GymManagementAPI.Infrastructure;
 using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.Common;
 using GymManagementBLL.DTOs.Bookings;
+using GymManagementBLL.DTOs.CheckIns;
 using GymManagementBLL.DTOs.Common;
 using GymManagementBLL.DTOs.Members;
 using GymManagementBLL.DTOs.Memberships;
@@ -168,6 +169,32 @@ namespace GymManagementAPI.Controllers
             // The service checks that the booking belongs to this member (else 403).
             var result = await bookingService.CancelAsync(id, CurrentUser, ct);
             return result.IsSuccess ? NoContent() : Problem(result.Error);
+        }
+
+        /// <summary>My QR check-in code (text). The app draws it as a QR image for the reception scanner.</summary>
+        [HttpGet("qr")]
+        [ProducesResponseType<CheckInCodeResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+        public async Task<ActionResult<CheckInCodeResponse>> GetQrCode([FromServices] ICheckInService checkInService, CancellationToken ct)
+        {
+            if (CurrentUser.MemberId is not int memberId)
+                return Problem(AuthErrors.NotAMember);
+
+            var result = await checkInService.GetCodeAsync(memberId, ct);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        }
+
+        /// <summary>Makes a new QR code (e.g. a screenshot of the old one was shared). The old code stops working at once.</summary>
+        [HttpPost("qr/regenerate")]
+        [ProducesResponseType<CheckInCodeResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+        public async Task<ActionResult<CheckInCodeResponse>> RegenerateQrCode([FromServices] ICheckInService checkInService, CancellationToken ct)
+        {
+            if (CurrentUser.MemberId is not int memberId)
+                return Problem(AuthErrors.NotAMember);
+
+            var result = await checkInService.RegenerateCodeAsync(memberId, ct);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
     }
 }

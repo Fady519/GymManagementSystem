@@ -690,3 +690,104 @@
 الـ portals مش بتكرر الـ logic. "أحجز لنفسي" بتنادي نفس `BookingService.CreateAsync` بتاع الريسبشن (العضوية، السعة، التعارض، الـ concurrency)، و"أسجل حضور" بتنادي نفس `MarkAttendedAsync` اللي بيتأكد إن الجلسة بتاعة المدرب ده وشغالة دلوقتي. الـ Controller بس بيحدد مين اللي بينادي.
 
 > The portal controllers are thin: they call the same services as the admin endpoints, so every business rule lives in one place. The only difference is that the caller's identity comes from the token.
+
+---
+
+# B8: Analytics, QR Check-in and Export
+
+## 64. Reports Are Calculated in SQL, Not in Memory
+
+كل أرقام الداشبورد (الإيراد، عدد الأعضاء، نسبة الحضور، توزيع الخطط) بتتحسب بـ `GroupBy` و`Count` و`Sum` جوه الـ Query، فـ EF بيحولها لـ SQL والسيرفر بيرجع **الأرقام بس**. عمرنا ما بنعمل `ToList()` لجدول المدفوعات كله ونجمع في C#. لو الجيم فيه 100 ألف دفعة، الفرق بين إنك تنقل 100 ألف صف أو 30 رقم.
+
+الأيام اللي مفيهاش فلوس بنكمّلها بصفر في C# عشان الرسم البياني ميبقاش فيه فجوات. والإيراد الشهري بنجمعه من الأرقام اليومية (اللي هي أصلاً متجمعة في SQL).
+
+> All dashboard numbers are aggregated by the database with GroupBy, Count and Sum, so only the final numbers travel over the network. C# only fills empty days with zeros so the chart has no gaps.
+
+---
+
+## 65. Time Zones: "Today" Means Cairo, Not UTC
+
+الأوقات متخزنة UTC (صح). بس "إيراد يوم 5" معناه يوم 5 **بتوقيت القاهرة**: دفعة الساعة 1 بالليل بتوقيت القاهرة لسه UTC بتاعها اليوم اللي قبله. ومصر رجّعت التوقيت الصيفي، فالفرق مرة ساعتين ومرة 3، يعني مينفعش نضيف رقم ثابت.
+
+- في SQL: `EF.Functions.AtTimeZone(...)` بيتحول لـ `AT TIME ZONE 'Egypt Standard Time'`، وSQL Server عارف التوقيت الصيفي.
+- في C#: `GymTimeZone` (Singleton) بيحول ويحسب بداية اليوم بالـ UTC.
+- اسم المنطقة الزمنية بقى في `"Gym": { "TimeZoneId" }` بدل ما كان جوه إعدادات الإيميل، وعليه `ValidateOnStart`: لو الاسم غلط البرنامج مش هيشتغل خالص بدل ما يغلط في التقارير.
+
+> Times are stored in UTC, but business days are Cairo days, and Egypt has daylight saving, so a fixed offset is wrong. SQL groups with AT TIME ZONE and C# uses a single GymTimeZone service. The time zone is validated at startup so a typo fails fast.
+
+---
+
+## 66. Two Old Dashboard Bugs Fixed (C6 / M8)
+
+- **M8:** "الأعضاء النشطين" كان بيعد **العضويات** مش **الأعضاء**. عضو جدد قبل ما القديمة تخلص كان بيتعد مرتين. دلوقتي `Select(MemberId).Distinct().Count()`.
+- **C6:** عدد "الجلسات الشغالة دلوقتي" كان فيه `x.EndDate >= x.EndDate`، يعني بيقارن العمود بنفسه، فالشرط دايماً true وأي جلسة بدأت كانت بتتعد "شغالة" حتى لو خلصت من شهر. دلوقتي: `StartDate <= now && EndDate > now`.
+
+وكل واحدة عليها تست بيثبت إنها مش هترجع.
+
+> Active members are now counted as distinct members, not memberships, so a renewal doesn't count twice. The ongoing-sessions count compared EndDate with itself, which is always true; now it means started and not ended yet. Both fixes have regression tests.
+
+---
+
+## 67. One Check-in Per Day, Enforced by the Database
+
+القاعدة: العضو يدخل **مرة واحدة في اليوم**. أول محاولة في اليوم Allowed، وأي محاولة بعدها Denied بسبب `AlreadyCheckedInToday`.
+
+الـ Check في الكود لوحده مش كفاية: لو اتنين في الريسبشن عملوا Scan لنفس الكود في نفس اللحظة، الاتنين هيشوفوا "لسه ما دخلش". عشان كده:
+- عمود `Day` (تاريخ القاهرة) متخزن في الجدول.
+- **Filtered Unique Index** على `(MemberId, Day)` بشرط `Result = 'Allowed'`. يعني الـ Denied تتكرر عادي، بس Allowed واحدة بس في اليوم.
+- لو الحفظ فشل بسبب الـ Index (`DbUpdateException`)، بنشيل التغيير ونسجل المحاولة Denied بدل ما نرجع 500.
+
+ليه خزّنا `Day` ومحسبناهوش من `CheckedInAt`؟ عشان الـ Index محتاج عمود ثابت، ولأن اليوم بتوقيت القاهرة مش UTC.
+
+> The rule is checked in code, but the guarantee comes from a filtered unique index on (MemberId, Day) for allowed rows only. If two scans race, the second insert fails, and we record it as denied instead of returning an error. The Cairo date is stored because an index needs a real column.
+
+---
+
+## 68. The QR Code Is a Random Token, Not the Member Id
+
+لو الـ QR فيه رقم العضو (`1`, `2`, ...)، أي حد يقدر يعمل QR لرقم تاني ويدخل. فكل عضو ليه `CheckInToken`: 32 حرف عشوائي (128 bit) من `RandomNumberGenerator`.
+
+- الأعضاء القدام خدوا كود من الـ Migration نفسها (`DEFAULT` بـ `NEWID()`، وSQL Server بيدي كل صف قيمة مختلفة). جربناها على نسخة من الداتا بيز الأول.
+- العضو يقدر يعمل كود جديد (`POST /api/me/qr/regenerate`) لو صوّر الكود وبعته لحد، والقديم بيبطل فوراً.
+- الـ API بيرجع الكود كـ Text، والفرونت إند هو اللي بيرسم الـ QR.
+- الكود متخزن عادي مش Hashed: قيمته قليلة (بيدخّل الجيم بس)، والموظف بيشوف صورة العضو واسمه مع كل Scan.
+
+> The QR contains a random 128-bit token, not the member id, so codes can't be guessed. Existing members got codes from the migration default, and a member can regenerate a leaked code. It's stored in plain text because its value is low and staff see the member's photo on every scan.
+
+---
+
+## 69. Denied Scans Are Logged Too
+
+كل Scan لكود معروف بيتسجل، حتى لو Denied، ومعاه السبب (منتهية، متجمدة، لسه ما بدأتش، مالوش عضوية، دخل النهارده) واسم الموظف اللي عمل الـ Scan. ده بيفيد الإدارة: مين بيحاول يدخل بعضوية منتهية؟ (فرصة تجديد). والرد **200 في الحالتين** لأن الطلب نفسه نجح، والنتيجة جوه الـ Body. الكود المش معروف بس هو اللي بيرجع 404.
+
+> Every scan of a known code is stored with its result and reason, including denials, which is useful for follow-ups and audits. Both outcomes return 200 because the request succeeded; only an unknown code returns 404.
+
+---
+
+## 70. Safe CSV and Real Excel Files
+
+- **CSV:** بيتكتب UTF-8 **مع BOM**، لأن من غيره Excel بيفتح الأسماء العربي حروف غريبة. وأي قيمة فيها `,` أو `"` أو سطر جديد بتتحط بين `"..."`.
+- **CSV Injection:** لو اسم عضو بيبدأ بـ `=` أو `+` أو `-` أو `@`، Excel ممكن يشغله كـ Formula. فبنحط قبله `'` عشان يتعرض كنص.
+- **Excel (ClosedXML):** الأرقام والتواريخ بتتكتب كأرقام وتواريخ حقيقية (مش نص)، فالأدمن يقدر يجمع ويفلتر. والصف الأول Header ثابت وعليه Filter.
+- الاسترداد بيتكتب **بالسالب** في ملف المدفوعات، فمجموع العمود = صافي الإيراد.
+
+> CSV files are UTF-8 with a BOM so Arabic opens correctly in Excel, values are properly quoted, and cells starting with = + - @ are prefixed to prevent formula injection. Excel files use typed cells, a frozen header and filters. Refunds are negative so the column sums to net revenue.
+
+---
+
+## 71. Export Row Limit (and Why No Streaming Yet)
+
+الملف بيتبني في الذاكرة الأول وبعدين بيتبعت. عشان كده عليه حد: `Exports:MaxRows` (10,000). بنجيب `MaxRows + 1` صف: لو رجع أكتر من الحد، نرجع 400 `Export.TooManyRows` ونقول للأدمن يضيّق الفلتر، بدل ما السيرفر يستهلك ميموري كتير.
+
+الخطوة الجاية لو الداتا كبرت: CSV بـ **Streaming** (نكتب صف صف في الـ Response). ملف Excel صعب يتعمل Streaming لأنه ZIP.
+
+> Files are built in memory, so exports are capped. We fetch max + 1 rows; if there are more, the user gets a clear 400 and narrows the filter. The next step for big data would be streaming CSV row by row.
+
+---
+
+## 72. Exports Reuse the List Filters
+
+ملف الـ Export بيطلع **نفس اللي الأدمن شايفه في الجدول**. عملنا method خاصة `ListQuery(query)` في كل Service، والـ list والـ export الاتنين بيستخدموها. فأي فلتر جديد بيشتغل في الاتنين أوتوماتيك، ومستحيل الملف يطلع مختلف عن الشاشة.
+
+> The paged list and the export share one private method that builds the filtered query, so the downloaded file always matches what the admin sees, and a new filter works in both places.
+

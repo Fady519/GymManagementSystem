@@ -33,6 +33,7 @@ namespace GymManagementDAL.Data.Contexts
         public DbSet<Booking> Bookings => Set<Booking>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<MembershipFreeze> MembershipFreezes => Set<MembershipFreeze>();
+        public DbSet<CheckIn> CheckIns => Set<CheckIn>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

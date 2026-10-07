@@ -33,6 +33,18 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
         public async Task<PagedResult<MemberListItem>> GetAllAsync(MemberQuery query, CancellationToken ct = default)
         {
+            var page = await ListQuery(query).ToPagedResultAsync(query.Page, query.PageSize, ct);
+
+            var items = page.Items.Select(i => i with { PhotoUrl = PhotoUrl(i.PhotoUrl) }).ToList();
+            return page with { Items = items };
+        }
+
+        public async Task<Result<IReadOnlyList<MemberListItem>>> GetForExportAsync(MemberQuery query, int maxRows, CancellationToken ct = default)
+            => await ListQuery(query).ToExportListAsync(maxRows, ct);
+
+        /// <summary>The members list as one SQL query: filters + sorting + projection (shared by the page and the export).</summary>
+        private IQueryable<MemberListItem> ListQuery(MemberQuery query)
+        {
             var now = _clock.UtcNow;
             var members = _unitOfWork.GetRepository<Member>().Query();
 
@@ -79,20 +91,16 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 _ => members.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id),
             };
 
-            var page = await members
+            return members
                 .Select(m => new MemberListItem(
                     m.Id, m.Name, m.Email, m.Phone, m.Gender,
-                    m.Photo, // file name for now; turned into a URL below
+                    m.Photo, // file name; GetAllAsync turns it into a URL
                     m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled && x.StartDate <= now && x.EndDate > now
                                            && !(x.Status == MembershipStatus.Frozen && x.FrozenUntil > now)) ? MemberMembershipState.Active
                     : m.Memberships.Any(x => x.Status == MembershipStatus.Frozen && x.FrozenUntil > now && x.EndDate > now) ? MemberMembershipState.Frozen
                     : m.Memberships.Any(x => x.Status != MembershipStatus.Cancelled) ? MemberMembershipState.Expired
                     : MemberMembershipState.None,
-                    m.CreatedAt))
-                .ToPagedResultAsync(query.Page, query.PageSize, ct);
-
-            var items = page.Items.Select(i => i with { PhotoUrl = PhotoUrl(i.PhotoUrl) }).ToList();
-            return page with { Items = items };
+                    m.CreatedAt));
         }
 
         public async Task<Result<MemberResponse>> GetByIdAsync(int id, CancellationToken ct = default)
