@@ -175,6 +175,10 @@ namespace GymManagementAPI.Extensions
                 // The lock icon and the 401/403/429 responses are added per endpoint (not globally),
                 // so anonymous endpoints like login don't look protected.
                 options.OperationFilter<AuthResponsesOperationFilter>();
+
+                // Uses the C# nullable annotations in the schemas: "string" is non-null, "string?" is nullable.
+                // The frontend generates its TypeScript types from openapi.json, so this keeps them exact.
+                options.SupportNonNullableReferenceTypes();
             });
 
             services.AddHealthChecks()
