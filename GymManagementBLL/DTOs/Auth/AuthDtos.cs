@@ -15,6 +15,17 @@ namespace GymManagementBLL.DTOs.Auth
 
     public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
+    public sealed record ForgotPasswordRequest(string Email);
+
+    /// <summary>Email + token come from the link in the reset email.</summary>
+    public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
+
+    /// <summary>Email + token come from the link in the invite email; the person chooses their first password.</summary>
+    public sealed record AcceptInviteRequest(string Email, string Token, string Password);
+
+    /// <summary>A simple message for the user (e.g. "check your email").</summary>
+    public sealed record MessageResponse(string Message);
+
     /// <summary>Who is logged in. The frontend uses this to choose the menu and the home page.</summary>
     public sealed record CurrentUserResponse(
         int Id,

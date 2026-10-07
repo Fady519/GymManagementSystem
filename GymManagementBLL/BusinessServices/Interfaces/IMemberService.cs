@@ -19,5 +19,14 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         Task<Result<MemberResponse>> SetPhotoAsync(int id, Stream content, long length, CancellationToken ct = default);
 
         Task<Result> DeletePhotoAsync(int id, CancellationToken ct = default);
+
+        /// <summary>
+        /// Gives an existing member an online account and emails them an invite to choose a password.
+        /// If the account exists but the invite is still pending, it just resends the email.
+        /// </summary>
+        Task<Result<MemberWithAccountResponse>> CreateAccountAsync(int id, CancellationToken ct = default);
+
+        /// <summary>The member edits their own contact data (phone + address only).</summary>
+        Task<Result<MemberResponse>> UpdateMyProfileAsync(int memberId, UpdateMyProfileRequest request, CancellationToken ct = default);
     }
 }

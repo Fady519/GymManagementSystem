@@ -18,4 +18,28 @@ namespace GymManagementBLL.DTOs.Bookings
         string MemberName,
         BookingStatus Status,
         DateTime CreatedAt);
+
+    /// <summary>POST /api/me/bookings: a member books a session for himself (no MemberId to send at all).</summary>
+    public sealed record BookSessionRequest(int SessionId);
+
+    /// <summary>One row of "my bookings" in the member portal.</summary>
+    public sealed record MyBookingItem(
+        int Id,
+        int SessionId,
+        string CategoryName,
+        string SessionDescription,
+        string TrainerName,
+        DateTime SessionStartDate,
+        DateTime SessionEndDate,
+        SessionStatus SessionStatus,
+        BookingStatus Status,
+        DateTime CreatedAt);
+
+    /// <summary>Upcoming = only active bookings of sessions that haven't started (soonest first). Otherwise all, newest first.</summary>
+    public sealed class MyBookingsQuery
+    {
+        public bool Upcoming { get; set; }
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
+    }
 }

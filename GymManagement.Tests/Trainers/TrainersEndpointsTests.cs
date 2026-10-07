@@ -54,7 +54,7 @@ namespace GymManagement.Tests.Trainers
         #region Create
 
         [Fact]
-        public async Task Create_ReturnsTrainerAndTemporaryPassword_ThatCanLogIn()
+        public async Task Create_ReturnsTrainer_AndEmailsAnInvite_ThatLetsThemLogIn()
         {
             var request = NewRequest(name: "كابتن " + TestData.UniquePersonName("Ali")); // Arabic names are allowed
 
@@ -69,14 +69,15 @@ namespace GymManagement.Tests.Trainers
             Assert.Equal(_categoryId, created.Trainer.CategoryId);
             Assert.False(string.IsNullOrEmpty(created.Trainer.CategoryName));
             Assert.True(created.Trainer.HasAccount);
-            Assert.False(string.IsNullOrEmpty(created.TemporaryPassword));
+            Assert.True(created.InviteSent);
 
-            // The trainer logs in with the temporary password and must change it.
-            var login = await LoginAsync(request.Email, created.TemporaryPassword);
+            // The trainer opens the email, chooses a password and logs in.
+            await factory.AcceptInviteAsync(request.Email);
+            var login = await LoginAsync(request.Email, ApiFactory.DefaultPassword);
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
             var user = (await login.ReadAsAsync<AuthResponse>()).User;
-            Assert.True(user.MustChangePassword);
+            Assert.False(user.MustChangePassword);
             Assert.Contains(AppRoles.Trainer, user.Roles);
             Assert.Equal(created.Trainer.Id, user.TrainerId);
         }
@@ -166,6 +167,7 @@ namespace GymManagement.Tests.Trainers
         public async Task Update_ChangesData_AndSyncsTheLoginEmail()
         {
             var created = await CreateTrainerAsync();
+            await factory.AcceptInviteAsync(created.Trainer.Email);
             var newEmail = TestData.UniqueEmail();
             var request = NewRequest(email: newEmail, phone: created.Trainer.Phone) with { Gender = Gender.Female };
 
@@ -177,8 +179,8 @@ namespace GymManagement.Tests.Trainers
             Assert.Equal(Gender.Female, updated.Gender);
 
             // The account follows the profile: the new email works, the old one doesn't.
-            Assert.Equal(HttpStatusCode.OK, (await LoginAsync(newEmail, created.TemporaryPassword)).StatusCode);
-            Assert.Equal(HttpStatusCode.Unauthorized, (await LoginAsync(created.Trainer.Email, created.TemporaryPassword)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await LoginAsync(newEmail, ApiFactory.DefaultPassword)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await LoginAsync(created.Trainer.Email, ApiFactory.DefaultPassword)).StatusCode);
         }
 
         [Fact]
@@ -213,12 +215,13 @@ namespace GymManagement.Tests.Trainers
         public async Task Delete_SoftDeletes_AndDisablesTheAccount()
         {
             var created = await CreateTrainerAsync();
+            await factory.AcceptInviteAsync(created.Trainer.Email);
 
             var response = await _admin.DeleteAsync($"/api/trainers/{created.Trainer.Id}");
 
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
             await AssertProblemAsync(await _admin.GetAsync($"/api/trainers/{created.Trainer.Id}"), HttpStatusCode.NotFound, "Trainer.NotFound");
-            await AssertProblemAsync(await LoginAsync(created.Trainer.Email, created.TemporaryPassword), HttpStatusCode.Forbidden, "Auth.AccountDisabled");
+            await AssertProblemAsync(await LoginAsync(created.Trainer.Email, ApiFactory.DefaultPassword), HttpStatusCode.Forbidden, "Auth.AccountDisabled");
         }
 
         #endregion
@@ -226,20 +229,28 @@ namespace GymManagement.Tests.Trainers
         #region Account
 
         [Fact]
-        public async Task CreateAccount_ForOldTrainerWithoutAccount_Works_OnlyOnce()
+        public async Task CreateAccount_ForOldTrainer_SendsInvite_ResendsWhilePending_409AfterActivation()
         {
             var trainerId = 0;
             await factory.WithDbAsync(async db => trainerId = (await TestData.AddTrainerAsync(db)).Id);
 
             var first = await _admin.PostAsync($"/api/trainers/{trainerId}/account", null);
 
-            Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
             var result = await first.ReadAsAsync<TrainerWithAccountResponse>();
             Assert.True(result.Trainer.HasAccount);
-            Assert.Equal(HttpStatusCode.OK, (await LoginAsync(result.Trainer.Email, result.TemporaryPassword)).StatusCode);
+            Assert.True(result.InviteSent);
 
-            var second = await _admin.PostAsync($"/api/trainers/{trainerId}/account", null);
-            await AssertProblemAsync(second, HttpStatusCode.Conflict, "Trainer.AlreadyHasAccount");
+            // Not accepted yet: calling again just resends the email (no second account).
+            var resend = await _admin.PostAsync($"/api/trainers/{trainerId}/account", null);
+            Assert.Equal(HttpStatusCode.OK, resend.StatusCode);
+            Assert.Equal(2, factory.Emails.SentTo(result.Trainer.Email).Count);
+
+            await factory.AcceptInviteAsync(result.Trainer.Email);
+            Assert.Equal(HttpStatusCode.OK, (await LoginAsync(result.Trainer.Email, ApiFactory.DefaultPassword)).StatusCode);
+
+            var afterActivation = await _admin.PostAsync($"/api/trainers/{trainerId}/account", null);
+            await AssertProblemAsync(afterActivation, HttpStatusCode.Conflict, "Trainer.AlreadyHasAccount");
         }
 
         #endregion

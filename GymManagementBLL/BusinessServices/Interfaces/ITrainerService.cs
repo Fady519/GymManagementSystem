@@ -8,13 +8,16 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         Task<PagedResult<TrainerResponse>> GetAllAsync(TrainerQuery query, CancellationToken ct = default);
         Task<Result<TrainerResponse>> GetByIdAsync(int id, CancellationToken ct = default);
 
-        /// <summary>Creates the trainer AND their login account (temporary password returned once).</summary>
+        /// <summary>Creates the trainer AND their login account, then emails them an invite to choose a password.</summary>
         Task<Result<TrainerWithAccountResponse>> CreateAsync(SaveTrainerRequest request, CancellationToken ct = default);
 
         Task<Result<TrainerResponse>> UpdateAsync(int id, SaveTrainerRequest request, CancellationToken ct = default);
         Task<Result> DeleteAsync(int id, CancellationToken ct = default);
 
-        /// <summary>For trainers added before accounts existed.</summary>
+        /// <summary>
+        /// For trainers added before accounts existed: creates the account and sends the invite.
+        /// If the account exists but the invite is still pending, it just resends the email.
+        /// </summary>
         Task<Result<TrainerWithAccountResponse>> CreateAccountAsync(int id, CancellationToken ct = default);
     }
 }

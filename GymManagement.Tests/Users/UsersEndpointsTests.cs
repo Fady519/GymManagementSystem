@@ -57,22 +57,70 @@ namespace GymManagement.Tests.Users
         }
 
         [Fact]
-        public async Task CreateAdmin_ReturnsTemporaryPassword_ThatLogsInAsAdminWhoMustChangeIt()
+        public async Task CreateAdmin_EmailsAnInvite_AndTheAdminChoosesTheirOwnPassword()
         {
             var created = await CreateAdminAsync();
 
-            Assert.Equal(12, created.TemporaryPassword.Length);
+            Assert.True(created.InviteSent);
             Assert.Equal([AppRoles.Admin], created.User.Roles);
-            Assert.True(created.User.MustChangePassword);
+            Assert.True(created.User.InvitePending);
+            Assert.False(created.User.MustChangePassword);
 
-            var login = await factory.LoginAsync(created.User.Email, created.TemporaryPassword);
-            Assert.True(login.User.MustChangePassword);
+            // No password exists yet, so nobody can log in until the invite is accepted.
+            await AssertProblemAsync(
+                await factory.CreateHttpsClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(created.User.Email, ApiFactory.DefaultPassword)),
+                HttpStatusCode.Unauthorized, "Auth.InvalidCredentials");
+
+            var email = factory.Emails.LastSentTo(created.User.Email);
+            Assert.Contains("invited", email.Subject, StringComparison.OrdinalIgnoreCase);
+
+            await factory.AcceptInviteAsync(created.User.Email, "MyOwn@Pass1");
+
+            var login = await factory.LoginAsync(created.User.Email, "MyOwn@Pass1");
+            Assert.False(login.User.MustChangePassword);
 
             // The new admin can manage plans.
             var adminClient = ApiFactory.WithToken(factory.CreateHttpsClient(), login.AccessToken);
             var response = await adminClient.PostAsJsonAsync("/api/plans",
                 new CreatePlanRequest(TestData.UniqueName(), "Created by the new admin", 30, 300m));
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+            var user = await _superAdmin.GetFromJsonAsync<UserResponse>($"/api/users/{created.User.Id}", Json);
+            Assert.False(user!.InvitePending);
+        }
+
+        [Fact]
+        public async Task ResendInvite_WhilePending_SendsAnotherEmail_AfterActivation_Returns409()
+        {
+            var created = await CreateAdminAsync();
+
+            var resend = await _superAdmin.PostAsync($"/api/users/{created.User.Id}/resend-invite", null);
+
+            Assert.Equal(HttpStatusCode.OK, resend.StatusCode);
+            Assert.True((await resend.ReadAsAsync<InviteResponse>()).InviteSent);
+            Assert.Equal(2, factory.Emails.SentTo(created.User.Email).Count);
+
+            await factory.AcceptInviteAsync(created.User.Email);
+
+            await AssertProblemAsync(await _superAdmin.PostAsync($"/api/users/{created.User.Id}/resend-invite", null),
+                HttpStatusCode.Conflict, "User.AlreadyActivated");
+        }
+
+        [Fact]
+        public async Task CreateAdmin_WhenTheMailServerIsDown_StillCreatesTheAccount_WithInviteSentFalse()
+        {
+            factory.Emails.SimulateFailure = true;
+            try
+            {
+                var created = await CreateAdminAsync();
+
+                Assert.False(created.InviteSent);
+                Assert.True(created.User.InvitePending);
+            }
+            finally
+            {
+                factory.Emails.SimulateFailure = false;
+            }
         }
 
         [Fact]

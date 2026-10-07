@@ -117,5 +117,19 @@ namespace GymManagementAPI.Controllers
             var result = await paymentService.GetByMemberAsync(id, ct);
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
+
+        /// <summary>
+        /// Gives the member an online account: an invite email is sent so they choose their own password.
+        /// Call it again to resend the invite while it's still pending (409 once the password is set).
+        /// </summary>
+        [HttpPost("{id:int}/account")]
+        [ProducesResponseType<MemberWithAccountResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+        public async Task<ActionResult<MemberWithAccountResponse>> CreateAccount(int id, CancellationToken ct)
+        {
+            var result = await memberService.CreateAccountAsync(id, ct);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        }
     }
 }

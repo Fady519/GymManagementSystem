@@ -1,5 +1,6 @@
 namespace GymManagementBLL.DTOs.Users
 {
+    /// <param name="InvitePending">The account was created but the person hasn't set a password yet.</param>
     public sealed record UserResponse(
         int Id,
         string Email,
@@ -8,18 +9,19 @@ namespace GymManagementBLL.DTOs.Users
         bool IsActive,
         bool MustChangePassword,
         bool IsLockedOut,
+        bool InvitePending,
         DateTime CreatedAt);
 
     public sealed record CreateAdminRequest(string FullName, string Email);
 
     /// <summary>
-    /// The temporary password is shown ONCE (only in this response). It is never stored in plain text.
-    /// The new admin must change it at first login. (B7: it will be emailed instead.)
+    /// Nobody (not even the SuperAdmin) knows the new admin's password: they get an invite email
+    /// and choose it themselves. InviteSent = false means the email could not be sent (resend it later).
     /// </summary>
-    public sealed record CreatedUserResponse(UserResponse User, string TemporaryPassword);
+    public sealed record CreatedUserResponse(UserResponse User, bool InviteSent);
 
     public sealed record SetUserStatusRequest(bool IsActive);
 
-    /// <summary>Result of creating an account with a temporary password (used inside other services).</summary>
-    public sealed record CreatedAccount(int UserId, string TemporaryPassword);
+    /// <summary>Result of (re)sending an invite email.</summary>
+    public sealed record InviteResponse(bool InviteSent);
 }

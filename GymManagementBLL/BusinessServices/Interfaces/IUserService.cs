@@ -15,10 +15,17 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         Task<Result<UserResponse>> SetStatusAsync(int id, bool isActive, CancellationToken ct = default);
 
         /// <summary>
-        /// Creates a login account with a temporary password and the given role.
-        /// Does NOT start a transaction: the caller does (e.g. "create trainer + account" together).
+        /// Creates a login account WITHOUT a password (the owner sets it from the invite email) and gives it the role.
+        /// Returns the new user id. Does NOT start a transaction and does NOT send the email:
+        /// the caller commits first, then calls <see cref="SendInviteAsync"/>.
         /// </summary>
-        Task<Result<CreatedAccount>> CreateAccountAsync(string email, string fullName, string role, CancellationToken ct = default);
+        Task<Result<int>> CreateAccountAsync(string email, string fullName, string role, CancellationToken ct = default);
+
+        /// <summary>
+        /// (Re)sends the "set your password" email. Fails with User.AlreadyActivated when the password is already set.
+        /// The bool is false when the email server could not be reached (the account is still fine; resend later).
+        /// </summary>
+        Task<Result<bool>> SendInviteAsync(int userId, CancellationToken ct = default);
 
         /// <summary>Keeps the account's email/name in sync when a member/trainer profile is edited.</summary>
         Task<Result> UpdateAccountProfileAsync(int userId, string email, string fullName, CancellationToken ct = default);

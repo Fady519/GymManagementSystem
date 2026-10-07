@@ -55,6 +55,20 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<IBookingService, BookingService>();
             services.AddScoped<IMembershipService, MembershipService>();
             services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IAppEmailService, AppEmailService>();
+
+            // Emails: the "post office" (SMTP via MailKit) + links/time zone settings for the email content.
+            services.AddSingleton<IEmailSender, SmtpEmailSender>();
+
+            services.AddOptions<SmtpOptions>()
+                .BindConfiguration(SmtpOptions.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            services.AddOptions<EmailOptions>()
+                .BindConfiguration(EmailOptions.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
 
             // Session / booking rules from appsettings ("SessionRules"); invalid values stop the app at startup.
             services.AddOptions<SessionRulesOptions>()

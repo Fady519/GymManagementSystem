@@ -28,10 +28,11 @@ namespace GymManagementBLL.DTOs.Trainers
         AddressDto? Address);
 
     /// <summary>
-    /// Returned when a login account is created for a trainer. The temporary password is shown
-    /// only here (once); the trainer must change it at first login. (B7: it will be emailed.)
+    /// Returned when a login account is created (or the invite is sent again) for a trainer.
+    /// The trainer gets an invite email and chooses their own password; nobody else ever knows it.
+    /// InviteSent = false means the email could not be sent (try again later).
     /// </summary>
-    public sealed record TrainerWithAccountResponse(TrainerResponse Trainer, string TemporaryPassword);
+    public sealed record TrainerWithAccountResponse(TrainerResponse Trainer, bool InviteSent);
 
     /// <summary>Filters for the trainers list ([FromQuery]).</summary>
     public sealed class TrainerQuery

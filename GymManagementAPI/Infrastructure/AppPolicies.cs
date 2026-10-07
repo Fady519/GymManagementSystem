@@ -15,6 +15,9 @@ namespace GymManagementAPI.Infrastructure
         /// <summary>Staff: SuperAdmin, Admin or Trainer.</summary>
         public const string TrainerAccess = nameof(TrainerAccess);
 
+        /// <summary>Trainers only (trainer portal: "my sessions").</summary>
+        public const string TrainerOnly = nameof(TrainerOnly);
+
         /// <summary>Members (member portal).</summary>
         public const string MemberAccess = nameof(MemberAccess);
 

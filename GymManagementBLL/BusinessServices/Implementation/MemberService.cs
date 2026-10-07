@@ -7,6 +7,7 @@ using GymManagementBLL.Errors;
 using GymManagementBLL.Mapping;
 using GymManagementDAL.Entities;
 using GymManagementDAL.Entities.Enums;
+using GymManagementDAL.Entities.Identity;
 using GymManagementDAL.UnitOfWorkPattern;
 using Microsoft.EntityFrameworkCore;
 
@@ -272,6 +273,63 @@ namespace GymManagementBLL.BusinessServices.Implementation
             }
 
             return Result.Success();
+        }
+
+        public async Task<Result<MemberWithAccountResponse>> CreateAccountAsync(int id, CancellationToken ct = default)
+        {
+            var member = await _unitOfWork.GetRepository<Member>().GetByIdAsync(id, ct);
+            if (member is null)
+                return MemberErrors.NotFound(id);
+
+            int userId;
+
+            if (member.UserId is not null)
+            {
+                // Already has an account: only a pending invite can be resent.
+                userId = member.UserId.Value;
+            }
+            else
+            {
+                // Account + link to the member saved together (all or nothing).
+                await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
+
+                var account = await _userService.CreateAccountAsync(member.Email, member.Name, AppRoles.Member, ct);
+                if (account.IsFailure)
+                    return account.Error == UserErrors.EmailTaken ? MemberErrors.EmailTaken : account.Error;
+
+                member.UserId = userId = account.Value;
+                await _unitOfWork.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+            }
+
+            // The email is sent after the commit, so a mail problem never undoes the account.
+            var invite = await _userService.SendInviteAsync(userId, ct);
+            if (invite.IsFailure)
+                return invite.Error == UserErrors.AlreadyActivated ? MemberErrors.AlreadyHasAccount : invite.Error;
+
+            var updated = await GetByIdAsync(id, ct);
+            return new MemberWithAccountResponse(updated.Value, invite.Value);
+        }
+
+        public async Task<Result<MemberResponse>> UpdateMyProfileAsync(int memberId, UpdateMyProfileRequest request, CancellationToken ct = default)
+        {
+            var repo = _unitOfWork.GetRepository<Member>();
+            var member = await repo.GetByIdAsync(memberId, ct);
+            if (member is null)
+                return MemberErrors.NotFound(memberId);
+
+            var phone = request.Phone.Trim();
+
+            // Same rule as reception: two members can't share a phone number.
+            if (await repo.AnyAsync(m => m.Id != memberId && m.Phone == phone, ct))
+                return MemberErrors.PhoneTaken;
+
+            member.Phone = phone;
+            member.Address = request.Address.ToEntity();
+
+            await _unitOfWork.SaveChangesAsync(ct);
+
+            return await GetByIdAsync(memberId, ct);
         }
 
         #region Helper Methods

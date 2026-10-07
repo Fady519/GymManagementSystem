@@ -37,7 +37,23 @@ namespace GymManagementAPI.Extensions
                     options.Lockout.AllowedForNewUsers = true;
                 })
                 .AddRoles<IdentityRole<int>>()
-                .AddEntityFrameworkStores<GymDbContext>();
+                .AddEntityFrameworkStores<GymDbContext>()
+                // "Default" provider = the one Identity uses for password-reset tokens.
+                .AddTokenProvider<DataProtectorTokenProvider<ApplicationUser>>(TokenOptions.DefaultProvider)
+                // Our own provider for invite links ("set your first password").
+                .AddTokenProvider<InviteTokenProvider>(AccountTokens.InviteProvider);
+
+            // Tokens are encrypted with ASP.NET Core Data Protection keys.
+            services.AddDataProtection();
+
+            // Link lifetimes come from the "Email" settings (reset: minutes, invite: days).
+            services.AddOptions<DataProtectionTokenProviderOptions>()
+                .Configure<IOptions<EmailOptions>>((o, email) =>
+                    o.TokenLifespan = TimeSpan.FromMinutes(email.Value.ResetPasswordLinkMinutes));
+
+            services.AddOptions<InviteTokenProviderOptions>()
+                .Configure<IOptions<EmailOptions>>((o, email) =>
+                    o.TokenLifespan = TimeSpan.FromDays(email.Value.InviteLinkDays));
 
             // ---- JWT settings (validated when the app starts) ----
             services.AddOptions<JwtOptions>()
@@ -78,6 +94,7 @@ namespace GymManagementAPI.Extensions
                 .AddPolicy(AppPolicies.SuperAdminOnly, p => p.RequireRole(AppRoles.SuperAdmin))
                 .AddPolicy(AppPolicies.AdminAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin))
                 .AddPolicy(AppPolicies.TrainerAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Trainer))
+                .AddPolicy(AppPolicies.TrainerOnly, p => p.RequireRole(AppRoles.Trainer))
                 .AddPolicy(AppPolicies.MemberAccess, p => p.RequireRole(AppRoles.Member))
                 .AddPolicy(AppPolicies.BookingAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Member));
 

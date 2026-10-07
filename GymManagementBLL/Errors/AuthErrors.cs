@@ -37,6 +37,21 @@ namespace GymManagementBLL.Errors
         public static readonly Error WrongCurrentPassword =
             Error.Validation("Auth.WrongCurrentPassword", "The current password is incorrect.");
 
+        // One message for "unknown email", "wrong token" and "expired token": the attacker learns nothing.
+        public static readonly Error InvalidResetToken =
+            Error.Validation("Auth.InvalidResetToken", "This reset link is invalid or has expired. Please request a new one.");
+
+        public static readonly Error InvalidInviteToken =
+            Error.Validation("Auth.InvalidInviteToken", "This invite link is invalid, expired or already used. Ask the gym to send a new one.");
+
+        /// <summary>The token has the Member role but isn't linked to a member profile.</summary>
+        public static readonly Error NotAMember =
+            Error.Forbidden("Auth.NotAMember", "This account is not linked to a member profile.");
+
+        /// <summary>The token has the Trainer role but isn't linked to a trainer profile.</summary>
+        public static readonly Error NotATrainer =
+            Error.Forbidden("Auth.NotATrainer", "This account is not linked to a trainer profile.");
+
         /// <summary>Identity refused the operation (e.g. password rules). Rare, because our validators check first.</summary>
         public static Error IdentityFailed(IEnumerable<IdentityError> errors) =>
             Error.Validation("Auth.IdentityFailed", string.Join(" ", errors.Select(e => e.Description)));
@@ -52,6 +67,9 @@ namespace GymManagementBLL.Errors
 
         public static readonly Error CannotDisableSuperAdmin =
             Error.Forbidden("User.CannotDisableSuperAdmin", "A SuperAdmin account cannot be disabled.");
+
+        public static readonly Error AlreadyActivated =
+            Error.Conflict("User.AlreadyActivated", "This account is already activated (the password was set). Use 'Forgot password' instead.");
 
         public static Error UnknownRole(string role) =>
             Error.Validation("User.UnknownRole", $"Role '{role}' does not exist.");

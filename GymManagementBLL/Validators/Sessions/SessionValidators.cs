@@ -60,4 +60,21 @@ namespace GymManagementBLL.Validators.Sessions
             RuleFor(x => x.MemberId).GreaterThan(0).When(x => x.MemberId is not null);
         }
     }
+
+    public sealed class BookSessionRequestValidator : AbstractValidator<BookSessionRequest>
+    {
+        public BookSessionRequestValidator()
+        {
+            RuleFor(x => x.SessionId).GreaterThan(0);
+        }
+    }
+
+    public sealed class MyBookingsQueryValidator : AbstractValidator<MyBookingsQuery>
+    {
+        public MyBookingsQueryValidator()
+        {
+            RuleFor(x => x.Page).GreaterThanOrEqualTo(1);
+            RuleFor(x => x.PageSize).InclusiveBetween(1, PaginationExtensions.MaxPageSize);
+        }
+    }
 }
