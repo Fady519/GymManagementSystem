@@ -26,6 +26,8 @@ namespace GymManagement.Tests.Infrastructure
         public const string SuperAdminEmail = "superadmin@test.com";
         public const string DefaultPassword = "Test@12345";
 
+        public static readonly string UploadsPath = Path.Combine(Path.GetTempPath(), "gym-tests-uploads");
+
         private readonly ConcurrentDictionary<string, string> _tokensByRole = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -47,6 +49,9 @@ namespace GymManagement.Tests.Infrastructure
 
                     // Many tests log in; the rate limit itself has its own test.
                     ["RateLimiting:AuthPermitLimit"] = "100000",
+
+                    // Uploaded test photos go to a temp folder, not the project's uploads folder.
+                    ["FileStorage:RootPath"] = UploadsPath,
                 }));
         }
 

@@ -8,5 +8,8 @@ namespace GymManagementDAL.Entities
         public DateTime? DeletedAt { get; set; }
 
         public ICollection<Session> Sessions { get; set; } = new List<Session>();
+
+        /// <summary>Trainers whose speciality is this category.</summary>
+        public ICollection<Trainer> Trainers { get; set; } = new List<Trainer>();
     }
 }

@@ -301,3 +301,121 @@
 **يعني إيه:** لما نعمل disable لمستخدم، الـ refresh tokens بتاعته بتتلغي فوراً. بس الـ access token اللي معاه يفضل شغال لحد ما وقته يخلص (أقصى 15 دقيقة)، لأن الـ API مابيسألش الداتا بيز مع كل request.
 
 > That's the classic JWT trade-off: stateless tokens are fast but can't be revoked instantly. With a 15-minute lifetime the window is small. If needed, I could check a "security stamp" on each request, at the cost of one database call per request.
+
+---
+
+# B4 — Members, Trainers & Categories
+
+## 30. Server-side Search, Filter, Sort & Paging
+
+**يعني إيه:** لما الفرونت يطلب `GET /api/members?search=fady&membershipState=Active&sortBy=Name&page=2&pageSize=20`، الداتا بيز هي اللي بتعمل البحث والفلترة والترتيب، وبترجع 20 صف بس. مش بنجيب كل الأعضاء في الميموري ونفلتر في C#.
+
+**إزاي:** كل شرط بيتضاف على `IQueryable` بـ `Where`، وفي الآخر `Skip/Take` بيتحوّلوا لـ `OFFSET/FETCH` في SQL. وبنرجع `PagedResult` فيه `TotalCount` و `TotalPages` و `HasNextPage` عشان الفرونت يرسم الـ pagination.
+
+**نقطة مهمة:** في الترتيب بنضيف `ThenBy(m => m.Id)`. لو عضوين ليهم نفس الاسم، من غيرها ممكن نفس العضو يظهر في صفحتين.
+
+> Filtering, sorting and paging all run in SQL. I build the query step by step on `IQueryable`, and `Skip/Take` becomes `OFFSET/FETCH`. So the API reads only one page, even with 100,000 members. I always add the Id as a tie-breaker so pages are stable, and I cap the page size at 100 so nobody can ask for everything at once.
+
+---
+
+## 31. Calculated (not stored) Membership State
+
+**يعني إيه:** حالة العضو (Active / Frozen / Expired / None) مش عمود في الداتا بيز. بتتحسب كل مرة من الاشتراكات بتاعته ومن التاريخ الحالي.
+
+**ليه:** لو خزّناها، لازم حاجة (job) تغيّرها كل يوم لما الاشتراك يخلص، ولو الـ job وقفت تبقى الداتا غلط. لما بنحسبها مابتبقاش غلط أبداً.
+
+**الفلتر:** بما إنها مش عمود، كل فلتر بيوصف الحالة بشروط على الاشتراكات (`Memberships.Any(...)`)، وده بيتحوّل لـ `EXISTS` في SQL.
+
+> The state is derived from the memberships and the current time, so it can never be out of date. There's no nightly job that could fail. Filtering by state still runs in SQL because EF translates `Any()` into `EXISTS`.
+
+---
+
+## 32. Secure File Upload (Member Photo)
+
+**الخطر:** أي حد ممكن يرفع `virus.exe` ويسمّيه `photo.jpg`. أو يرفع ملف 1 GB. أو يبعت اسم ملف زي `../../appsettings.json`.
+
+**الحماية (كل نقطة سطر واحد تقريباً):**
+
+| الخطر | الحل |
+|---|---|
+| ملف مش صورة باسم `.jpg` | بنقرا أول bytes في الملف (**magic bytes**): JPG بيبدأ بـ `FF D8 FF`، PNG بـ `89 50 4E 47`. الاسم والـ Content-Type مش بنثق فيهم |
+| ملف كبير | أقصى 2 MB، و `[RequestSizeLimit]` بيوقف الطلب بدري |
+| Path traversal (`../`) | اسم الملف بيتعمل بـ `Guid` على السيرفر، واسم المستخدم مش بيتستخدم خالص |
+| المتصفح "يخمّن" نوع الملف | الهيدر `X-Content-Type-Options: nosniff` |
+
+> I never trust the file name or the Content-Type header, because the client controls both. I check the first bytes of the file (magic bytes) to detect the real type. The file gets a random GUID name, so there's no path traversal and no name collisions. The size is limited to 2 MB, and static files are served with `nosniff`.
+
+---
+
+## 33. `IFileStorage` Abstraction
+
+**يعني إيه:** الـ Service مش عارفة الصور بتتحفظ فين. هي بتنادي `IFileStorage.SaveAsync(...)` وخلاص. دلوقتي الـ implementation هو `LocalFileStorage` (فولدر `uploads` على السيرفر).
+
+**ليه:** لو بعدين نقلنا الصور لـ Azure Blob أو Cloudinary، هنكتب كلاس جديد ونغيّر سطر واحد في الـ DI، والـ `MemberService` مش هيتغيّر. وفي التستات بنوجّه الصور لفولدر temp.
+
+> The business layer depends on an interface, not on the disk. Today it's a local folder; tomorrow it could be cloud storage. I'd only add a new class and change one line of DI registration. That's the Dependency Inversion principle in practice.
+
+---
+
+## 34. Delete Rules + Soft Delete + Account Deactivation
+
+**القواعد:**
+
+| بنمسح | ممنوع لو... | الكود |
+|---|---|---|
+| Member | عنده اشتراك شغال (Active/Frozen) أو حجز جاي | `409 Member.HasActiveMembership` / `Member.HasUpcomingBookings` |
+| Trainer | عنده sessions جاية | `409 Trainer.HasUpcomingSessions` |
+| Category | فيه مدربين تخصصهم ده، أو sessions جاية | `409 Category.HasTrainers` / `Category.HasUpcomingSessions` |
+
+**Soft delete:** الصف مابيتمسحش. `IsDeleted = true` والـ query filter بيخفيه. ليه؟ عشان التقارير والمدفوعات القديمة تفضل مظبوطة.
+
+**الحساب:** لما نمسح مدرب أو عضو ليه حساب، الحساب بيتعمل disable وكل الـ sessions بتاعته بتتلغي، فمايقدرش يعمل login.
+
+> Deletes are blocked with a clear 409 when they would break something, like a member with an active membership. Otherwise it's a soft delete, so history and reports stay correct. The linked login account is disabled at the same time, so a deleted trainer can't log in anymore.
+
+---
+
+## 35. Trainer + Account in One Transaction
+
+**يعني إيه:** لما الأدمن يضيف مدرب، السيستم بيعمل 2 حاجات: صف في `Trainers` وحساب في `AspNetUsers` (Role = Trainer). الاتنين جوه transaction واحدة.
+
+**الباسورد المؤقت:** بيظهر في الـ response مرة واحدة، والمدرب لازم يغيّره أول login (`MustChangePassword`). (في B7 هيتبعت بالإيميل).
+
+**ميزة إضافية:** لو المدرب اتعدّل إيميله، إيميل الحساب بيتعدّل معاه، عشان يفضل يعرف يعمل login.
+
+> Creating a trainer writes two tables, so both happen in one transaction: if the account fails (for example, the email is already used by another account), the trainer row isn't saved either. The temporary password is returned once and must be changed at first login.
+
+---
+
+## 36. Hand-edited Data Migration (enum → foreign key)
+
+**المشكلة:** زمان تخصص المدرب كان enum (`Specialities = 3` يعني Boxing). دلوقتي بقى FK لجدول `Categories`. الـ EF اقترح `RenameColumn` بس. يعني رقم 3 كان هيتحوّل لـ `CategoryId = 3`. ده صح بالصدفة هنا، بس غلط كمبدأ، لأن الـ ids ممكن تختلف.
+
+**الحل:** عدّلت الـ migration بإيدي:
+1. أضفت `CategoryId` nullable.
+2. SQL بيربط الـ enum بالكاتيجوري **بالاسم** (3 → 'Boxing').
+3. خليت العمود NOT NULL، ومسحت العمود القديم، وأضفت الـ FK.
+
+**قبل التطبيق:** جرّبتها على نسخة من الداتا بيز (restore من backup)، واتأكدت إن `Up` و `Down` شغالين.
+
+> EF only sees the schema, not the meaning of the data, so I always review generated migrations. Here EF suggested a simple rename, which would have treated an enum number as a category id. I rewrote it to map the values by name, then tested both Up and Down on a restored copy of the database before touching the real one.
+
+---
+
+## 37. Arabic Names — `\p{L}`
+
+**المشكلة:** regex زي `^[a-zA-Z ]+$` بيرفض "فادي قيصر".
+
+**الحل:** `^[\p{L}\s.'-]+$`. الـ `\p{L}` معناها "أي حرف في أي لغة" (Unicode letter): عربي، إنجليزي، فرنساوي... بس من غير أرقام أو رموز.
+
+> `\p{L}` matches any Unicode letter, so Arabic and English names are both valid, while digits and symbols are still rejected. The API is used in Egypt, so this matters.
+
+---
+
+## 38. The H6 Fix — Duplicate on Update
+
+**البج القديم (H6):** في الـ MVC، لو عدّلت عضو وحطيت إيميل عضو تاني، الكود كان بيرجع `false` من غير ما يقول السبب.
+
+**دلوقتي:** بنتشيك قبل الحفظ: "فيه عضو **تاني** (`Id != id`) بنفس الإيميل أو التليفون؟" لو آه، بنرجع `409 Member.EmailTaken` أو `Member.PhoneTaken`. والشرط `Id != id` هو اللي بيخلي العضو يحفظ بياناته من غير ما يتعارض مع نفسه. وفيه test لكل حالة.
+
+> On update, the uniqueness check excludes the record itself (`Id != id`). Otherwise saving a member without changing the email would conflict with itself. Duplicates now return a clear 409 with a code, and there's a test for both cases.

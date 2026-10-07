@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Text.Json;
 
 namespace GymManagementAPI.Infrastructure
@@ -32,15 +33,18 @@ namespace GymManagementAPI.Infrastructure
                 if (result.IsValid)
                     continue;
 
+                // A fresh dictionary: query-string binding already added keys like "PageSize",
+                // and keys ignore case, so our camelCase names would be hidden.
+                var errors = new ModelStateDictionary();
                 foreach (var failure in result.Errors)
                 {
                     var key = JsonNamingPolicy.CamelCase.ConvertName(failure.PropertyName);
-                    context.ModelState.AddModelError(key, failure.ErrorMessage);
+                    errors.AddModelError(key, failure.ErrorMessage);
                 }
 
                 var problem = problemDetailsFactory.CreateValidationProblemDetails(
                     context.HttpContext,
-                    context.ModelState,
+                    errors,
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "One or more validation errors occurred.");
 

@@ -22,7 +22,7 @@ namespace GymManagementAPI.Extensions
             services
                 .AddIdentityCore<ApplicationUser>(options =>
                 {
-                    // Keep in sync with AuthRules.StrongPassword (FluentValidation).
+                    // Keep in sync with CommonRules.StrongPassword (FluentValidation).
                     options.Password.RequiredLength = 8;
                     options.Password.RequireDigit = true;
                     options.Password.RequireLowercase = true;

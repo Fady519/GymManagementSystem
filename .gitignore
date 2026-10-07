@@ -489,6 +489,7 @@ _backups/
 # Uploaded member photos (personal data - never commit)
 **/wwwroot/images/members/
 **/wwwroot/uploads/
+GymManagementAPI/uploads/
 
 # Node / Next.js (frontend)
 node_modules/

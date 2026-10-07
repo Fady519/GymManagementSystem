@@ -224,6 +224,168 @@
           "request": { "method": "DELETE", "url": "{{baseUrl}}/api/plans/{{planId}}" }
         }
       ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "List categories (public)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/categories" }
+        },
+        {
+          "name": "Create category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('categoryId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pilates {{$randomInt}}\"\n}" },
+            "url": "{{baseUrl}}/api/categories"
+          }
+        },
+        {
+          "name": "Update category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Pilates Plus {{$randomInt}}\"\n}" },
+            "url": "{{baseUrl}}/api/categories/{{categoryId}}"
+          }
+        },
+        {
+          "name": "Delete category (409 if trainers use it)",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/categories/{{categoryId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Trainers",
+      "item": [
+        {
+          "name": "List trainers (search + category filter)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/trainers?search=&categoryId=&page=1&pageSize=20" }
+        },
+        {
+          "name": "Get trainer by id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/trainers/{{trainerId}}" }
+        },
+        {
+          "name": "Create trainer (returns temporary password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('trainerId', pm.response.json().trainer.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Mahmoud Hassan\",\n  \"email\": \"coach{{$randomInt}}@example.com\",\n  \"phone\": \"0112{{$randomInt}}{{$randomInt}}\",\n  \"dateOfBirth\": \"1990-04-12\",\n  \"gender\": \"Male\",\n  \"categoryId\": {{categoryId}},\n  \"address\": { \"buildingNumber\": 10, \"street\": \"Makram Ebeid\", \"city\": \"Nasr City\" }\n}" },
+            "url": "{{baseUrl}}/api/trainers"
+          }
+        },
+        {
+          "name": "Update trainer",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Mahmoud Hassan\",\n  \"email\": \"coach.updated{{$randomInt}}@example.com\",\n  \"phone\": \"0122{{$randomInt}}{{$randomInt}}\",\n  \"dateOfBirth\": \"1990-04-12\",\n  \"gender\": \"Male\",\n  \"categoryId\": {{categoryId}},\n  \"address\": null\n}" },
+            "url": "{{baseUrl}}/api/trainers/{{trainerId}}"
+          }
+        },
+        {
+          "name": "Create login account (old trainers)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/trainers/{{trainerId}}/account" }
+        },
+        {
+          "name": "Delete trainer (409 if upcoming sessions)",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/trainers/{{trainerId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Members",
+      "item": [
+        {
+          "name": "List members (search, filters, sort, paging)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/members?search=&gender=&membershipState=&sortBy=CreatedAt&descending=true&page=1&pageSize=20" }
+        },
+        {
+          "name": "Get member by id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/members/{{memberId}}" }
+        },
+        {
+          "name": "Create member (with health record)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('memberId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"محمد أحمد\",\n  \"email\": \"member{{$randomInt}}@example.com\",\n  \"phone\": \"0101{{$randomInt}}{{$randomInt}}\",\n  \"dateOfBirth\": \"2001-09-01\",\n  \"gender\": \"Male\",\n  \"address\": { \"buildingNumber\": 3, \"street\": \"El Tahrir\", \"city\": \"Giza\" },\n  \"healthRecord\": { \"height\": 175, \"weight\": 78, \"bloodType\": \"B+\", \"note\": \"Knee injury in 2023\" }\n}" },
+            "url": "{{baseUrl}}/api/members"
+          }
+        },
+        {
+          "name": "Update member",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"محمد أحمد علي\",\n  \"email\": \"member.updated{{$randomInt}}@example.com\",\n  \"phone\": \"0155{{$randomInt}}{{$randomInt}}\",\n  \"dateOfBirth\": \"2001-09-01\",\n  \"gender\": \"Male\",\n  \"address\": null\n}" },
+            "url": "{{baseUrl}}/api/members/{{memberId}}"
+          }
+        },
+        {
+          "name": "Save health record",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"height\": 175,\n  \"weight\": 74,\n  \"bloodType\": \"B+\",\n  \"note\": \"Lost 4 kg\"\n}" },
+            "url": "{{baseUrl}}/api/members/{{memberId}}/health-record"
+          }
+        },
+        {
+          "name": "Upload photo (choose a JPG/PNG/WEBP in Body > form-data)",
+          "request": {
+            "method": "PUT",
+            "body": { "mode": "formdata", "formdata": [{ "key": "photo", "type": "file", "src": [] }] },
+            "url": "{{baseUrl}}/api/members/{{memberId}}/photo"
+          }
+        },
+        {
+          "name": "Delete photo",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/members/{{memberId}}/photo" }
+        },
+        {
+          "name": "Delete member (409 if active membership / upcoming bookings)",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/members/{{memberId}}" }
+        }
+      ]
     }
   ]
 }
