@@ -20,5 +20,11 @@ namespace GymManagementDAL.UnitOfWorkPattern
         /// <c>await using</c> and call CommitAsync at the end; if anything fails before that, all of it is rolled back.
         /// </summary>
         Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Forgets every loaded / pending entity. Used before retrying after a concurrency
+        /// conflict, so the retry reads fresh data from the database.
+        /// </summary>
+        void DiscardChanges();
     }
 }

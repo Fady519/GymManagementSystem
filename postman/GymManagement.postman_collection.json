@@ -386,6 +386,125 @@
           "request": { "method": "DELETE", "url": "{{baseUrl}}/api/members/{{memberId}}" }
         }
       ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Schedule (public, filters + paging)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/sessions?state=Upcoming&trainerId=&categoryId=&from=&to=&page=1&pageSize=20" }
+        },
+        {
+          "name": "Get session by id (public)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/sessions/{{sessionId}}" }
+        },
+        {
+          "name": "Create session (tomorrow 18:00 UTC)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const start = new Date(); start.setUTCDate(start.getUTCDate() + 1); start.setUTCHours(18, 0, 0, 0);",
+                  "const end = new Date(start.getTime() + 60 * 60 * 1000);",
+                  "pm.variables.set('sessionStart', start.toISOString());",
+                  "pm.variables.set('sessionEnd', end.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('sessionId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Evening boxing class\",\n  \"capacity\": 15,\n  \"startDate\": \"{{sessionStart}}\",\n  \"endDate\": \"{{sessionEnd}}\",\n  \"categoryId\": {{categoryId}},\n  \"trainerId\": {{trainerId}}\n}" },
+            "url": "{{baseUrl}}/api/sessions"
+          }
+        },
+        {
+          "name": "Update session",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const start = new Date(); start.setUTCDate(start.getUTCDate() + 1); start.setUTCHours(19, 0, 0, 0);",
+                  "const end = new Date(start.getTime() + 90 * 60 * 1000);",
+                  "pm.variables.set('sessionStart', start.toISOString());",
+                  "pm.variables.set('sessionEnd', end.toISOString());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"description\": \"Evening boxing class (90 min)\",\n  \"capacity\": 20,\n  \"startDate\": \"{{sessionStart}}\",\n  \"endDate\": \"{{sessionEnd}}\",\n  \"categoryId\": {{categoryId}},\n  \"trainerId\": {{trainerId}}\n}" },
+            "url": "{{baseUrl}}/api/sessions/{{sessionId}}"
+          }
+        },
+        {
+          "name": "Bookings of a session (admin or its trainer)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/sessions/{{sessionId}}/bookings" }
+        },
+        {
+          "name": "Available members for a session",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/sessions/{{sessionId}}/available-members?search=" }
+        },
+        {
+          "name": "Cancel session (cancels its bookings)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/sessions/{{sessionId}}/cancel" }
+        },
+        {
+          "name": "Delete session (only upcoming without bookings)",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/sessions/{{sessionId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Book a member (admin sends memberId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.environment.set('bookingId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sessionId\": {{sessionId}},\n  \"memberId\": {{memberId}}\n}" },
+            "url": "{{baseUrl}}/api/bookings"
+          }
+        },
+        {
+          "name": "Cancel booking",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "Mark attended (only while the session is running)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/bookings/{{bookingId}}/attend" }
+        }
+      ]
     }
   ]
 }
