@@ -15,6 +15,9 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         /// <summary>Running memberships that end soon and have no renewal waiting (for follow-up calls).</summary>
         Task<IReadOnlyList<MembershipResponse>> GetExpiringSoonAsync(ExpiringSoonQuery query, CancellationToken ct = default);
 
+        /// <summary>How many memberships GetExpiringSoonAsync would return (default days), counted in SQL.</summary>
+        Task<int> CountExpiringSoonAsync(CancellationToken ct = default);
+
         /// <param name="staffUserId">The logged-in staff account that receives the money.</param>
         Task<Result<MembershipResponse>> CreateAsync(CreateMembershipRequest request, int staffUserId, CancellationToken ct = default);
 

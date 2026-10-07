@@ -4,6 +4,7 @@ using GymManagementBLL.Common;
 using GymManagementBLL.DTOs.Common;
 using GymManagementBLL.DTOs.Members;
 using GymManagementBLL.DTOs.Payments;
+using GymManagementBLL.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -90,8 +91,12 @@ namespace GymManagementAPI.Controllers
         [ProducesResponseType<MemberResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
-        public async Task<ActionResult<MemberResponse>> SetPhoto(int id, IFormFile photo, CancellationToken ct)
+        public async Task<ActionResult<MemberResponse>> SetPhoto(int id, IFormFile? photo, CancellationToken ct)
         {
+            // B9 fix: a request without the "photo" form field used to crash with a 500.
+            if (photo is null)
+                return Problem(FileErrors.Empty);
+
             await using var stream = photo.OpenReadStream();
             var result = await memberService.SetPhotoAsync(id, stream, photo.Length, ct);
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);

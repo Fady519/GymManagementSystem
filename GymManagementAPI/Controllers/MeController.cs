@@ -70,10 +70,14 @@ namespace GymManagementAPI.Controllers
         [ProducesResponseType<MemberResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
-        public async Task<ActionResult<MemberResponse>> SetPhoto(IFormFile photo, CancellationToken ct)
+        public async Task<ActionResult<MemberResponse>> SetPhoto(IFormFile? photo, CancellationToken ct)
         {
             if (CurrentUser.MemberId is not int memberId)
                 return Problem(AuthErrors.NotAMember);
+
+            // B9 fix: a request without the "photo" form field used to crash with a 500.
+            if (photo is null)
+                return Problem(FileErrors.Empty);
 
             await using var stream = photo.OpenReadStream();
             var result = await memberService.SetPhotoAsync(memberId, stream, photo.Length, ct);

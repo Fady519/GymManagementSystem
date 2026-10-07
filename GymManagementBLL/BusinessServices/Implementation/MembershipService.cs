@@ -102,16 +102,28 @@ namespace GymManagementBLL.BusinessServices.Implementation
         public async Task<IReadOnlyList<MembershipResponse>> GetExpiringSoonAsync(ExpiringSoonQuery query, CancellationToken ct = default)
         {
             var now = _clock.UtcNow;
-            var limit = now.AddDays(query.Days ?? _rules.ExpiringSoonDays);
 
-            // Started, not cancelled, ends between now and the limit, and the member hasn't renewed yet.
-            return await Memberships()
-                .Where(m => m.Status != MembershipStatus.Cancelled
-                    && m.StartDate <= now && m.EndDate > now && m.EndDate <= limit
-                    && !m.Member.Memberships.Any(r => r.Id != m.Id && r.Status != MembershipStatus.Cancelled && r.StartDate >= m.EndDate))
+            return await ExpiringSoon(now, query.Days)
                 .OrderBy(m => m.EndDate)
                 .Select(MembershipMappings.ToResponse(now))
                 .ToListAsync(ct);
+        }
+
+        public Task<int> CountExpiringSoonAsync(CancellationToken ct = default)
+            => ExpiringSoon(_clock.UtcNow, days: null).CountAsync(ct);
+
+        /// <summary>
+        /// Started, not cancelled, ends between now and the limit, and the member hasn't renewed yet.
+        /// Shared by the list and the dashboard count, so both always agree.
+        /// </summary>
+        private IQueryable<Membership> ExpiringSoon(DateTime now, int? days)
+        {
+            var limit = now.AddDays(days ?? _rules.ExpiringSoonDays);
+
+            return Memberships()
+                .Where(m => m.Status != MembershipStatus.Cancelled
+                    && m.StartDate <= now && m.EndDate > now && m.EndDate <= limit
+                    && !m.Member.Memberships.Any(r => r.Id != m.Id && r.Status != MembershipStatus.Cancelled && r.StartDate >= m.EndDate));
         }
 
         #endregion
