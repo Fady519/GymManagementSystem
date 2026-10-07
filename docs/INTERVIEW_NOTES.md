@@ -588,3 +588,105 @@
 الأعضاء عندهم Soft Delete (Global Query Filter). لو عضو اتمسح، مدفوعاته واشتراكاته القديمة لسه لازم تظهر في التقارير، عشان كده قوايم الاشتراكات والمدفوعات بتستخدم `IgnoreQueryFilters()`.
 
 > Soft-deleted members are hidden by a global query filter, but their old payments are still revenue. The payments and memberships lists ignore the filter so reports stay complete.
+
+---
+
+# B7: Email, Password Reset, Invites and Portals
+
+## 55. Invite Instead of a Temporary Password
+
+قبل كده الأدمن كان بيعمل حساب للمدرب ويشوف باسورد مؤقت ويديهوله. ده معناه إن الأدمن **عارف** الباسورد، والباسورد ممكن يتبعت على واتساب. دلوقتي الحساب بيتعمل **من غير باسورد خالص** (`PasswordHash = NULL`، فمستحيل حد يعمل Login)، وبيتبعت إيميل فيه لينك. الشخص بيفتح اللينك ويختار الباسورد بنفسه. محدش غيره عمره هيعرفه.
+
+ده نفس الشيء لكل الحسابات: الأدمن، والمدرب، والعضو (`POST /api/members/{id}/account`). ولو الإيميل ما وصلش، نفس الـ endpoint بيبعته تاني (`inviteSent: false` في الرد معناه إن الإيميل فشل).
+
+> Accounts are created without any password, so nobody can log in until the owner opens the invite link and chooses one. The admin never sees or sends a password. The response says whether the email was sent, and the same endpoint resends it while the invite is pending.
+
+---
+
+## 56. How the Reset / Invite Token Works
+
+الـ token مش متخزن في الداتا بيز. ASP.NET Identity بيعمله بـ **Data Protection**: بيشفّر (رقم اليوزر + الغرض + الوقت + الـ Security Stamp). لما يرجع، بيفك التشفير ويتأكد من كل حاجة.
+
+- **صالح لمدة:** الـ reset ساعة، والـ invite 3 أيام (من `Email` في appsettings).
+- **مرة واحدة بس:** تغيير الباسورد بيغيّر الـ Security Stamp، فأي token قديم بيبقى غلط.
+- **مينفعش يتبدلوا:** عملنا `InviteTokenProvider` منفصل باسم مختلف، فـ token بتاع reset مينفعش يستخدم كـ invite.
+- بنحوله لـ **Base64Url** عشان يبقى آمن جوه اللينك.
+
+> Identity tokens are encrypted, not stored: they contain the user id, purpose, time and security stamp. Changing the password changes the stamp, so a link works only once. Invite links use their own token provider with a longer lifetime, so a reset token can't be used as an invite.
+
+---
+
+## 57. Forgot Password Never Reveals Who Has an Account
+
+`forgot-password` بيرجع **نفس الرد بالظبط** (200 + نفس الرسالة) سواء الإيميل موجود أو لأ. لو كان بيقول "الإيميل مش موجود"، أي حد يقدر يجرب إيميلات ويعرف مين مشترك في الجيم (User Enumeration). وكمان الـ endpoint عليه Rate Limit.
+
+ولو الحساب لسه ما قبلش الدعوة (مالوش باسورد)، بنبعتله الدعوة تاني بدل لينك reset.
+
+**نقطة للتحسين:** وقت الرد ممكن يفرق شوية (لأن إرسال الإيميل بياخد وقت). الحل الكامل إن الإيميل يتبعت في Background Queue، وده ممكن نعمله بعدين.
+
+> The endpoint always returns the same response, so it can't be used to discover which emails have accounts, and it is rate limited. A remaining weakness is response timing; the full fix is sending emails from a background queue.
+
+---
+
+## 58. After a Reset: Sign Out Everywhere
+
+بعد ما الباسورد يتغير من لينك الـ reset:
+- كل الـ Refresh Tokens القديمة بتتلغي، فأي جهاز كان فاتح (أو حد سرق الحساب) بيخرج.
+- `EmailConfirmed = true` لأنه أثبت إن الإيميل بتاعه.
+- عداد المحاولات الغلط والـ Lockout بيتصفروا.
+
+وبنتأكد من الـ token **قبل** ما نشوف الحساب Disabled ولا لأ، وقبل ما نغير أي حاجة.
+
+> A successful reset revokes every refresh token, confirms the email and clears the lockout. The token is verified before anything is checked or changed.
+
+---
+
+## 59. Email Abstraction (`IEmailSender`) + smtp4dev
+
+- `IEmailSender` (الـ "بوسطة") في الـ BLL، والتنفيذ الحقيقي `SmtpEmailSender` بـ **MailKit** في الـ API.
+- `AppEmailService` بيعمل محتوى الإيميل (اللينك، القالب، وقت الجلسة بتوقيت القاهرة).
+- في التطوير بنستخدم **smtp4dev**: سيرفر إيميل وهمي على `localhost:25` وبيعرض الإيميلات في المتصفح، فمفيش إيميل حقيقي بيخرج.
+- في التستات `FakeEmailSender` بيحفظ الإيميلات في الذاكرة، والتست بياخد الـ token من اللينك.
+
+> The business layer depends on an IEmailSender interface. Production uses MailKit over SMTP, development uses smtp4dev (a fake local mail server with a web inbox), and tests use an in-memory fake so they can read the links.
+
+---
+
+## 60. A Failed Email Never Breaks the Operation
+
+`SendAsync` عمره ما بيرمي Exception: لو السيرفر واقع بيكتب Warning في الـ Log ويرجع `false`. والإيميل دايماً بيتبعت **بعد** الـ Commit:
+- لو المدرب اتعمل والإيميل فشل: المدرب موجود، و`inviteSent: false`، والأدمن يبعته تاني.
+- لو الجلسة اتلغت والإيميل فشل: الإلغاء حصل خلاص.
+- ومستحيل نبعت إيميل عن حاجة اتعملها Rollback.
+
+وعمرنا ما بنكتب محتوى الإيميل في الـ Log لأن فيه لينكات سرية.
+
+> Emails are sent only after the database commit, and the sender returns false instead of throwing. So a mail outage never undoes a saved change, and we never email about a change that was rolled back. Email bodies are never logged because they contain one-time links.
+
+---
+
+## 61. Portals: The Id Comes From the Token, Not the URL
+
+`/api/me/*` (العضو) و `/api/trainer/*` (المدرب) مفيهمش أي id في الـ URL. الـ `memberId` و `trainerId` بيتقروا من الـ Access Token. يعني العضو مستحيل يغيّر رقم في اللينك ويشوف بيانات عضو تاني (IDOR).
+
+- العضو على `/api/members` أو المدرب على `/api/members` بياخد 403.
+- `GET /api/trainer/sessions?trainerId=5`: الـ `trainerId` اللي جاي بيتشال ويتحط بتاع الـ token.
+- لو الحساب Member بس مش مربوط بعضو: 403 `Auth.NotAMember`.
+
+> Portal endpoints never take the member or trainer id from the URL; it is read from the access token. That makes IDOR impossible: changing a number in the URL can't reach someone else's data.
+
+---
+
+## 62. What a Member May Edit About Himself
+
+العضو يقدر يغيّر **التليفون والعنوان والـ Health Record والصورة** بس. الاسم والإيميل وتاريخ الميلاد بيتغيروا من الريسبشن، لأنهم بيانات هوية (والإيميل هو اسم الدخول). الـ `UpdateMyProfileRequest` فيه `Phone` و`Address` بس، فلو بعت `name` في الـ JSON بيتجاهل.
+
+> The self-service DTO only contains the fields a member may change. Identity data (name, email, date of birth) is changed by reception, so extra JSON fields are simply ignored.
+
+---
+
+## 63. Reusing Business Rules in the Portals
+
+الـ portals مش بتكرر الـ logic. "أحجز لنفسي" بتنادي نفس `BookingService.CreateAsync` بتاع الريسبشن (العضوية، السعة، التعارض، الـ concurrency)، و"أسجل حضور" بتنادي نفس `MarkAttendedAsync` اللي بيتأكد إن الجلسة بتاعة المدرب ده وشغالة دلوقتي. الـ Controller بس بيحدد مين اللي بينادي.
+
+> The portal controllers are thin: they call the same services as the admin endpoints, so every business rule lives in one place. The only difference is that the caller's identity comes from the token.

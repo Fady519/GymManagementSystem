@@ -64,6 +64,17 @@ namespace GymManagementBLL.Validators.People
         }
     }
 
+    public sealed class UpdateMyProfileRequestValidator : AbstractValidator<UpdateMyProfileRequest>
+    {
+        public UpdateMyProfileRequestValidator()
+        {
+            RuleLevelCascadeMode = CascadeMode.Stop;
+
+            RuleFor(x => x.Phone).EgyptianPhone();
+            RuleFor(x => x.Address!).SetValidator(new AddressDtoValidator()).When(x => x.Address is not null);
+        }
+    }
+
     public sealed class MemberQueryValidator : AbstractValidator<MemberQuery>
     {
         public MemberQueryValidator()

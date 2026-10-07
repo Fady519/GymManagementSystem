@@ -28,7 +28,7 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
 
-        /// <summary>Creates a trainer and their login account. The temporary password is shown only in this response.</summary>
+        /// <summary>Creates a trainer and their login account, and emails them an invite to choose their password.</summary>
         [HttpPost]
         [ProducesResponseType<TrainerWithAccountResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -65,18 +65,18 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess ? NoContent() : Problem(result.Error);
         }
 
-        /// <summary>Creates a login account for an existing trainer who doesn't have one.</summary>
+        /// <summary>
+        /// Gives an existing trainer a login account and emails the invite.
+        /// Call it again to resend the invite while it's still pending (409 once the password is set).
+        /// </summary>
         [HttpPost("{id:int}/account")]
-        [ProducesResponseType<TrainerWithAccountResponse>(StatusCodes.Status201Created)]
+        [ProducesResponseType<TrainerWithAccountResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
         public async Task<ActionResult<TrainerWithAccountResponse>> CreateAccount(int id, CancellationToken ct)
         {
             var result = await trainerService.CreateAccountAsync(id, ct);
-
-            return result.IsSuccess
-                ? CreatedAtAction(nameof(GetById), new { id }, result.Value)
-                : Problem(result.Error);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
     }
 }

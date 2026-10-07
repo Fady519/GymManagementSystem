@@ -1,12 +1,15 @@
+using GymManagementBLL.Abstractions;
 using GymManagementBLL.DTOs.Auth;
 using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Entities.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -53,7 +56,17 @@ namespace GymManagement.Tests.Infrastructure
                     // Uploaded test photos go to a temp folder, not the project's uploads folder.
                     ["FileStorage:RootPath"] = UploadsPath,
                 }));
+
+            // Emails stay in memory (Emails property) instead of going to an SMTP server.
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IEmailSender>();
+                services.AddSingleton<IEmailSender>(Emails);
+            });
         }
+
+        /// <summary>Every email the API "sent" during the test run.</summary>
+        public FakeEmailSender Emails { get; } = new();
 
         public async Task InitializeAsync()
         {
@@ -116,6 +129,14 @@ namespace GymManagement.Tests.Infrastructure
             var response = await CreateHttpsClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(email, password));
             response.EnsureSuccessStatusCode();
             return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
+        }
+
+        /// <summary>Does what the invited person does: opens the newest invite email and chooses a password.</summary>
+        public async Task AcceptInviteAsync(string email, string password = DefaultPassword)
+        {
+            var token = FakeEmailSender.ExtractToken(Emails.LastSentTo(email));
+            var response = await CreateHttpsClient().PostAsJsonAsync("/api/auth/accept-invite", new AcceptInviteRequest(email, token, password));
+            Assert.Equal(System.Net.HttpStatusCode.NoContent, response.StatusCode);
         }
 
         /// <summary>A client already logged in with the given role (one shared account per role).</summary>

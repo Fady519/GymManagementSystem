@@ -23,5 +23,17 @@ namespace GymManagementBLL.BusinessServices.Interfaces
 
         /// <summary>Revokes every active refresh token of the user ("log out from all devices").</summary>
         Task RevokeAllSessionsAsync(int userId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Emails a reset link (or the invite again, if the person never set a password).
+        /// Returns nothing on purpose: the answer must be the same whether the email exists or not.
+        /// </summary>
+        Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default);
+
+        /// <summary>Sets a new password from the emailed link, then signs out every session.</summary>
+        Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default);
+
+        /// <summary>The invited person chooses their first password (the link works once).</summary>
+        Task<Result> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken ct = default);
     }
 }

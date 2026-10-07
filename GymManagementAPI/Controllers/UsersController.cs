@@ -39,7 +39,10 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
 
-        /// <summary>Creates an Admin account with a temporary password (shown only in this response).</summary>
+        /// <summary>
+        /// Creates an Admin account and emails them an invite link to choose their own password.
+        /// Nobody else ever knows the password. inviteSent = false means the email failed: use resend-invite.
+        /// </summary>
         [HttpPost("admins")]
         [ProducesResponseType<CreatedUserResponse>(StatusCodes.Status201Created)]
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
@@ -51,6 +54,18 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess
                 ? CreatedAtAction(nameof(GetById), new { id = result.Value.User.Id }, result.Value)
                 : Problem(result.Error);
+        }
+
+        /// <summary>Sends the invite email again (e.g. the link expired). Only for accounts that haven't set a password yet.</summary>
+        [HttpPost("{id:int}/resend-invite")]
+        [ProducesResponseType<InviteResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
+        public async Task<ActionResult<InviteResponse>> ResendInvite(int id, CancellationToken ct)
+        {
+            var result = await userService.SendInviteAsync(id, ct);
+            return result.IsSuccess ? Ok(new InviteResponse(result.Value)) : Problem(result.Error);
         }
 
         /// <summary>Enables or disables an account. Disabling signs the user out of all devices.</summary>

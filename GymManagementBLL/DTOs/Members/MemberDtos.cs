@@ -59,6 +59,17 @@ namespace GymManagementBLL.DTOs.Members
         Gender Gender,
         AddressDto? Address);
 
+    /// <summary>InviteSent = false means the email could not be sent (call the endpoint again to resend).</summary>
+    public sealed record MemberWithAccountResponse(MemberResponse Member, bool InviteSent);
+
+    /// <summary>
+    /// What a member may change about themselves (PUT /api/me). Name, email and date of birth
+    /// are identity data: only reception changes them, so a member can't pretend to be someone else.
+    /// </summary>
+    public sealed record UpdateMyProfileRequest(
+        string Phone,
+        AddressDto? Address);
+
     public enum MemberSortBy
     {
         CreatedAt = 0,

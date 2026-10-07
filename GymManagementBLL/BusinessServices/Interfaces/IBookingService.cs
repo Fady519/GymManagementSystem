@@ -13,5 +13,8 @@ namespace GymManagementBLL.BusinessServices.Interfaces
 
         /// <summary>Only while the session is running, by an admin or the session's trainer.</summary>
         Task<Result> MarkAttendedAsync(int id, CurrentUser user, CancellationToken ct = default);
+
+        /// <summary>The bookings of one member (the member portal passes the id from the token).</summary>
+        Task<PagedResult<MyBookingItem>> GetMemberBookingsAsync(int memberId, MyBookingsQuery query, CancellationToken ct = default);
     }
 }

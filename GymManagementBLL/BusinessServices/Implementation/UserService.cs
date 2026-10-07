@@ -16,6 +16,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
         private readonly RoleManager<IdentityRole<int>> _roleManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IAuthService _authService;
+        private readonly IAppEmailService _emails;
         private readonly IClock _clock;
 
         public UserService(
@@ -23,12 +24,14 @@ namespace GymManagementBLL.BusinessServices.Implementation
             RoleManager<IdentityRole<int>> roleManager,
             IUnitOfWork unitOfWork,
             IAuthService authService,
+            IAppEmailService emails,
             IClock clock)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _unitOfWork = unitOfWork;
             _authService = authService;
+            _emails = emails;
             _clock = clock;
         }
 
@@ -59,13 +62,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
             var rows = await query
                 .OrderBy(u => u.Email)
                 .Select(u => new UserRow(u.Id, u.Email!, u.FullName, u.IsActive, u.MustChangePassword,
-                    u.LockoutEnd, u.CreatedAt, u.UserRoles.Select(ur => ur.RoleId).ToList()))
+                    u.PasswordHash == null, u.LockoutEnd, u.CreatedAt, u.UserRoles.Select(ur => ur.RoleId).ToList()))
                 .ToPagedResultAsync(page, pageSize, ct);
 
             var items = rows.Items
                 .Select(r => new UserResponse(r.Id, r.Email, r.FullName,
                     r.RoleIds.Select(id => roleNames[id]).ToList(),
-                    r.IsActive, r.MustChangePassword, IsLockedOut(r.LockoutEnd), r.CreatedAt))
+                    r.IsActive, r.MustChangePassword, IsLockedOut(r.LockoutEnd), r.InvitePending, r.CreatedAt))
                 .ToList();
 
             return new PagedResult<UserResponse>(items, rows.Page, rows.PageSize, rows.TotalCount);
@@ -91,8 +94,11 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             await transaction.CommitAsync(ct);
 
-            var user = (await _userManager.FindByIdAsync(account.Value.UserId.ToString()))!;
-            return new CreatedUserResponse(ToResponse(user, [AppRoles.Admin]), account.Value.TemporaryPassword);
+            // The email goes out AFTER the commit: we never email a link for an account that was rolled back.
+            var invite = await SendInviteAsync(account.Value, ct);
+
+            var user = (await _userManager.FindByIdAsync(account.Value.ToString()))!;
+            return new CreatedUserResponse(ToResponse(user, [AppRoles.Admin]), invite.IsSuccess && invite.Value);
         }
 
         public async Task<Result<UserResponse>> SetStatusAsync(int id, bool isActive, CancellationToken ct = default)
@@ -121,31 +127,48 @@ namespace GymManagementBLL.BusinessServices.Implementation
             return ToResponse(user, roles);
         }
 
-        public async Task<Result<CreatedAccount>> CreateAccountAsync(string email, string fullName, string role, CancellationToken ct = default)
+        public async Task<Result<int>> CreateAccountAsync(string email, string fullName, string role, CancellationToken ct = default)
         {
             email = email.Trim().ToLowerInvariant();
 
             if (await _userManager.FindByEmailAsync(email) is not null)
                 return UserErrors.EmailTaken;
 
-            var temporaryPassword = TemporaryPassword.Generate();
-
+            // No password at all: nobody (not even the admin) knows it. The owner chooses it
+            // from the invite link. Until then PasswordHash is NULL, so login is impossible.
             var user = new ApplicationUser
             {
                 UserName = email,
                 Email = email,
                 FullName = fullName.Trim(),
-                MustChangePassword = true,
+                MustChangePassword = false,
                 CreatedAt = _clock.UtcNow,
             };
 
-            var created = await _userManager.CreateAsync(user, temporaryPassword);
+            var created = await _userManager.CreateAsync(user);
             if (!created.Succeeded)
                 return AuthErrors.IdentityFailed(created.Errors);
 
             await _userManager.AddToRoleAsync(user, role);
 
-            return new CreatedAccount(user.Id, temporaryPassword);
+            return user.Id;
+        }
+
+        public async Task<Result<bool>> SendInviteAsync(int userId, CancellationToken ct = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+                return UserErrors.NotFound(userId);
+
+            // Already chose a password: an invite makes no sense, "forgot password" is the right flow.
+            if (await _userManager.HasPasswordAsync(user))
+                return UserErrors.AlreadyActivated;
+
+            if (!user.IsActive)
+                return AuthErrors.AccountDisabled;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            return await _emails.SendInviteAsync(user, roles.FirstOrDefault() ?? "", ct);
         }
 
         public async Task<Result> UpdateAccountProfileAsync(int userId, string email, string fullName, CancellationToken ct = default)
@@ -186,14 +209,14 @@ namespace GymManagementBLL.BusinessServices.Implementation
         #region Helper Methods
 
         private sealed record UserRow(int Id, string Email, string FullName, bool IsActive, bool MustChangePassword,
-            DateTimeOffset? LockoutEnd, DateTime CreatedAt, List<int> RoleIds);
+            bool InvitePending, DateTimeOffset? LockoutEnd, DateTime CreatedAt, List<int> RoleIds);
 
         private bool IsLockedOut(DateTimeOffset? lockoutEnd)
             => lockoutEnd is not null && lockoutEnd > new DateTimeOffset(_clock.UtcNow);
 
         private UserResponse ToResponse(ApplicationUser user, IEnumerable<string> roles)
             => new(user.Id, user.Email!, user.FullName, roles.ToList(), user.IsActive,
-                user.MustChangePassword, IsLockedOut(user.LockoutEnd), user.CreatedAt);
+                user.MustChangePassword, IsLockedOut(user.LockoutEnd), user.PasswordHash is null, user.CreatedAt);
 
         #endregion
     }

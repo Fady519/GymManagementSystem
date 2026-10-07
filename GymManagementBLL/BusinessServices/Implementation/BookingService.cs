@@ -106,6 +106,28 @@ namespace GymManagementBLL.BusinessServices.Implementation
             return Result.Success();
         }
 
+        public async Task<PagedResult<MyBookingItem>> GetMemberBookingsAsync(int memberId, MyBookingsQuery query, CancellationToken ct = default)
+        {
+            var now = _clock.UtcNow;
+
+            // IgnoreQueryFilters: a past booking stays in the history even if its trainer was deleted later.
+            var bookings = _unitOfWork.GetRepository<Booking>().Query()
+                .IgnoreQueryFilters()
+                .Where(b => b.MemberId == memberId);
+
+            bookings = query.Upcoming
+                ? bookings
+                    .Where(b => b.Status == BookingStatus.Booked && b.Session.Status == SessionStatus.Scheduled && b.Session.StartDate > now)
+                    .OrderBy(b => b.Session.StartDate).ThenBy(b => b.Id)
+                : bookings.OrderByDescending(b => b.Session.StartDate).ThenByDescending(b => b.Id);
+
+            return await bookings
+                .Select(b => new MyBookingItem(
+                    b.Id, b.SessionId, b.Session.Category.Name, b.Session.Description, b.Session.Trainer.Name,
+                    b.Session.StartDate, b.Session.EndDate, b.Session.Status, b.Status, b.CreatedAt))
+                .ToPagedResultAsync(query.Page, query.PageSize, ct);
+        }
+
         #region Helper Methods
 
         private async Task<Result<BookingResponse>> TryCreateAsync(int sessionId, int memberId, CancellationToken ct)

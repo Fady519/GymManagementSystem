@@ -32,7 +32,7 @@ namespace GymManagementBLL.Errors
             Error.Validation("Trainer.CategoryNotFound", $"Category with id {categoryId} does not exist.");
 
         public static readonly Error AlreadyHasAccount =
-            Error.Conflict("Trainer.AlreadyHasAccount", "This trainer already has a login account.");
+            Error.Conflict("Trainer.AlreadyHasAccount", "This trainer already has an activated login account.");
 
         public static readonly Error HasUpcomingSessions =
             Error.Conflict("Trainer.HasUpcomingSessions", "The trainer cannot be deleted while they have upcoming sessions. Reassign or cancel them first.");
@@ -44,7 +44,7 @@ namespace GymManagementBLL.Errors
             Error.NotFound("Member.NotFound", $"Member with id {id} was not found.");
 
         public static readonly Error EmailTaken =
-            Error.Conflict("Member.EmailTaken", "Another member already uses this email.");
+            Error.Conflict("Member.EmailTaken", "Another member or login account already uses this email.");
 
         public static readonly Error PhoneTaken =
             Error.Conflict("Member.PhoneTaken", "Another member already uses this phone number.");
@@ -54,6 +54,9 @@ namespace GymManagementBLL.Errors
 
         public static readonly Error HasUpcomingBookings =
             Error.Conflict("Member.HasUpcomingBookings", "The member cannot be deleted while they have upcoming session bookings. Cancel them first.");
+
+        public static readonly Error AlreadyHasAccount =
+            Error.Conflict("Member.AlreadyHasAccount", "This member already has an activated login account.");
     }
 
     public static class FileErrors

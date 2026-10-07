@@ -52,4 +52,36 @@ namespace GymManagementBLL.Validators.Auth
             RuleFor(x => x.Email).ValidEmail();
         }
     }
+
+    public sealed class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+    {
+        public ForgotPasswordRequestValidator()
+        {
+            RuleFor(x => x.Email).ValidEmail();
+        }
+    }
+
+    public sealed class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+    {
+        public ResetPasswordRequestValidator()
+        {
+            RuleLevelCascadeMode = CascadeMode.Stop;
+
+            RuleFor(x => x.Email).ValidEmail();
+            RuleFor(x => x.Token).NotEmpty();
+            RuleFor(x => x.NewPassword).StrongPassword();
+        }
+    }
+
+    public sealed class AcceptInviteRequestValidator : AbstractValidator<AcceptInviteRequest>
+    {
+        public AcceptInviteRequestValidator()
+        {
+            RuleLevelCascadeMode = CascadeMode.Stop;
+
+            RuleFor(x => x.Email).ValidEmail();
+            RuleFor(x => x.Token).NotEmpty();
+            RuleFor(x => x.Password).StrongPassword();
+        }
+    }
 }

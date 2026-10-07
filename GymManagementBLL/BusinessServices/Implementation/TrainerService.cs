@@ -79,15 +79,18 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 Gender = request.Gender,
                 CategoryId = request.CategoryId,
                 Address = request.Address.ToEntity(),
-                UserId = account.Value.UserId,
+                UserId = account.Value,
             };
 
             _unitOfWork.GetRepository<Trainer>().Add(trainer);
             await _unitOfWork.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
+            // After the commit: a failed email never undoes the trainer (the admin can resend it).
+            var invite = await _userService.SendInviteAsync(account.Value, ct);
+
             var created = (await LoadAsync(trainer.Id, ct))!;
-            return new TrainerWithAccountResponse(created.ToResponse(), account.Value.TemporaryPassword);
+            return new TrainerWithAccountResponse(created.ToResponse(), invite.IsSuccess && invite.Value);
         }
 
         public async Task<Result<TrainerResponse>> UpdateAsync(int id, SaveTrainerRequest request, CancellationToken ct = default)
@@ -156,21 +159,32 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (trainer is null)
                 return TrainerErrors.NotFound(id);
 
+            int userId;
+
             if (trainer.UserId is not null)
-                return TrainerErrors.AlreadyHasAccount;
+            {
+                // Already has an account: only a pending invite can be resent.
+                userId = trainer.UserId.Value;
+            }
+            else
+            {
+                await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
 
-            await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
+                var account = await _userService.CreateAccountAsync(trainer.Email, trainer.Name, AppRoles.Trainer, ct);
+                if (account.IsFailure)
+                    return account.Error == UserErrors.EmailTaken ? TrainerErrors.EmailTaken : account.Error;
 
-            var account = await _userService.CreateAccountAsync(trainer.Email, trainer.Name, AppRoles.Trainer, ct);
-            if (account.IsFailure)
-                return account.Error == UserErrors.EmailTaken ? TrainerErrors.EmailTaken : account.Error;
+                trainer.UserId = userId = account.Value;
+                await _unitOfWork.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+            }
 
-            trainer.UserId = account.Value.UserId;
-            await _unitOfWork.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
+            var invite = await _userService.SendInviteAsync(userId, ct);
+            if (invite.IsFailure)
+                return invite.Error == UserErrors.AlreadyActivated ? TrainerErrors.AlreadyHasAccount : invite.Error;
 
             var updated = (await LoadAsync(id, ct))!;
-            return new TrainerWithAccountResponse(updated.ToResponse(), account.Value.TemporaryPassword);
+            return new TrainerWithAccountResponse(updated.ToResponse(), invite.Value);
         }
 
         #region Helper Methods

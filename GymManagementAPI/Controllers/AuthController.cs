@@ -105,6 +105,47 @@ namespace GymManagementAPI.Controllers
             return Ok(result.Value.Response);
         }
 
+        /// <summary>
+        /// Emails a reset link. Always returns the same 200 message, even for an unknown email,
+        /// so this endpoint can't be used to discover who has an account.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        [EnableRateLimiting(AppPolicies.AuthRateLimit)]
+        [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+        public async Task<ActionResult<MessageResponse>> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
+        {
+            await authService.ForgotPasswordAsync(request, ct);
+            return Ok(new MessageResponse("If an account with this email exists, we've sent it a link to reset the password."));
+        }
+
+        /// <summary>Sets a new password using the email + token from the reset link. All sessions are signed out.</summary>
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        [EnableRateLimiting(AppPolicies.AuthRateLimit)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
+        {
+            var result = await authService.ResetPasswordAsync(request, ct);
+            return result.IsSuccess ? NoContent() : Problem(result.Error);
+        }
+
+        /// <summary>The invited admin / trainer / member chooses their first password (the link works once). Then they log in.</summary>
+        [HttpPost("accept-invite")]
+        [AllowAnonymous]
+        [EnableRateLimiting(AppPolicies.AuthRateLimit)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
+        public async Task<IActionResult> AcceptInvite(AcceptInviteRequest request, CancellationToken ct)
+        {
+            var result = await authService.AcceptInviteAsync(request, ct);
+            return result.IsSuccess ? NoContent() : Problem(result.Error);
+        }
+
         #region Cookie Helpers
 
         // HttpOnly: JavaScript can't read it (safe from XSS).

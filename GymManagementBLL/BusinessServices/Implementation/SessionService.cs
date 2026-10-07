@@ -15,11 +15,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
         private const int AvailableMembersLimit = 50;
 
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppEmailService _emails;
         private readonly IClock _clock;
 
-        public SessionService(IUnitOfWork unitOfWork, IClock clock)
+        public SessionService(IUnitOfWork unitOfWork, IAppEmailService emails, IClock clock)
         {
             _unitOfWork = unitOfWork;
+            _emails = emails;
             _clock = clock;
         }
 
@@ -114,7 +116,9 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
         public async Task<Result> CancelAsync(int id, CancellationToken ct = default)
         {
-            var session = await _unitOfWork.GetRepository<Session>().GetByIdAsync(id, ct);
+            var session = await _unitOfWork.GetRepository<Session>().Query(asTracking: true)
+                .Include(s => s.Category)
+                .FirstOrDefaultAsync(s => s.Id == id, ct);
             if (session is null)
                 return SessionErrors.NotFound(id);
 
@@ -123,15 +127,29 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             session.Status = SessionStatus.Cancelled;
 
-            // Cancel the bookings too (rows are kept for history). B7: email the members.
+            // Cancel the bookings too (rows are kept for history).
             var bookings = await _unitOfWork.GetRepository<Booking>().Query(asTracking: true)
                 .Where(b => b.SessionId == id && b.Status == BookingStatus.Booked)
+                .ToListAsync(ct);
+
+            // Who to email: read before saving (afterwards the bookings are no longer "Booked").
+            var recipients = await _unitOfWork.GetRepository<Booking>().Query()
+                .Where(b => b.SessionId == id && b.Status == BookingStatus.Booked)
+                .Select(b => new EmailRecipient(b.Member.Name, b.Member.Email))
                 .ToListAsync(ct);
 
             foreach (var booking in bookings)
                 booking.Status = BookingStatus.Cancelled;
 
-            return await TrySaveAsync(ct) ? Result.Success() : SessionErrors.ChangedByAnotherUser;
+            if (!await TrySaveAsync(ct))
+                return SessionErrors.ChangedByAnotherUser;
+
+            // Emails only AFTER the save: we never tell members about a cancel that didn't happen.
+            // A failed email doesn't undo the cancel (the sender logs it).
+            if (recipients.Count > 0)
+                await _emails.SendSessionCancelledAsync(recipients, session.Category.Name + " - " + session.Description, session.StartDate, ct);
+
+            return Result.Success();
         }
 
         public async Task<Result> DeleteAsync(int id, CancellationToken ct = default)

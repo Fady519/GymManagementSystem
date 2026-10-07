@@ -85,6 +85,36 @@
         {
           "name": "Logout",
           "request": { "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/logout" }
+        },
+        {
+          "name": "Forgot password (same answer even for unknown emails)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{superAdminEmail}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Reset password (paste the token from the email link)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{superAdminEmail}}\",\n  \"token\": \"PASTE_TOKEN_FROM_EMAIL\",\n  \"newPassword\": \"New@Pass123\"\n}" },
+            "url": "{{baseUrl}}/api/auth/reset-password"
+          }
+        },
+        {
+          "name": "Accept invite (choose the first password)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"PASTE_EMAIL_FROM_LINK\",\n  \"token\": \"PASTE_TOKEN_FROM_EMAIL\",\n  \"password\": \"MyOwn@Pass1\"\n}" },
+            "url": "{{baseUrl}}/api/auth/accept-invite"
+          }
         }
       ]
     },
@@ -112,6 +142,10 @@
             "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Reception Admin\",\n  \"email\": \"admin{{$randomInt}}@example.com\"\n}" },
             "url": "{{baseUrl}}/api/users/admins"
           }
+        },
+        {
+          "name": "Resend invite (only while the password isn't set)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/users/{{userId}}/resend-invite" }
         },
         {
           "name": "Disable user",
@@ -280,7 +314,7 @@
           "request": { "method": "GET", "url": "{{baseUrl}}/api/trainers/{{trainerId}}" }
         },
         {
-          "name": "Create trainer (returns temporary password)",
+          "name": "Create trainer (emails an invite to set the password)",
           "event": [
             {
               "listen": "test",
@@ -310,7 +344,7 @@
           }
         },
         {
-          "name": "Create login account (old trainers)",
+          "name": "Create login account (sends invite; call again to resend)",
           "request": { "method": "POST", "url": "{{baseUrl}}/api/trainers/{{trainerId}}/account" }
         },
         {
@@ -380,6 +414,10 @@
         {
           "name": "Delete photo",
           "request": { "method": "DELETE", "url": "{{baseUrl}}/api/members/{{memberId}}/photo" }
+        },
+        {
+          "name": "Give online account (sends invite; call again to resend)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/members/{{memberId}}/account" }
         },
         {
           "name": "Delete member (409 if active membership / upcoming bookings)",
@@ -585,6 +623,100 @@
         {
           "name": "Payments of a member",
           "request": { "method": "GET", "url": "{{baseUrl}}/api/members/{{memberId}}/payments" }
+        }
+      ]
+    },
+    {
+      "name": "Member portal (/api/me) - log in as a member first",
+      "item": [
+        {
+          "name": "My profile",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me" }
+        },
+        {
+          "name": "Update my phone + address (name/email are ignored)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"phone\": \"0101{{$randomInt}}{{$randomInt}}\",\n  \"address\": { \"buildingNumber\": 5, \"street\": \"El Nasr Road\", \"city\": \"Cairo\" }\n}" },
+            "url": "{{baseUrl}}/api/me"
+          }
+        },
+        {
+          "name": "Save my health record",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"height\": 178,\n  \"weight\": 76,\n  \"bloodType\": \"O+\",\n  \"note\": null\n}" },
+            "url": "{{baseUrl}}/api/me/health-record"
+          }
+        },
+        {
+          "name": "Upload my photo (choose a file in Body > form-data, key = photo)",
+          "request": {
+            "method": "PUT",
+            "body": { "mode": "formdata", "formdata": [{ "key": "photo", "type": "file", "src": [] }] },
+            "url": "{{baseUrl}}/api/me/photo"
+          }
+        },
+        {
+          "name": "Delete my photo",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/me/photo" }
+        },
+        {
+          "name": "My memberships",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/memberships" }
+        },
+        {
+          "name": "My payments",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/payments" }
+        },
+        {
+          "name": "My upcoming bookings",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/bookings?upcoming=true&page=1&pageSize=20" }
+        },
+        {
+          "name": "Book a session for me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 201) { pm.environment.set('bookingId', pm.response.json().id); }"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"sessionId\": {{sessionId}}\n}" },
+            "url": "{{baseUrl}}/api/me/bookings"
+          }
+        },
+        {
+          "name": "Cancel my booking",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/me/bookings/{{bookingId}}/cancel" }
+        }
+      ]
+    },
+    {
+      "name": "Trainer portal (/api/trainer) - log in as a trainer first",
+      "item": [
+        {
+          "name": "My trainer profile",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/trainer/me" }
+        },
+        {
+          "name": "My upcoming sessions",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/trainer/sessions?state=Upcoming&page=1&pageSize=20" }
+        },
+        {
+          "name": "Who booked my session",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/trainer/sessions/{{sessionId}}/bookings" }
+        },
+        {
+          "name": "Mark attended (only while my session is running)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/trainer/bookings/{{bookingId}}/attend" }
         }
       ]
     }

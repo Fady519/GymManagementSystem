@@ -18,6 +18,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
+        private readonly IAppEmailService _emails;
         private readonly JwtOptions _jwt;
         private readonly IClock _clock;
 
@@ -25,12 +26,14 @@ namespace GymManagementBLL.BusinessServices.Implementation
             UserManager<ApplicationUser> userManager,
             IUnitOfWork unitOfWork,
             ITokenService tokenService,
+            IAppEmailService emails,
             IOptions<JwtOptions> jwtOptions,
             IClock clock)
         {
             _userManager = userManager;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
+            _emails = emails;
             _jwt = jwtOptions.Value;
             _clock = clock;
         }
@@ -220,6 +223,91 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 token.RevokedAt = now;
 
             await _unitOfWork.SaveChangesAsync(ct);
+        }
+
+        public async Task ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken ct = default)
+        {
+            // The controller always answers the same way, whatever happens here, so nobody can use
+            // this endpoint to find out which emails have accounts (no "email not found" message).
+            var user = await _userManager.FindByEmailAsync(NormalizeEmail(request.Email));
+            if (user is null || !user.IsActive)
+                return;
+
+            // Someone who never accepted their invite has no password to reset: send the invite again.
+            if (await _userManager.HasPasswordAsync(user))
+            {
+                await _emails.SendPasswordResetAsync(user, ct);
+            }
+            else
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                await _emails.SendInviteAsync(user, roles.FirstOrDefault() ?? "", ct);
+            }
+        }
+
+        public async Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+        {
+            var user = await _userManager.FindByEmailAsync(NormalizeEmail(request.Email));
+            var token = AccountTokens.Decode(request.Token);
+
+            if (user is null || token is null)
+                return AuthErrors.InvalidResetToken;
+
+            // Check the token first (signature, purpose, expiry, security stamp) without changing anything.
+            var valid = await _userManager.VerifyUserTokenAsync(user, _userManager.Options.Tokens.PasswordResetTokenProvider,
+                UserManager<ApplicationUser>.ResetPasswordTokenPurpose, token);
+            if (!valid)
+                return AuthErrors.InvalidResetToken;
+
+            if (!user.IsActive)
+                return AuthErrors.AccountDisabled;
+
+            var reset = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+            if (!reset.Succeeded)
+            {
+                return reset.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.InvalidToken))
+                    ? AuthErrors.InvalidResetToken
+                    : AuthErrors.IdentityFailed(reset.Errors);
+            }
+
+            // They proved they own the inbox, and the lockout from old failed attempts is lifted.
+            user.EmailConfirmed = true;
+            user.MustChangePassword = false;
+            user.AccessFailedCount = 0;
+            user.LockoutEnd = null;
+            await _userManager.UpdateAsync(user);
+
+            // Whoever knew the old password (or holds an old session) is signed out.
+            await RevokeAllSessionsAsync(user.Id, ct);
+
+            return Result.Success();
+        }
+
+        public async Task<Result> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken ct = default)
+        {
+            var user = await _userManager.FindByEmailAsync(NormalizeEmail(request.Email));
+            var token = AccountTokens.Decode(request.Token);
+
+            if (user is null || token is null)
+                return AuthErrors.InvalidInviteToken;
+
+            // Our own "Invite" token provider: a token made for a password reset can't be used here.
+            var valid = await _userManager.VerifyUserTokenAsync(user, AccountTokens.InviteProvider, AccountTokens.InvitePurpose, token);
+            if (!valid || await _userManager.HasPasswordAsync(user))
+                return AuthErrors.InvalidInviteToken;
+
+            if (!user.IsActive)
+                return AuthErrors.AccountDisabled;
+
+            // Setting the password changes the security stamp, so this same link stops working (one-time use).
+            var added = await _userManager.AddPasswordAsync(user, request.Password);
+            if (!added.Succeeded)
+                return AuthErrors.IdentityFailed(added.Errors);
+
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+
+            return Result.Success();
         }
 
         #region Helper Methods
