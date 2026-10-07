@@ -7,3 +7,6 @@ import type { components } from "@/types/api";
 type Schemas = components["schemas"];
 
 export type PlanResponse = Schemas["PlanResponse"];
+export type CategoryResponse = Schemas["CategoryResponse"];
+export type SessionResponse = Schemas["SessionResponse"];
+export type SessionResponsePagedResult = Schemas["SessionResponsePagedResult"];

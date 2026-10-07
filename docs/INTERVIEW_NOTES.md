@@ -977,3 +977,14 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 المتصفح بيثق في شهادة الـ HTTPS بتاعة ASP.NET على الجهاز، لكن Node.js (اللي بيعمل الـ Rewrite) مبيثقش فيها، فكان بيرجع 500. الحل: Script صغير بيشتغل قبل `npm run dev` ويطلّع الجزء العام من الشهادة لفولدر `.certs` (متجاهل في Git)، وبعدين `NODE_EXTRA_CA_CERTS` بيقول لـ Node يثق فيها. **مقفلناش التحقق من الشهادات**، وده الحل الآمن.
 
 > The browser trusts the ASP.NET Core dev certificate but Node.js didn't, so the proxy failed. A pre-dev script exports the certificate's public part to a git-ignored folder, and NODE_EXTRA_CA_CERTS tells Node to trust it. TLS verification is never disabled.
+---
+
+## 89. No Dead UI: Everything on Screen Is Real
+
+قاعدة في المشروع: **أي حاجة المستخدم بيشوفها لازم تكون حقيقية**. كل رقم وخطة وبرنامج وحصة في الصفحة الرئيسية جاي من الـ API (أقل سعر في الشهر، عدد المدربين، عدد الحصص الجاية، الأماكن الفاضية في كل حصة). وكل زرار بيعمل حاجة فعلاً. زراير زي "اشترك" و"احجز" مش هتظهر غير لما الصفحة بتاعتها تبقى جاهزة.
+
+ومثال على إن الداتا بتتحسب مش بتتكتب: علامة "Best value" بتروح للخطة اللي **سعرها في الشهر أقل**، مش لأغلى خطة، وكل خطة بتعرض بتوفر كام في المية مقارنة بأغلى سعر شهري.
+
+وكل جزء بيحمّل داتا ليه 3 حالات: Skeleton وهو بيحمّل، ورسالة واضحة وزرار Try again لو فشل، وحالة فاضية بكلام مناسب لو مفيش داتا.
+
+> Everything a visitor sees is real: every number, plan, program and class comes from the API, and every button works. Actions like sign-up or booking only appear once their pages exist. Values are computed, not hard-coded; for example, "Best value" goes to the lowest price per month. Every data section has loading, error-with-retry and empty states.

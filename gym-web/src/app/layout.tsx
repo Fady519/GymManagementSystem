@@ -27,7 +27,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // suppressHydrationWarning: next-themes adds the "dark" class before React loads (avoids a white flash).
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">

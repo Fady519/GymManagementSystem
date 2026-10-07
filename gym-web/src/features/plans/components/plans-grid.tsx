@@ -1,20 +1,12 @@
 "use client";
 
-import { Check, RefreshCw, ServerCrash } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { QueryError } from "@/components/shared/query-error";
 import { usePlans } from "@/features/plans/queries";
-import { formatMoney } from "@/lib/format";
+import { formatDuration, formatMoney, monthlyPrice } from "@/lib/format";
 
 /**
  * Active plans from GET /api/plans, with the three states every data component has:
@@ -25,9 +17,9 @@ export function PlansGrid() {
 
   if (isPending) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }, (_, i) => (
-          <Skeleton key={i} className="h-56 rounded-xl" />
+          <Skeleton key={i} className="h-60 rounded-2xl" />
         ))}
       </div>
     );
@@ -35,51 +27,84 @@ export function PlansGrid() {
 
   if (isError) {
     return (
-      <Alert variant="destructive">
-        <ServerCrash />
-        <AlertTitle>Couldn&apos;t load the plans</AlertTitle>
-        <AlertDescription>
-          <p>{error.message}</p>
-          <Button variant="outline" size="sm" className="mt-2" onClick={() => refetch()}>
-            <RefreshCw className={isFetching ? "animate-spin" : undefined} /> Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <QueryError
+        title="We couldn't load our memberships"
+        error={error}
+        onRetry={refetch}
+        retrying={isFetching}
+      />
     );
   }
 
   if (plans.length === 0) {
-    return <p className="text-muted-foreground">No plans yet.</p>;
+    return (
+      <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+        New memberships are coming soon. Visit the front desk for current offers.
+      </p>
+    );
   }
 
-  // The most expensive plan gets the "Best value" badge (the API returns the cheapest first).
-  const bestValueId = plans[plans.length - 1].id;
+  // Compare plans by their price per month: the cheapest per month is the best value,
+  // and every plan shows how much it saves against the most expensive monthly rate.
+  const monthly = new Map(plans.map((p) => [p.id, monthlyPrice(p.price, p.durationDays)]));
+  const highestMonthly = Math.max(...monthly.values());
+  const bestValue = plans.reduce((best, p) =>
+    monthly.get(p.id)! < monthly.get(best.id)! ? p : best,
+  );
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((plan) => (
-        <Card key={plan.id} className={plan.id === bestValueId ? "ring-2 ring-primary" : undefined}>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="text-lg">{plan.name}</CardTitle>
-              {plan.id === bestValueId && <Badge>Best value</Badge>}
-            </div>
-            <CardDescription>{plan.durationDays} days</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-3">
-            <p className="text-3xl font-bold">{formatMoney(plan.price)}</p>
-            <p className="flex gap-2 text-muted-foreground">
-              <Check className="mt-0.5 size-4 shrink-0 text-success" />
-              {plan.description}
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" variant={plan.id === bestValueId ? "default" : "outline"}>
-              Choose plan
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {plans.map((plan) => {
+        const perMonth = monthly.get(plan.id)!;
+        const savingPercent = Math.round((1 - perMonth / highestMonthly) * 100);
+        const isBest = plans.length > 1 && plan.id === bestValue.id;
+
+        return (
+          <Card
+            key={plan.id}
+            className={
+              isBest
+                ? "relative rounded-2xl shadow-lg ring-2 shadow-primary/10 ring-primary"
+                : "relative rounded-2xl transition-shadow hover:shadow-md"
+            }
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-lg">{plan.name}</CardTitle>
+                {isBest && <Badge>Best value</Badge>}
+              </div>
+              <CardDescription>{formatDuration(plan.durationDays)} membership</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col gap-4">
+              <div>
+                <p className="text-3xl font-bold tracking-tight">{formatMoney(plan.price)}</p>
+                {plan.durationDays > 30 && (
+                  <p className="text-sm text-muted-foreground">
+                    {formatMoney(perMonth)} / month
+                    {savingPercent > 0 && (
+                      <span className="ms-2 font-medium text-success">Save {savingPercent}%</span>
+                    )}
+                  </p>
+                )}
+              </div>
+              <ul className="space-y-2 text-sm">
+                <li className="flex gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                  {plan.description}
+                </li>
+                <li className="flex gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                  Online class booking
+                </li>
+                <li className="flex gap-2">
+                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                  Freeze your membership when you travel
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
