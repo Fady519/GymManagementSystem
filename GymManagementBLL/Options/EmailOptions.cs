@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations;
 namespace GymManagementBLL.Options
 {
     /// <summary>
-    /// What the app's emails contain: links to the frontend, how long links work, and the gym's time zone
-    /// (session times are shown in local time). Read from the "Email" config section.
+    /// What the app's emails contain: links to the frontend and how long links work.
+    /// Read from the "Email" config section. (Times in emails use the gym time zone: see GymOptions.)
     /// </summary>
     public sealed class EmailOptions
     {
@@ -24,9 +24,5 @@ namespace GymManagementBLL.Options
         /// <summary>An invite link (set your first password) works for this many days.</summary>
         [Range(1, 30)]
         public int InviteLinkDays { get; set; } = 3;
-
-        /// <summary>IANA id, e.g. "Africa/Cairo".</summary>
-        [Required]
-        public string TimeZoneId { get; set; } = "Africa/Cairo";
     }
 }

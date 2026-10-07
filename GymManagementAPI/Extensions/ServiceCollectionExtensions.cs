@@ -1,8 +1,10 @@
 using FluentValidation;
 using GymManagementAPI.Infrastructure;
+using GymManagementAPI.Infrastructure.Exports;
 using GymManagementBLL.Abstractions;
 using GymManagementBLL.BusinessServices.Implementation;
 using GymManagementBLL.BusinessServices.Interfaces;
+using GymManagementBLL.Common;
 using GymManagementBLL.Options;
 using GymManagementBLL.Validators.Plans;
 using GymManagementDAL.Data.Contexts;
@@ -56,8 +58,26 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<IMembershipService, MembershipService>();
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IAppEmailService, AppEmailService>();
+            services.AddScoped<ICheckInService, CheckInService>();
+            services.AddScoped<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<ExportService>();
 
-            // Emails: the "post office" (SMTP via MailKit) + links/time zone settings for the email content.
+            // The gym's time zone ("Gym" section): what "today" means for check-ins, reports and emails.
+            // An unknown time zone id stops the app at startup instead of giving wrong reports later.
+            services.AddOptions<GymOptions>()
+                .BindConfiguration(GymOptions.SectionName)
+                .ValidateDataAnnotations()
+                .Validate(o => GymTimeZone.Find(o.TimeZoneId) is not null, "Gym:TimeZoneId is not a known time zone.")
+                .ValidateOnStart();
+            services.AddSingleton<GymTimeZone>();
+
+            // Excel / CSV limits ("Exports").
+            services.AddOptions<ExportOptions>()
+                .BindConfiguration(ExportOptions.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+            // Emails: the "post office" (SMTP via MailKit) + link settings for the email content.
             services.AddSingleton<IEmailSender, SmtpEmailSender>();
 
             services.AddOptions<SmtpOptions>()

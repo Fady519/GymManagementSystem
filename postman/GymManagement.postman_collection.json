@@ -696,6 +696,32 @@
         {
           "name": "Cancel my booking",
           "request": { "method": "POST", "url": "{{baseUrl}}/api/me/bookings/{{bookingId}}/cancel" }
+        },
+        {
+          "name": "My QR code (saves it as checkInCode)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 200) { pm.environment.set('checkInCode', pm.response.json().code); }"]
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/me/qr" }
+        },
+        {
+          "name": "New QR code (the old one stops working)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["if (pm.response.code === 200) { pm.environment.set('checkInCode', pm.response.json().code); }"]
+              }
+            }
+          ],
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/me/qr/regenerate" }
         }
       ]
     },
@@ -717,6 +743,78 @@
         {
           "name": "Mark attended (only while my session is running)",
           "request": { "method": "POST", "url": "{{baseUrl}}/api/trainer/bookings/{{bookingId}}/attend" }
+        }
+      ]
+    },
+    {
+      "name": "Check-ins (front desk) - log in as Admin first",
+      "item": [
+        {
+          "name": "Scan a member QR code (200 = Allowed or Denied, 404 = unknown code)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{checkInCode}}\"\n}" },
+            "url": "{{baseUrl}}/api/check-ins"
+          }
+        },
+        {
+          "name": "Check-in log (from/to are gym-local dates)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/check-ins?from=2026-10-01&to=2026-10-31&result=Allowed&page=1&pageSize=20" }
+        }
+      ]
+    },
+    {
+      "name": "Analytics (dashboard) - log in as Admin first",
+      "item": [
+        {
+          "name": "Summary cards",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/summary" }
+        },
+        {
+          "name": "Revenue per day",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/revenue?period=Daily&from=2026-10-01&to=2026-10-31" }
+        },
+        {
+          "name": "Revenue per month",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/revenue?period=Monthly&from=2026-01-01&to=2026-12-31" }
+        },
+        {
+          "name": "Members growth (last N months)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/members-growth?months=12" }
+        },
+        {
+          "name": "Session attendance rate",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/attendance-rate?from=2026-10-01&to=2026-10-31" }
+        },
+        {
+          "name": "Active memberships per plan",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/plans-distribution" }
+        },
+        {
+          "name": "Top categories by bookings",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/top-categories?take=5" }
+        }
+      ]
+    },
+    {
+      "name": "Exports (use Send and Download) - log in as Admin first",
+      "item": [
+        {
+          "name": "Members to Excel",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/exports/members?format=xlsx" }
+        },
+        {
+          "name": "Memberships to Excel",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/exports/memberships?format=xlsx" }
+        },
+        {
+          "name": "Payments to CSV",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/exports/payments?format=csv" }
+        },
+        {
+          "name": "Check-ins to Excel",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/exports/check-ins?format=xlsx" }
         }
       ]
     }

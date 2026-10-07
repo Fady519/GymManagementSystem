@@ -7,6 +7,9 @@ namespace GymManagementBLL.BusinessServices.Interfaces
     {
         Task<PagedResult<MembershipResponse>> GetAllAsync(MembershipQuery query, CancellationToken ct = default);
 
+        /// <summary>Same filters and order as the list, all rows (for Excel/CSV), or Export.TooManyRows. Paging is ignored.</summary>
+        Task<Result<IReadOnlyList<MembershipResponse>>> GetForExportAsync(MembershipQuery query, int maxRows, CancellationToken ct = default);
+
         Task<Result<MembershipDetailsResponse>> GetByIdAsync(int id, CancellationToken ct = default);
 
         /// <summary>Running memberships that end soon and have no renewal waiting (for follow-up calls).</summary>

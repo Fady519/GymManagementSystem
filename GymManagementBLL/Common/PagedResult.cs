@@ -1,3 +1,4 @@
+using GymManagementBLL.Errors;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymManagementBLL.Common
@@ -28,6 +29,22 @@ namespace GymManagementBLL.Common
             var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
             return new PagedResult<T>(items, page, pageSize, totalCount);
+        }
+
+        /// <summary>
+        /// All rows of an (ordered) list for an Excel/CSV export, or an error when there are more than
+        /// <paramref name="maxRows"/>. One SQL query: it asks for maxRows + 1 rows; getting the extra
+        /// row means "too many" (no separate COUNT needed).
+        /// </summary>
+        public static async Task<Result<IReadOnlyList<T>>> ToExportListAsync<T>(
+            this IQueryable<T> query, int maxRows, CancellationToken ct = default)
+        {
+            var rows = await query.Take(maxRows + 1).ToListAsync(ct);
+
+            if (rows.Count > maxRows)
+                return ExportErrors.TooManyRows(maxRows);
+
+            return Result.Success<IReadOnlyList<T>>(rows);
         }
     }
 }
