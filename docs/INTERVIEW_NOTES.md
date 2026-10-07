@@ -511,3 +511,80 @@
 كل الأوقات في الداتا بيز بالـ UTC، والـ API بيقبل الوقت بالـ UTC بس (لازم ينتهي بـ `Z`). الفرونت إند بيحوّل للتوقيت المحلي وهو بيعرض. كده "6 مساءً" معناها نفس الحاجة على أي سيرفر وأي متصفح.
 
 > All times are stored and accepted in UTC, and the frontend converts them for display. That avoids bugs when the server and the users are in different time zones, or when daylight saving time changes.
+
+---
+
+# B6: Memberships, Payments and Freeze
+
+## 47. One `SaveChanges` = One Transaction (C1 fix)
+
+في الكود القديم الاشتراك كان بيتسجل لوحده، ولو حصل خطأ بعده مكانش فيه دفع مسجّل. دلوقتي الاشتراك والدفع بيتضافوا الاتنين، وبعدين `SaveChangesAsync` **مرة واحدة**. EF بيعمل الـ SQL كله جوه Transaction واحدة: يا الاتنين يتسجلوا، يا ولا واحد. محتاجين `BeginTransaction` بس لما يكون فيه **أكتر من** `SaveChanges`.
+
+> EF Core wraps a single SaveChanges call in a database transaction. I add the membership and its payment to the context and save once, so both rows are written or neither is. An explicit transaction is only needed when one operation calls SaveChanges more than once.
+
+---
+
+## 48. Soft Cancel Instead of Delete (H12 fix)
+
+الكود القديم كان بيمسح الاشتراك من الداتا بيز، وكمان بلينك `GET`. دلوقتي الإلغاء `POST /api/memberships/{id}/cancel`، وبيغيّر الحالة لـ `Cancelled` ويسجل `CancelledAt` والسبب. لو فيه فلوس راجعة بتتسجل كـ Payment نوعه `Refund`. كده التقارير والفلوس فاضلة صح.
+
+**ليه مش `GET`؟** الـ `GET` المفروض ما يغيرش حاجة. المتصفح أو أي preview للينك ممكن يفتحه لوحده.
+
+> Money history must never disappear, so cancelling only changes the status and a refund is a new payment row. State changes use POST because GET must be safe: browsers, crawlers and link previews can call a GET by themselves.
+
+---
+
+## 49. Stored Status vs Calculated State
+
+في الداتا بيز بنخزن بس الحالات اللي بتحصل بفعل حد: `Active / Frozen / Cancelled`. أما `Expired` و `Upcoming` فبنحسبهم من التواريخ في الـ SQL (`CASE`). يعني مفيش Background Job يغيّر الحالة كل يوم، ومستحيل الحالة تبقى غلط.
+
+وحتى التجميد بيخلص لوحده: لو `FrozenUntil` عدى، الاشتراك بيتحسب `Active`.
+
+> I store only states caused by an action. "Expired" and "Upcoming" are calculated from the dates inside the query, so there is no nightly job and the state can't be out of date. A freeze also ends by itself when FrozenUntil passes.
+
+---
+
+## 50. Early Renewal (Queued Membership)
+
+لو العضو جدد قبل ما اشتراكه يخلص، الاشتراك الجديد بيبدأ **من يوم انتهاء القديم** (حالته `Upcoming`)، فمش بيخسر ولا يوم. ولو كان خلص، الجديد بيبدأ النهارده. ومسموح بتجديد واحد بس "مستني".
+
+القواعد اللي بتحمي ده:
+- مينفعش تشتري اشتراك جديد وعندك واحد شغال (`Membership.AlreadyHasMembership`). استخدم التجديد.
+- مينفعش تلغي الاشتراك الحالي وفيه تجديد مستني بعده (`Membership.HasQueuedRenewal`)، عشان ما يبقاش فيه فراغ.
+
+> An early renewal creates a new membership that starts exactly when the current one ends, so the member doesn't lose paid days. Only one renewal can wait, and the current membership can't be cancelled while a renewal waits after it.
+
+---
+
+## 51. Snapshot of the Plan
+
+الاشتراك بيحتفظ بنسخة من اسم الخطة وسعرها ومدتها وقت الشراء (زي الفاتورة). لو الأدمن غيّر سعر الخطة بكره، الاشتراكات القديمة والإيرادات ما بتتغيرش. ولما العضو يجدد على خطة تانية (ترقية)، بنعمل نسخة من الخطة الجديدة.
+
+> A membership copies the plan's name, price and duration at purchase time, like an invoice. Changing a plan later only affects new memberships, so old revenue numbers stay correct.
+
+---
+
+## 52. Freeze Rules
+
+- التجميد بيبدأ النهارده، من 3 لـ 30 يوم، والإجمالي للاشتراك ما يعديش 30 يوم (القيم في `MembershipRules`).
+- `EndDate` بيزيد بعدد الأيام، فالعضو مش بيخسر أيام. ولو فيه تجديد مستني، بيتزحزح هو كمان بنفس الأيام.
+- الحجوزات اللي بتقع جوه فترة التجميد بتتلغي، ومينفعش يحجز فيها (`Booking.NoValidMembership`).
+- **فك التجميد بدري:** اليوم اللي بدأ بيتحسب مستخدم (تقريب لفوق)، والباقي بيتخصم من `EndDate`.
+
+> Freezing moves the end date (and a waiting renewal) forward by the frozen days and cancels bookings inside the freeze. Unfreezing early gives back the unused days; a started day counts as used. All limits come from configuration.
+
+---
+
+## 53. Who Received the Money?
+
+كل دفعة فيها `ReceivedByUserId`، ودي رقم حساب الموظف اللي عامل Login (من الـ token، مش من الـ body). ده مهم لمراجعة الخزنة آخر اليوم.
+
+> Every payment stores the staff account that received it, taken from the access token, so the cash can be audited per employee.
+
+---
+
+## 54. `IgnoreQueryFilters` for History
+
+الأعضاء عندهم Soft Delete (Global Query Filter). لو عضو اتمسح، مدفوعاته واشتراكاته القديمة لسه لازم تظهر في التقارير، عشان كده قوايم الاشتراكات والمدفوعات بتستخدم `IgnoreQueryFilters()`.
+
+> Soft-deleted members are hidden by a global query filter, but their old payments are still revenue. The payments and memberships lists ignore the filter so reports stay complete.

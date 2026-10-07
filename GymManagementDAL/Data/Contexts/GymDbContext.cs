@@ -31,6 +31,8 @@ namespace GymManagementDAL.Data.Contexts
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<Membership> Memberships => Set<Membership>();
         public DbSet<Booking> Bookings => Set<Booking>();
+        public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<MembershipFreeze> MembershipFreezes => Set<MembershipFreeze>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

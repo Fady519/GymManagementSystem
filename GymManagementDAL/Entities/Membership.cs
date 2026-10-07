@@ -28,5 +28,29 @@ namespace GymManagementDAL.Entities
         public int DurationDays { get; set; }
 
         #endregion
+
+        #region Cancellation (H12 fix: cancelling keeps the row instead of deleting it)
+
+        /// <summary>UTC.</summary>
+        public DateTime? CancelledAt { get; set; }
+        public string? CancellationReason { get; set; }
+
+        #endregion
+
+        #region Freeze
+
+        /// <summary>
+        /// UTC. Set while Status = Frozen. When this time passes the freeze is over by itself
+        /// (no background job): the membership counts as Active again.
+        /// </summary>
+        public DateTime? FrozenUntil { get; set; }
+
+        /// <summary>All freeze days used by this membership (there is a maximum in appsettings).</summary>
+        public int TotalFrozenDays { get; set; }
+
+        #endregion
+
+        public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public ICollection<MembershipFreeze> Freezes { get; set; } = new List<MembershipFreeze>();
     }
 }

@@ -24,6 +24,23 @@ namespace GymManagement.Tests.Infrastructure
             return $"{prefix} {new string(letters.ToArray())}";
         }
 
+        /// <summary>A new plan with a known price and duration (fresh plan = tests don't affect each other).</summary>
+        public static async Task<Plan> AddPlanAsync(GymDbContext db, decimal price = 300, int durationDays = 30, bool isActive = true)
+        {
+            var plan = new Plan
+            {
+                Name = UniqueName("Plan"),
+                Description = "Test plan",
+                DurationDays = durationDays,
+                Price = price,
+                IsActive = isActive,
+            };
+
+            db.Plans.Add(plan);
+            await db.SaveChangesAsync();
+            return plan;
+        }
+
         public static async Task<Member> AddMemberAsync(GymDbContext db, string? name = null, bool withDetails = false)
         {
             var member = new Member
@@ -116,6 +133,7 @@ namespace GymManagement.Tests.Infrastructure
                 StartDate = startUtc,
                 EndDate = endUtc,
                 Status = status,
+                FrozenUntil = status == MembershipStatus.Frozen ? DateTime.UtcNow.AddDays(5) : null,
                 PlanName = plan.Name,
                 PricePaid = plan.Price,
                 DurationDays = plan.DurationDays,
@@ -140,6 +158,7 @@ namespace GymManagement.Tests.Infrastructure
                 StartDate = endDateUtc.AddDays(-plan.DurationDays),
                 EndDate = endDateUtc,
                 Status = status,
+                FrozenUntil = status == MembershipStatus.Frozen ? DateTime.UtcNow.AddDays(5) : null,
                 PlanName = plan.Name,
                 PricePaid = plan.Price,
                 DurationDays = plan.DurationDays,
