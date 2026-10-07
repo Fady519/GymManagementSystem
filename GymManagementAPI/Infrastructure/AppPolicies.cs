@@ -18,6 +18,9 @@ namespace GymManagementAPI.Infrastructure
         /// <summary>Members (member portal).</summary>
         public const string MemberAccess = nameof(MemberAccess);
 
+        /// <summary>SuperAdmin, Admin (book for any member) or Member (book for himself).</summary>
+        public const string BookingAccess = nameof(BookingAccess);
+
         /// <summary>Rate limiting policy for login / register / refresh (protects against password guessing).</summary>
         public const string AuthRateLimit = "auth";
     }

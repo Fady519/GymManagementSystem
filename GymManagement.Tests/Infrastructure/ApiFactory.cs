@@ -139,6 +139,36 @@ namespace GymManagement.Tests.Infrastructure
             return client;
         }
 
+        /// <summary>A client logged in as the given member (the token carries their memberId).</summary>
+        public Task<HttpClient> CreateClientForMemberAsync(int memberId)
+            => CreateLinkedClientAsync(AppRoles.Member, async (db, userId) =>
+            {
+                var member = await db.Members.FirstAsync(m => m.Id == memberId);
+                member.UserId = userId;
+            });
+
+        /// <summary>A client logged in as the given trainer (the token carries their trainerId).</summary>
+        public Task<HttpClient> CreateClientForTrainerAsync(int trainerId)
+            => CreateLinkedClientAsync(AppRoles.Trainer, async (db, userId) =>
+            {
+                var trainer = await db.Trainers.FirstAsync(t => t.Id == trainerId);
+                trainer.UserId = userId;
+            });
+
+        private async Task<HttpClient> CreateLinkedClientAsync(string role, Func<GymDbContext, int, Task> link)
+        {
+            var email = await CreateUserAsync(role);
+
+            await WithDbAsync(async db =>
+            {
+                var userId = await db.Users.Where(u => u.Email == email).Select(u => u.Id).FirstAsync();
+                await link(db, userId);
+                await db.SaveChangesAsync();
+            });
+
+            return WithToken(CreateHttpsClient(), (await LoginAsync(email)).AccessToken);
+        }
+
         Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
     }
 

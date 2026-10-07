@@ -33,5 +33,7 @@ namespace GymManagementDAL.UnitOfWorkPattern
 
         public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default)
             => _dbContext.Database.BeginTransactionAsync(ct);
+
+        public void DiscardChanges() => _dbContext.ChangeTracker.Clear();
     }
 }

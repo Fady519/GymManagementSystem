@@ -1,4 +1,5 @@
 using GymManagementBLL.Common;
+using GymManagementDAL.Entities.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -13,6 +14,15 @@ namespace GymManagementAPI.Controllers
     {
         /// <summary>Id of the logged-in user, read from the "sub" claim of the access token.</summary>
         protected int CurrentUserId => int.Parse(User.FindFirstValue(AppClaims.UserId)!);
+
+        /// <summary>Who is calling (admin? which member / trainer?), read from the access token.</summary>
+        protected CurrentUser CurrentUser => new(
+            IsAdmin: User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Admin),
+            MemberId: ReadIntClaim(AppClaims.MemberId),
+            TrainerId: ReadIntClaim(AppClaims.TrainerId));
+
+        private int? ReadIntClaim(string type)
+            => int.TryParse(User.FindFirstValue(type), out var value) ? value : null;
 
         protected ObjectResult Problem(Error error)
         {

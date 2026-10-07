@@ -3,6 +3,7 @@ using GymManagementAPI.Infrastructure;
 using GymManagementBLL.Abstractions;
 using GymManagementBLL.BusinessServices.Implementation;
 using GymManagementBLL.BusinessServices.Interfaces;
+using GymManagementBLL.Options;
 using GymManagementBLL.Validators.Plans;
 using GymManagementDAL.Data.Contexts;
 using GymManagementDAL.Data.SeedData;
@@ -50,6 +51,14 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<ITrainerService, TrainerService>();
             services.AddScoped<IMemberService, MemberService>();
+            services.AddScoped<ISessionService, SessionService>();
+            services.AddScoped<IBookingService, BookingService>();
+
+            // Session / booking rules from appsettings ("SessionRules"); invalid values stop the app at startup.
+            services.AddOptions<SessionRulesOptions>()
+                .BindConfiguration(SessionRulesOptions.SectionName)
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
 
             // Uploaded files go to a local folder; the path is read lazily so tests can change it.
             services.AddSingleton<IFileStorage>(sp => new LocalFileStorage(LocalFileStorage.ResolveRootPath(

@@ -419,3 +419,95 @@
 **دلوقتي:** بنتشيك قبل الحفظ: "فيه عضو **تاني** (`Id != id`) بنفس الإيميل أو التليفون؟" لو آه، بنرجع `409 Member.EmailTaken` أو `Member.PhoneTaken`. والشرط `Id != id` هو اللي بيخلي العضو يحفظ بياناته من غير ما يتعارض مع نفسه. وفيه test لكل حالة.
 
 > On update, the uniqueness check excludes the record itself (`Id != id`). Otherwise saving a member without changing the email would conflict with itself. Duplicates now return a clear 409 with a code, and there's a test for both cases.
+
+---
+
+# B5 — Sessions & Bookings
+
+## 39. Last Seat Race — Optimistic Concurrency (`RowVersion`)
+
+**المشكلة:** فاضل مكان واحد في الحصة، واتنين داسوا "احجز" في نفس اللحظة. الاتنين قروا "فيه مكان"، فالاتنين اتحجزوا والحصة عدّت سعتها.
+
+**الحل:**
+1. جدول `Sessions` فيه عمود `RowVersion`، وSQL Server بيغيّره مع كل تعديل.
+2. مع كل حجز بنعدّل الحصة كمان (`session.UpdatedAt = now`)، فـ EF بيبعت: `UPDATE Sessions ... WHERE Id = @id AND RowVersion = @old`.
+3. الأول بيعدّي. التاني مش بيلاقي الصف بالـ version القديمة، فـ EF بيرمي `DbUpdateConcurrencyException`، والحجز بتاعه بيتلغي.
+4. بنعمل **retry**: نقرا تاني، نلاقيها ممتلية، فنرجع `409 Session.Full`.
+
+**التست:** حجزين في نفس اللحظة (`Task.WhenAll`) على آخر مكان، وواحد بس بينجح.
+
+> Every booking also updates the session row, so EF adds `WHERE RowVersion = @old`. If two requests race, the second one updates 0 rows, EF throws, its insert is rolled back, and I retry: re-read, re-check, and now it's full. That's optimistic concurrency: no locks while reading, the conflict is detected at save time.
+
+---
+
+## 40. Time Overlap Check (H13)
+
+**القاعدة:** فترتين بيتداخلوا لو كل واحدة بتبدأ قبل ما التانية تخلص:
+
+`a.Start < b.End && b.Start < a.End`
+
+بنستخدمها في حاجتين: المدرب مايبقاش عنده حصتين في نفس الوقت (`Session.TrainerBusy`)، والعضو مايحجزش حصتين متداخلين (`Booking.MemberBusy`). حصة بتبدأ بالظبط وقت ما التانية بتخلص مش تداخل.
+
+> Two ranges overlap when each starts before the other ends. One condition covers every case, and it runs in SQL. Back-to-back sessions are allowed.
+
+---
+
+## 41. N+1 Problem (H9)
+
+**المشكلة القديمة:** query لجلب الحصص، وبعدين query لكل حصة عشان نعد الحجوزات. 50 حصة = 51 query.
+
+**دلوقتي:** `Select` واحد فيه `s.Bookings.Count(...)`، وEF بيحوّله لـ subquery جوه نفس الـ SQL. صفحة كاملة = query واحد.
+
+> N+1 means one query for the list plus one per row. I project to a DTO and count inside the `Select`, so EF generates a single SQL query for the whole page.
+
+---
+
+## 42. Calculated Session State
+
+الحالة (Upcoming / Ongoing / Completed / Cancelled) مش متخزنة. اللي متخزن بس `Scheduled` أو `Cancelled`، والباقي بيتحسب من الوقت الحالي بالـ UTC. نفس فكرة حالة العضو في #31.
+
+> Only the result of an action is stored (Scheduled or Cancelled). Whether a session is upcoming, running or finished depends on the clock, so it's calculated and can never be out of date.
+
+---
+
+## 43. Business Rules Fixed in B5
+
+| الكود القديم | المشكلة | دلوقتي |
+|---|---|---|
+| H4 | شرط السعة كان `== 0` | `>=` + RowVersion |
+| H5 | "الحضور للحصة الجارية بس" كان تعليق بس | متطبق: `409 Booking.AttendanceNotOpen` |
+| H7 | السعة كانت بتقبل 0 | من 1 لـ 25 (من الـ config) |
+| H8 | قاعدة الحذف كانت معكوسة وبتمسح الحصص القديمة | الحذف للحصص الجاية اللي مفيهاش حجوزات بس، والقديمة read-only |
+| C7 | قايمة "الأعضاء المتاحين" كانت بتقارن بـ Id دايماً 0 | بتستبعد اللي حاجز فعلاً، وبتعرض اللي اشتراكه صالح يوم الحصة بس |
+
+> The old app had these rules written in comments but not in code. Now each one returns a clear error code, and each one has a test.
+
+---
+
+## 44. Who Can Do What (Resource-based Authorization)
+
+الـ policy بتقول **مين يقدر يوصل للـ endpoint** (مثلاً Trainer). بس "المدرب ده هو مدرب الحصة دي؟" ده سؤال عن **البيانات نفسها**، فبنتشيكه في الـ service:
+
+- العضو بيحجز لنفسه بس: الـ memberId بييجي من التوكن، مش من الـ request.
+- العضو يلغي حجزه هو بس (`403 Booking.NotYours`).
+- الحضور: الأدمن أو مدرب الحصة نفسها بس (`403 Session.NotYours`).
+
+**ملحوظة:** `[Authorize]` على الـ action **بيتضاف** على اللي على الـ controller (لازم الاتنين يعدّوا)، عشان كده حطيت الـ policy على كل action لوحده في `SessionsController`.
+
+> Policies answer "which roles can call this endpoint". Ownership ("is this your booking?") depends on the data, so the service checks it using the ids from the token. A member's id always comes from the token, never from the request body.
+
+---
+
+## 45. Settings in Config (`IOptions` + `ValidateOnStart`)
+
+السعة القصوى ومدة الحصة وموعد الإلغاء (ساعتين) متخزنين في `appsettings.json` في `SessionRules`. ولو حد كتب قيمة غلط، التطبيق مش بيشتغل أصلاً (`ValidateOnStart`) بدل ما يشتغل غلط.
+
+> Business values that may change live in configuration, bound to a typed options class with validation. Invalid values stop the app at startup instead of causing wrong behaviour later.
+
+---
+
+## 46. UTC Everywhere
+
+كل الأوقات في الداتا بيز بالـ UTC، والـ API بيقبل الوقت بالـ UTC بس (لازم ينتهي بـ `Z`). الفرونت إند بيحوّل للتوقيت المحلي وهو بيعرض. كده "6 مساءً" معناها نفس الحاجة على أي سيرفر وأي متصفح.
+
+> All times are stored and accepted in UTC, and the frontend converts them for display. That avoids bugs when the server and the users are in different time zones, or when daylight saving time changes.

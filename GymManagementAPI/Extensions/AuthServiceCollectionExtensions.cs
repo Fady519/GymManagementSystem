@@ -78,7 +78,8 @@ namespace GymManagementAPI.Extensions
                 .AddPolicy(AppPolicies.SuperAdminOnly, p => p.RequireRole(AppRoles.SuperAdmin))
                 .AddPolicy(AppPolicies.AdminAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin))
                 .AddPolicy(AppPolicies.TrainerAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Trainer))
-                .AddPolicy(AppPolicies.MemberAccess, p => p.RequireRole(AppRoles.Member));
+                .AddPolicy(AppPolicies.MemberAccess, p => p.RequireRole(AppRoles.Member))
+                .AddPolicy(AppPolicies.BookingAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Member));
 
             // ---- Rate limiting: max N login/register/refresh calls per minute per IP ----
             services.AddRateLimiter(options =>
