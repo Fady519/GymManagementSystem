@@ -791,3 +791,110 @@
 
 > The paged list and the export share one private method that builds the filtered query, so the downloaded file always matches what the admin sees, and a new filter works in both places.
 
+---
+
+# B9: Hardening and Backend Delivery
+
+## 73. Security Review as Code (Endpoint Allowlist Test)
+
+بدل ما نراجع الـ Controllers بالعين، عملنا تست بيقرا **كل الـ Endpoints** من `EndpointDataSource` (90 endpoint) ويتأكد إن:
+- أي Endpoint من غير تسجيل دخول (AllowAnonymous) لازم يكون في **قائمة مسموحة** مكتوبة في التست (الكتالوج العام، Login، Register، Reset...، و`/health`).
+- أي Endpoint متاح لأي حد مسجل دخول (من غير Policy) لازم يكون في قائمة تانية صغيرة (`GET /api/auth/me` و`change-password`).
+- Endpoints الـ Auth الحساسة عليها Rate Limit.
+
+فلو حد ضاف Endpoint جديد ونسي الـ `[Authorize(Policy = ...)]`، التست بيفشل فوراً. وكمان عندنا **Fallback Policy** بتقفل أي حاجة مش متعلم عليها. والتست بيطلع ملف `docs/ENDPOINTS.md` فيه كل Endpoint ومين يقدر يستخدمه.
+
+> Instead of reviewing controllers by eye, a test reads every endpoint from EndpointDataSource. Anonymous endpoints and "any logged-in user" endpoints must be in explicit allowlists, and sensitive auth endpoints must be rate limited. A new endpoint without a policy fails the build. The same test generates docs/ENDPOINTS.md, a table of every route and who can call it.
+
+---
+
+## 74. Security Headers (and Why OnStarting)
+
+عملنا Middleware بيضيف Headers لكل Response:
+- `X-Content-Type-Options: nosniff`: المتصفح ميخمنش نوع الملف (مهم للصور اللي بيرفعها الأعضاء).
+- `X-Frame-Options: DENY` و`frame-ancestors 'none'`: محدش يحط الـ API جوه iframe (Clickjacking).
+- `Referrer-Policy: no-referrer`.
+- `Content-Security-Policy: default-src 'none'`: الـ API بيرجع JSON بس، فمفيش سبب لأي Script. **ما عدا `/swagger`** لأن صفحته محتاجة Scripts وStyles.
+- `Cache-Control: no-store` على `/api`، عشان بيانات الأعضاء متتخزنش في Cache.
+- وشلنا Header الـ `Server: Kestrel` عشان منقولش للمهاجم إحنا شغالين على إيه.
+
+الـ Headers بتتضاف في `Response.OnStarting` مش قبل الـ `next()`، لأن الـ Exception Handler **بيمسح الـ Headers** لما يحصل Error. كده حتى الـ 500 عليها نفس الحماية، وفيه تست بيتأكد من ده.
+
+> A middleware adds nosniff, frame denial, no-referrer, a strict CSP (except on Swagger, which needs scripts) and no-store on API responses, and the Server header is removed. Headers are added in OnStarting because the exception handler clears headers, so even error responses are protected. Tests check all of this.
+
+---
+
+## 75. Swagger Shows the Real Security of Each Endpoint
+
+قبل كده كان فيه قفل 🔒 على **كل** Endpoint في Swagger، حتى Login. عملنا `AuthResponsesOperationFilter` بيبص على كل Endpoint ويضيف:
+- القفل (Bearer) بس لو الـ Endpoint محتاج تسجيل دخول.
+- Response `401` لو محتاج تسجيل دخول، و`403` لو عليه Policy (يعني محتاج Role معين)، و`429` لو عليه Rate Limit.
+
+فاللي بيقرا الـ Docs (أو بيعمل Frontend) يعرف من غير ما يجرب: محتاج Token؟ ممكن ياخد 403؟
+
+> An operation filter marks only protected endpoints with the Bearer lock and documents 401, 403 (when a policy applies) and 429 (when rate limited), so the docs tell the truth about each endpoint.
+
+---
+
+## 76. The OpenAPI Contract Snapshot
+
+حفظنا `docs/openapi.json` في الريبو، وفيه تست بيجيب الـ Swagger JSON من الـ API ويقارنه بالملف. لو حد غيّر شكل Response أو اسم Field من غير قصد، التست بيفشل ويوريه الفرق. ولو التغيير مقصود، بيعمل Regenerate للملف ويبان في الـ Git Diff.
+
+ده مهم للـ Frontend: الـ Next.js هيولّد الـ TypeScript Types من الملف ده، فالعقد بين الاتنين ثابت ومتراجع.
+
+> docs/openapi.json is committed and a test compares it with the live Swagger document, so any accidental contract change fails the build and intended changes show up in the diff. The Next.js frontend will generate its TypeScript types from this file.
+
+---
+
+## 77. Performance Review: Indexes That Match the Queries
+
+راجعنا كل Query في الـ Services. مكانش فيه N+1 ولا تحميل جداول كاملة في الميموري. اللي اتصلح:
+- **Indexes جديدة** على الأعمدة اللي التقارير والفلاتر بتستخدمها: Bookings `(SessionId, Status)`، CheckIns `CheckedInAt` و`(MemberId, CheckedInAt)`، Memberships `EndDate` و`CreatedAt`.
+- معلومة مهمة: الـ **Filtered Index** (زي `WHERE Status = 'Booked'`) مينفعش SQL Server يستخدمه لـ Query مش فيها نفس الشرط. فكان لازم Index عادي للتقارير.
+- الـ Migration اتجربت على **نسخة** من الداتا الأول، وبعد Backup.
+- **Paging Tiebreaker:** لو بترتب بالاسم وفيه اسمين زي بعض، الترتيب مش مضمون، وممكن عضو يظهر في صفحتين أو ميظهرش خالص. فضفنا `.ThenBy(x => x.Id)`.
+- عدد "الاشتراكات اللي قربت تخلص" في الداشبورد بقى `Count` في SQL بدل ما نجيب الليستة ونعدها.
+
+حاجات بسيطة سبناها وموثقة: عدد الـ Round Trips في ملخص الداشبورد (~11)، والإيميلات بتتبعت جوه الـ Request.
+
+> A review found no N+1 queries or in-memory scans. We added indexes that match the report and filter queries (a filtered index can't serve a query without the same filter), tested the migration on a copy after a backup, added Id tiebreakers so paging is stable, and moved a dashboard count into SQL. Minor items, like about 11 round trips in the summary and inline emails, are documented.
+
+---
+
+## 78. The Demo Data Seed
+
+أمر `dotnet run -- --seed-demo` بيملا الداتابيز بداتا واقعية: 6 مدربين، 40 عضو، اشتراكات وتجديدات وإلغاء باسترداد وتجميد، 240 حصة، أكتر من 1300 حجز، وحوالي 950 Check-in.
+- **Idempotent:** لو اتشغل تاني بيقول "Demo data already exists" ومبيكررش حاجة.
+- **Transaction واحدة:** يا كله يتسجل يا ولا حاجة.
+- **`new Random(2026)`:** نفس الداتا كل مرة، فالتستات والـ Screenshots ثابتة.
+- **التواريخ نسبية لـ "النهارده"** (بتوقيت القاهرة)، فالداشبورد دايماً فيه داتا حديثة مهما شغلناه امتى.
+- **بيمشي على قواعد البيزنس:** مفيش حجز من غير اشتراك ساري، ومفيش اشتراكين متداخلين لنفس العضو. وفيه تست بيتأكد من القواعد دي على الداتا اللي اتولدت (والتست ده لقى فعلاً اشتراك متداخل واتصلح).
+- `CreatedAt` بقى بيتحط أوتوماتيك **بس لو فاضي**، عشان الـ Seed يقدر يعمل عضو "اشترك من 80 يوم".
+
+> A --seed-demo command creates realistic data. It is idempotent, runs in one transaction, uses a fixed random seed, and uses dates relative to today in Cairo time, so the dashboard always looks alive. It follows the business rules, and a test checks them on the generated data; that test caught an overlapping membership. CreatedAt is only auto-set when empty, so the seed can backdate rows.
+
+---
+
+## 79. Demo Accounts Without a Password in the Code
+
+فيه 3 حسابات: `admin@demo.gym` و`trainer@demo.gym` و`member@demo.gym`. الباسورد **مش مكتوب في الكود**، بييجي من `DemoData:Password` (User Secrets على الجهاز، و Environment Variable على السيرفر). لو مش موجود، الـ Seed بيرفض يشتغل. كده محدش يقدر يعرف الباسورد من الـ GitHub.
+
+> Three demo accounts (admin, trainer, member) get their password from configuration (user secrets locally, an environment variable in production). Without it the seed refuses to run, so the password never appears in the repository.
+
+---
+
+## 80. Postman Collection Tests, and the Bug They Found
+
+ضفنا Tests على مستوى الـ Collection كلها بتشتغل مع كل Request: مفيش 500، والـ Errors كلها `application/problem+json` فيها `status` و`title`، والـ Security Headers موجودة. والـ Collection بقت تتشغل كلها مرة واحدة بالـ **Runner** (أو `newman`) أكتر من مرة: إيميلات وتليفونات عشوائية، وتسجيل دخول بحسابات الديمو في أول كل Portal، والحذف في فولدر **Cleanup** في الآخر.
+
+الـ Runner لقى **Bug حقيقي**: رفع صورة من غير ملف كان بيرجع **500**. السبب: الـ `IFormFile photo` مكانش Nullable، وإحنا قافلين الـ Required التلقائي، فكان بيوصل `null` ويضرب. الحل: `IFormFile? photo` ونرجع 400 `File.Empty`، وضفنا تست عشان ميرجعش تاني.
+
+> Collection-level Postman tests check every response: no 500s, errors are problem+json, and the security headers are present. The collection now runs end to end, repeatedly, with newman. It found a real bug: uploading a photo without a file returned 500 because the parameter was non-nullable; it now returns 400 File.Empty, with a regression test.
+
+---
+
+## 81. Why Swagger Is On in Production
+
+ده مشروع Portfolio، فالـ Swagger هو **واجهة العرض** للي بيراجع الشغل: يقدر يشوف كل Endpoint ويجربه بحساب الديمو. ده آمن لأن الحماية في الـ Authorization نفسه (كل Endpoint عليه Policy ومتراجع بالتست)، مش في إخفاء الـ Docs. في شركة حقيقية ممكن نقفله أو نحطه ورا تسجيل دخول.
+
+> This is a portfolio project, so Swagger in production is the showcase where reviewers can try every endpoint with a demo account. It is safe because security comes from authorization on each endpoint, which is tested, not from hiding the docs. A real company might disable it or put it behind login.

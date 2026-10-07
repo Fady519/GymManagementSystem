@@ -36,6 +36,11 @@ namespace GymManagementDAL.Data.Configurations
 
             // The check-ins page and the reports filter by day.
             builder.HasIndex(x => x.Day);
+
+            // B9 performance review: the log is the fastest-growing table. It is shown newest first,
+            // and filtered by member (any result), which the filtered unique index above can't serve.
+            builder.HasIndex(x => x.CheckedInAt);
+            builder.HasIndex(x => new { x.MemberId, x.CheckedInAt });
         }
     }
 }

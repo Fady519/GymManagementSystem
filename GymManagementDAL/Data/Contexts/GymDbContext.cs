@@ -84,7 +84,7 @@ namespace GymManagementDAL.Data.Contexts
 
         /// <summary>
         /// Runs before every save:
-        /// 1. Added rows get CreatedAt, modified rows get UpdatedAt (always UTC).
+        /// 1. Added rows get CreatedAt (unless already set), modified rows get UpdatedAt (always UTC).
         /// 2. Deleting an <see cref="ISoftDeletable"/> row becomes an update that sets IsDeleted = true.
         /// </summary>
         private void ApplyAuditAndSoftDelete()
@@ -107,7 +107,10 @@ namespace GymManagementDAL.Data.Contexts
                 switch (entry.State)
                 {
                     case EntityState.Added:
-                        entity.CreatedAt = now;
+                        // Services never set CreatedAt, so they always get "now". Only the demo data seed
+                        // sets it on purpose, to create history in the past (e.g. members who joined 3 months ago).
+                        if (entity.CreatedAt == default)
+                            entity.CreatedAt = now;
                         break;
 
                     case EntityState.Modified:

@@ -63,7 +63,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
             var newMembersThisMonth = await members.CountAsync(m => m.CreatedAt >= monthStartUtc, ct);
 
             // Reuses the exact "expiring soon" rule of the memberships page (no second copy of the rule).
-            var expiringSoon = (await _membershipService.GetExpiringSoonAsync(new ExpiringSoonQuery(), ct)).Count;
+            var expiringSoon = await _membershipService.CountExpiringSoonAsync(ct);
 
             var revenueToday = await NetRevenueAsync(todayStartUtc, ct);
             var revenueThisMonth = await NetRevenueAsync(monthStartUtc, ct);

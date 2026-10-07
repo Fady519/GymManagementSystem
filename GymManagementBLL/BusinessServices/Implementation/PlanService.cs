@@ -27,7 +27,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 ? await _unitOfWork.GetRepository<Plan>().ListAsync(ct: ct)
                 : await _unitOfWork.GetRepository<Plan>().ListAsync(p => p.IsActive == isActive.Value, ct);
 
-            return plans.OrderBy(p => p.Price).Select(p => p.ToResponse()).ToList();
+            return plans.OrderBy(p => p.Price).ThenBy(p => p.Id).Select(p => p.ToResponse()).ToList();
         }
 
         public async Task<Result<PlanResponse>> GetByIdAsync(int id, CancellationToken ct = default)

@@ -41,6 +41,11 @@ namespace GymManagementDAL.Data.Configurations
 
             // "Does this member have an active membership?" is the most common query.
             builder.HasIndex(x => new { x.MemberId, x.EndDate });
+
+            // B9 performance review: "expiring soon" and the dashboard filter by EndDate for ALL members
+            // (EndDate is the 2nd column above, so that index can't help), and the list sorts by CreatedAt.
+            builder.HasIndex(x => x.EndDate);
+            builder.HasIndex(x => x.CreatedAt);
         }
     }
 }

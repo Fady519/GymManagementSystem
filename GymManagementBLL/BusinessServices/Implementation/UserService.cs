@@ -60,7 +60,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             // One query for the page (users + their role ids), instead of one extra query per user (N+1).
             var rows = await query
-                .OrderBy(u => u.Email)
+                .OrderBy(u => u.Email).ThenBy(u => u.Id)
                 .Select(u => new UserRow(u.Id, u.Email!, u.FullName, u.IsActive, u.MustChangePassword,
                     u.PasswordHash == null, u.LockoutEnd, u.CreatedAt, u.UserRoles.Select(ur => ur.RoleId).ToList()))
                 .ToPagedResultAsync(page, pageSize, ct);

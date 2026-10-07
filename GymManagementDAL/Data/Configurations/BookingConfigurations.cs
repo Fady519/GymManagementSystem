@@ -26,6 +26,10 @@ namespace GymManagementDAL.Data.Configurations
                 .HasFilter("[Status] <> 'Cancelled'");
 
             builder.HasIndex(x => x.MemberId);
+
+            // B9 performance review: the unique index above is filtered (not Cancelled), so SQL Server
+            // can't use it for "all bookings of a session" or "Status = Booked". This one can.
+            builder.HasIndex(x => new { x.SessionId, x.Status });
         }
     }
 }

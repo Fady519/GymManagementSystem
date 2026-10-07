@@ -363,6 +363,18 @@ namespace GymManagement.Tests.Members
         }
 
         [Fact]
+        public async Task UploadPhoto_WithoutTheFileField_Returns400_Not500()
+        {
+            // Found by the Postman Runner in B9: a form without the "photo" field crashed with a 500.
+            var member = await CreateMemberAsync();
+            var form = new MultipartFormDataContent { { new StringContent("hello"), "note" } };
+
+            var response = await _admin.PutAsync($"/api/members/{member.Id}/photo", form);
+
+            await AssertProblemAsync(response, HttpStatusCode.BadRequest, "File.Empty");
+        }
+
+        [Fact]
         public async Task DeletePhoto_RemovesIt()
         {
             var member = await CreateMemberAsync();

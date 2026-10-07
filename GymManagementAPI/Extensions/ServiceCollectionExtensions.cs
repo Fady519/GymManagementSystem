@@ -154,7 +154,9 @@ namespace GymManagementAPI.Extensions
                 {
                     Title = "Gym Management API",
                     Version = "v1",
-                    Description = "REST API for managing a gym: plans, members, trainers, sessions, bookings and memberships."
+                    Description = "REST API for managing a gym: plans, members, trainers, sessions, bookings, memberships and payments, "
+                        + "QR check-in, analytics and Excel/CSV exports, plus member and trainer portals. "
+                        + "Errors use RFC 9457 Problem Details with a machine-readable \"code\"."
                 });
 
                 var xmlFile = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
@@ -169,10 +171,10 @@ namespace GymManagementAPI.Extensions
                     BearerFormat = "JWT",
                     Description = "Paste the accessToken returned by POST /api/auth/login (without the word Bearer).",
                 });
-                options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
-                {
-                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
-                });
+
+                // The lock icon and the 401/403/429 responses are added per endpoint (not globally),
+                // so anonymous endpoints like login don't look protected.
+                options.OperationFilter<AuthResponsesOperationFilter>();
             });
 
             services.AddHealthChecks()
@@ -199,6 +201,27 @@ namespace GymManagementAPI.Extensions
                 config["SuperAdmin:FullName"] ?? "Super Admin");
 
             app.Logger.LogInformation("Identity seeding: {Result}", message);
+        }
+
+        /// <summary>
+        /// One-off command: dotnet run --project GymManagementAPI -- --seed-demo
+        /// Brings the database up to date, then adds ~3 months of demo data (see DemoDataSeeding).
+        /// </summary>
+        public static async Task SeedDemoDataAsync(this WebApplication app)
+        {
+            await app.MigrateAndSeedAsync();
+
+            await using var scope = app.Services.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+
+            var message = await DemoDataSeeding.SeedAsync(
+                services.GetRequiredService<GymDbContext>(),
+                services.GetRequiredService<UserManager<ApplicationUser>>(),
+                app.Configuration["DemoData:Password"],
+                services.GetRequiredService<GymTimeZone>().Zone,
+                services.GetRequiredService<IClock>().UtcNow);
+
+            app.Logger.LogInformation("Demo data: {Result}", message);
         }
     }
 }

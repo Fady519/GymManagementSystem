@@ -40,7 +40,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
             // Select runs in SQL (JOIN to Categories); only the needed columns are read.
             return await trainers
-                .OrderBy(t => t.Name)
+                .OrderBy(t => t.Name).ThenBy(t => t.Id) // Id: two trainers with the same name keep a stable page order
                 .Select(t => new TrainerResponse(
                     t.Id, t.Name, t.Email, t.Phone, t.DateOfBirth, t.Gender,
                     t.Address == null ? null : new DTOs.Common.AddressDto(t.Address.BuildingNumber, t.Address.Street, t.Address.City),
