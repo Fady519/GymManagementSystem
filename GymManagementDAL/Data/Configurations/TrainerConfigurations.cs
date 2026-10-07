@@ -13,6 +13,12 @@ namespace GymManagementDAL.Data.Configurations
         {
             base.Configure(builder);
 
+            // Restrict: a category that trainers use can't be hard-deleted.
+            builder.HasOne(x => x.Category)
+                .WithMany(c => c.Trainers)
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // One login account per trainer (created by an admin in B4).
             builder.HasIndex(x => x.UserId).IsUnique().HasFilter("[UserId] IS NOT NULL");
             builder.HasOne<ApplicationUser>()

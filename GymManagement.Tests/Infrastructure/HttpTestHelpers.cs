@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GymManagement.Tests.Infrastructure
 {
@@ -9,6 +10,16 @@ namespace GymManagement.Tests.Infrastructure
     public static class HttpTestHelpers
     {
         public const string RefreshCookieName = "gym_refresh";
+
+        /// <summary>Same JSON settings as the API (camelCase + enums as strings like "Male").</summary>
+        public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+        {
+            Converters = { new JsonStringEnumConverter() }
+        };
+
+        /// <summary>Reads the response body with the API's JSON settings.</summary>
+        public static async Task<T> ReadAsAsync<T>(this HttpResponseMessage response)
+            => (await response.Content.ReadFromJsonAsync<T>(Json))!;
 
         /// <summary>Returns "gym_refresh=value" from the Set-Cookie header, or null.</summary>
         public static string? GetRefreshCookie(HttpResponseMessage response)

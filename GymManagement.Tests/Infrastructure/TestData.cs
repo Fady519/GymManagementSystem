@@ -16,6 +16,13 @@ namespace GymManagement.Tests.Infrastructure
 
         public static string UniquePhone() => $"010{Random.Shared.Next(10_000_000, 99_999_999)}";
 
+        /// <summary>A unique name made of letters only (person names can't contain digits).</summary>
+        public static string UniquePersonName(string prefix = "Test")
+        {
+            var letters = Guid.NewGuid().ToString("N")[..10].Select(c => (char)('a' + Convert.ToInt32(c.ToString(), 16)));
+            return $"{prefix} {new string(letters.ToArray())}";
+        }
+
         public static async Task<Member> AddMemberAsync(GymDbContext db, string? name = null, bool withDetails = false)
         {
             var member = new Member
@@ -38,7 +45,7 @@ namespace GymManagement.Tests.Infrastructure
             return member;
         }
 
-        public static async Task<Trainer> AddTrainerAsync(GymDbContext db)
+        public static async Task<Trainer> AddTrainerAsync(GymDbContext db, int? categoryId = null)
         {
             var trainer = new Trainer
             {
@@ -47,7 +54,7 @@ namespace GymManagement.Tests.Infrastructure
                 Phone = UniquePhone(),
                 DateOfBirth = new DateOnly(1990, 1, 1),
                 Gender = Gender.Female,
-                Specialities = Specialities.Yoga,
+                CategoryId = categoryId ?? db.Categories.Select(c => c.Id).First(),
             };
 
             db.Trainers.Add(trainer);
@@ -55,9 +62,8 @@ namespace GymManagement.Tests.Infrastructure
             return trainer;
         }
 
-        public static async Task<Session> AddSessionAsync(GymDbContext db, int trainerId)
+        public static async Task<Session> AddSessionAsync(GymDbContext db, int trainerId, int? categoryId = null)
         {
-            var categoryId = db.Categories.Select(c => c.Id).First();
             var start = DateTime.UtcNow.AddDays(3);
 
             var session = new Session
@@ -66,7 +72,7 @@ namespace GymManagement.Tests.Infrastructure
                 Capacity = 10,
                 StartDate = start,
                 EndDate = start.AddHours(1),
-                CategoryId = categoryId,
+                CategoryId = categoryId ?? db.Categories.Select(c => c.Id).First(),
                 TrainerId = trainerId,
             };
 
@@ -75,11 +81,23 @@ namespace GymManagement.Tests.Infrastructure
             return session;
         }
 
+        /// <summary>Books the member into a new upcoming session.</summary>
+        public static async Task<Booking> AddUpcomingBookingAsync(GymDbContext db, int memberId)
+        {
+            var trainer = await AddTrainerAsync(db);
+            var session = await AddSessionAsync(db, trainer.Id);
+
+            var booking = new Booking { MemberId = memberId, SessionId = session.Id };
+            db.Bookings.Add(booking);
+            await db.SaveChangesAsync();
+            return booking;
+        }
+
         /// <summary>Creates a member and a membership on the given plan.</summary>
         public static async Task<Membership> AddMembershipAsync(GymDbContext db, int planId, DateTime endDateUtc,
-            MembershipStatus status = MembershipStatus.Active)
+            MembershipStatus status = MembershipStatus.Active, string? memberName = null)
         {
-            var member = await AddMemberAsync(db);
+            var member = await AddMemberAsync(db, memberName);
             var plan = await db.Plans.FindAsync(planId) ?? throw new InvalidOperationException("Plan not found");
 
             var membership = new Membership

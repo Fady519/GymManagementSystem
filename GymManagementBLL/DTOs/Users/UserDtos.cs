@@ -19,4 +19,7 @@ namespace GymManagementBLL.DTOs.Users
     public sealed record CreatedUserResponse(UserResponse User, string TemporaryPassword);
 
     public sealed record SetUserStatusRequest(bool IsActive);
+
+    /// <summary>Result of creating an account with a temporary password (used inside other services).</summary>
+    public sealed record CreatedAccount(int UserId, string TemporaryPassword);
 }

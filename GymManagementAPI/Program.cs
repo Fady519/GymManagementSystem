@@ -1,5 +1,6 @@
 using GymManagementAPI.Extensions;
 using GymManagementAPI.Infrastructure;
+using Microsoft.Extensions.FileProviders;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,17 @@ else
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+
+// Uploaded photos: /uploads/members/{guid}.jpg is read straight from the uploads folder.
+var uploadsPath = LocalFileStorage.ResolveRootPath(app.Configuration, app.Environment);
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = LocalFileStorage.RequestPath,
+    // The browser must trust our Content-Type (image/jpeg...), never guess it from the bytes.
+    OnPrepareResponse = context => context.Context.Response.Headers.XContentTypeOptions = "nosniff",
+});
 
 app.UseAuthentication();   // who are you? (reads the JWT)
 app.UseAuthorization();    // are you allowed? (roles / policies)

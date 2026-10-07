@@ -82,33 +82,17 @@ namespace GymManagementBLL.BusinessServices.Implementation
 
         public async Task<Result<CreatedUserResponse>> CreateAdminAsync(CreateAdminRequest request, CancellationToken ct = default)
         {
-            var email = request.Email.Trim().ToLowerInvariant();
-
-            if (await _userManager.FindByEmailAsync(email) is not null)
-                return UserErrors.EmailTaken;
-
-            var temporaryPassword = TemporaryPassword.Generate();
-
             // Create the user + give the role together: never leave an account without a role.
             await using var transaction = await _unitOfWork.BeginTransactionAsync(ct);
 
-            var user = new ApplicationUser
-            {
-                UserName = email,
-                Email = email,
-                FullName = request.FullName.Trim(),
-                MustChangePassword = true,
-                CreatedAt = _clock.UtcNow,
-            };
+            var account = await CreateAccountAsync(request.Email, request.FullName, AppRoles.Admin, ct);
+            if (account.IsFailure)
+                return account.Error;
 
-            var created = await _userManager.CreateAsync(user, temporaryPassword);
-            if (!created.Succeeded)
-                return AuthErrors.IdentityFailed(created.Errors);
-
-            await _userManager.AddToRoleAsync(user, AppRoles.Admin);
             await transaction.CommitAsync(ct);
 
-            return new CreatedUserResponse(ToResponse(user, [AppRoles.Admin]), temporaryPassword);
+            var user = (await _userManager.FindByIdAsync(account.Value.UserId.ToString()))!;
+            return new CreatedUserResponse(ToResponse(user, [AppRoles.Admin]), account.Value.TemporaryPassword);
         }
 
         public async Task<Result<UserResponse>> SetStatusAsync(int id, bool isActive, CancellationToken ct = default)
@@ -135,6 +119,68 @@ namespace GymManagementBLL.BusinessServices.Implementation
                 await _authService.RevokeAllSessionsAsync(user.Id, ct);
 
             return ToResponse(user, roles);
+        }
+
+        public async Task<Result<CreatedAccount>> CreateAccountAsync(string email, string fullName, string role, CancellationToken ct = default)
+        {
+            email = email.Trim().ToLowerInvariant();
+
+            if (await _userManager.FindByEmailAsync(email) is not null)
+                return UserErrors.EmailTaken;
+
+            var temporaryPassword = TemporaryPassword.Generate();
+
+            var user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FullName = fullName.Trim(),
+                MustChangePassword = true,
+                CreatedAt = _clock.UtcNow,
+            };
+
+            var created = await _userManager.CreateAsync(user, temporaryPassword);
+            if (!created.Succeeded)
+                return AuthErrors.IdentityFailed(created.Errors);
+
+            await _userManager.AddToRoleAsync(user, role);
+
+            return new CreatedAccount(user.Id, temporaryPassword);
+        }
+
+        public async Task<Result> UpdateAccountProfileAsync(int userId, string email, string fullName, CancellationToken ct = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+                return Result.Success(); // nothing to sync
+
+            email = email.Trim().ToLowerInvariant();
+
+            var owner = await _userManager.FindByEmailAsync(email);
+            if (owner is not null && owner.Id != userId)
+                return UserErrors.EmailTaken;
+
+            user.Email = email;
+            user.UserName = email;
+            user.FullName = fullName.Trim();
+
+            var updated = await _userManager.UpdateAsync(user);
+            return updated.Succeeded ? Result.Success() : AuthErrors.IdentityFailed(updated.Errors);
+        }
+
+        public async Task DeactivateAccountAsync(int userId, CancellationToken ct = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+                return;
+
+            if (user.IsActive)
+            {
+                user.IsActive = false;
+                await _userManager.UpdateAsync(user);
+            }
+
+            await _authService.RevokeAllSessionsAsync(userId, ct);
         }
 
         #region Helper Methods

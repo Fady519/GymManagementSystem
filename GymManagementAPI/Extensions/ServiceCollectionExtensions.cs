@@ -47,6 +47,13 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ICategoryService, CategoryService>();
+            services.AddScoped<ITrainerService, TrainerService>();
+            services.AddScoped<IMemberService, MemberService>();
+
+            // Uploaded files go to a local folder; the path is read lazily so tests can change it.
+            services.AddSingleton<IFileStorage>(sp => new LocalFileStorage(LocalFileStorage.ResolveRootPath(
+                sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<IWebHostEnvironment>())));
 
             services.AddValidatorsFromAssemblyContaining<CreatePlanRequestValidator>();
 
