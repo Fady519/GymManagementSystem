@@ -12,6 +12,7 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { RowActions } from "@/components/data-table/row-actions";
 import { SearchInput } from "@/components/data-table/search-input";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ExportButton } from "@/components/shared/export-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
 import { MembershipStateBadge } from "@/features/member-portal/components/membership-state-badge";
@@ -194,9 +195,17 @@ export function MembershipsAdmin() {
             : "Sell, renew, freeze and cancel memberships."
         }
         actions={
-          <Button onClick={() => sell.show(null)}>
-            <Plus /> New membership
-          </Button>
+          <>
+            <ExportButton
+              name="memberships"
+              itemLabel="memberships"
+              filters={{ state, search }}
+              disabled={data?.totalCount === 0}
+            />
+            <Button onClick={() => sell.show(null)}>
+              <Plus /> New membership
+            </Button>
+          </>
         }
       />
 

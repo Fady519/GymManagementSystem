@@ -16,6 +16,7 @@ import {
 import { DataTable, createColumns } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ExportButton } from "@/components/shared/export-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
 import { StatCard, StatCardSkeleton } from "@/components/shared/stat-card";
@@ -194,6 +195,14 @@ export function PaymentsAdmin() {
           totals
             ? `${totals.paymentCount} ${totals.paymentCount === 1 ? "payment" : "payments"} ${periodText}.`
             : "Every purchase, renewal and refund, with who received it."
+        }
+        actions={
+          <ExportButton
+            name="payments"
+            itemLabel="payments"
+            filters={filters}
+            disabled={badCustomRange || totals?.paymentCount === 0}
+          />
         }
       />
 

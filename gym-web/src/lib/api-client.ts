@@ -128,6 +128,22 @@ apiClient.interceptors.response.use(
       }
     }
 
+    await readBlobError(error);
     return Promise.reject<ApiError>(toApiError(error as AxiosError<never>));
   },
 );
+
+/**
+ * File downloads ask for responseType "blob", so when they fail the ProblemDetails body is a Blob
+ * instead of an object. Turn it back into JSON, so the user sees the API's message
+ * (e.g. "The export is limited to 10,000 rows") instead of "Request failed (400)".
+ */
+async function readBlobError(error: AxiosError) {
+  const response = error.response;
+  if (!response || !(response.data instanceof Blob) || !response.data.type.includes("json")) return;
+  try {
+    response.data = JSON.parse(await response.data.text());
+  } catch {
+    // Not valid JSON: keep the generic message.
+  }
+}

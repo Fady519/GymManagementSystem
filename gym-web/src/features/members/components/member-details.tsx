@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
+  ClipboardList,
   KeyRound,
   Loader2,
   Mail,
@@ -233,6 +234,12 @@ function MemberProfile({ member }: { member: MemberResponse }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-48">
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/check-ins?range=all&memberId=${member.id}`}>
+                    <ClipboardList /> Attendance history
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {member.hasAccount && (
                   <>
                     <DropdownMenuItem onSelect={sendInvite} disabled={invite.isPending}>

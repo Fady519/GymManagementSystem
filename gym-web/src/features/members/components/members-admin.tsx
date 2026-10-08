@@ -20,6 +20,7 @@ import { RowActions } from "@/components/data-table/row-actions";
 import { SearchInput } from "@/components/data-table/search-input";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ExportButton } from "@/components/shared/export-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
@@ -163,11 +164,19 @@ export function MembersAdmin() {
             : "Everyone registered at the gym."
         }
         actions={
-          <Button asChild>
-            <Link href="/dashboard/members/new">
-              <UserPlus /> Add member
-            </Link>
-          </Button>
+          <>
+            <ExportButton
+              name="members"
+              itemLabel="members"
+              filters={{ search, gender, membershipState: state, sortBy, descending }}
+              disabled={data?.totalCount === 0}
+            />
+            <Button asChild>
+              <Link href="/dashboard/members/new">
+                <UserPlus /> Add member
+              </Link>
+            </Button>
+          </>
         }
       />
 
