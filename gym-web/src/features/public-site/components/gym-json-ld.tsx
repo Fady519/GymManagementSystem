@@ -40,7 +40,7 @@ export function GymJsonLd({
     email: gym.email,
     address: {
       "@type": "PostalAddress",
-      streetAddress: locale === "ar" ? gym.addressAr : gym.addressEn,
+      streetAddress: gym.address, // one value, exactly as the admin typed it
       addressLocality: "Cairo",
       addressCountry: "EG",
     },

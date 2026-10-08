@@ -1,10 +1,13 @@
-/** The title row at the top of every logged-in page, with optional buttons on the right. */
+/**
+ * The title row at the top of every logged-in page, with optional buttons on the right.
+ * `title` may contain elements, e.g. a member's name wrapped in <bdi> inside a translated sentence.
+ */
 export function PageHeader({
   title,
   description,
   actions,
 }: {
-  title: string;
+  title: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
 }) {

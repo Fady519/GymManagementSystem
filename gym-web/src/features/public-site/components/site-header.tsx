@@ -38,7 +38,7 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-1">
-          <LocaleSwitcher className="hidden sm:inline-flex" />
+          <LocaleSwitcher className="max-sm:px-2 max-sm:[&>svg]:hidden" />
           <ThemeToggle />
           <div className="hidden sm:block">
             <AuthNavButtons />

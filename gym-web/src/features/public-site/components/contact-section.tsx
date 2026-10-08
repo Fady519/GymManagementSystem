@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Clock, ExternalLink, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { telLink, whatsAppLink } from "@/features/public-site/contact-links";
@@ -12,7 +12,6 @@ import type { GymSettingsResponse } from "@/types";
 /** Address, phone, WhatsApp, email, opening hours and social links, all from Gym settings. */
 export function ContactSection({ gym }: { gym: GymSettingsResponse | null }) {
   const t = useTranslations("Home.contact");
-  const locale = useLocale();
 
   return (
     <Section id="contact" title={t("title")} subtitle={t("subtitle")} muted>
@@ -22,8 +21,10 @@ export function ContactSection({ gym }: { gym: GymSettingsResponse | null }) {
         <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
           <div className="grid gap-4 sm:grid-cols-2">
             <ContactCard icon={<MapPin />} label={t("address")} className="sm:col-span-2">
-              <p className="text-base font-medium">
-                {locale === "ar" ? gym.addressAr : gym.addressEn}
+              {/* Shown exactly as the admin typed it (one value for every language). dir="auto"
+                  picks the direction from the text, so an Arabic address reads right on the English page. */}
+              <p dir="auto" className="text-base font-medium">
+                {gym.address}
               </p>
               {gym.mapUrl && (
                 <Button variant="link" className="h-auto p-0" asChild>

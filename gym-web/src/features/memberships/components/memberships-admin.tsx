@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { AlarmClock, IdCard, Plus, RefreshCcw, SearchX } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,12 +17,15 @@ import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
 import { MembershipStateBadge } from "@/features/member-portal/components/membership-state-badge";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { isolate } from "@/lib/bidi";
 import { useMembershipActions } from "@/features/memberships/components/membership-actions";
 import { SellMembershipSheet } from "@/features/memberships/components/sell-membership-sheet";
 import { useExpiringSoon, useMemberships } from "@/features/memberships/queries";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
-import { daysUntil, formatDate, formatDays, formatDuration, formatMoney } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
+import { daysUntil } from "@/lib/format";
 import type { MembershipResponse, MembershipState } from "@/types";
 import { Link } from "@/i18n/navigation";
 
@@ -31,19 +35,21 @@ const STATES: MembershipState[] = ["Active", "Frozen", "Upcoming", "Expired", "C
 
 /** Running memberships that end soon with no renewal yet: the reception's call list. */
 function ExpiringSoon({ onRenew }: { onRenew: (m: MembershipResponse) => void }) {
+  const t = useTranslations("Memberships.expiring");
+  const tActions = useTranslations("Memberships.actions");
   const expiring = useExpiringSoon();
+  // The clock is read after the page loads (null before), never during rendering.
+  const now = useNow();
   if (expiring.isError || (expiring.data && expiring.data.length === 0)) return null;
 
   return (
     <Card className="border-amber-500/30 bg-amber-500/[0.04]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <AlarmClock className="size-4 text-amber-600 dark:text-amber-400" /> Ending soon
+          <AlarmClock className="size-4 text-amber-600 dark:text-amber-400" /> {t("title")}
         </CardTitle>
         <CardDescription>
-          {expiring.data
-            ? `${expiring.data.length} ${expiring.data.length === 1 ? "membership ends" : "memberships end"} this week with no renewal yet. A quick call keeps them training.`
-            : "Checking who needs a renewal…"}
+          {expiring.data ? t("description", { count: expiring.data.length }) : t("checking")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -56,7 +62,7 @@ function ExpiringSoon({ onRenew }: { onRenew: (m: MembershipResponse) => void })
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {expiring.data.slice(0, 6).map((m) => {
-              const days = daysUntil(m.endDate);
+              const days = now ? daysUntil(m.endDate, now) : null;
               return (
                 <div
                   key={m.id}
@@ -67,14 +73,15 @@ function ExpiringSoon({ onRenew }: { onRenew: (m: MembershipResponse) => void })
                       href={`/dashboard/members/${m.memberId}`}
                       className="block truncate text-sm font-semibold hover:underline"
                     >
-                      {m.memberName}
+                      <bdi>{m.memberName}</bdi>
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {m.planName} · {days <= 1 ? "ends tomorrow" : `ends in ${days} days`}
+                      <bdi>{m.planName}</bdi>
+                      {days !== null && ` · ${t("endsIn", { count: Math.max(days, 1) })}`}
                     </p>
                   </div>
                   <Button type="button" size="sm" variant="outline" onClick={() => onRenew(m)}>
-                    <RefreshCcw /> Renew
+                    <RefreshCcw /> {tActions("renew")}
                   </Button>
                 </div>
               );
@@ -82,7 +89,9 @@ function ExpiringSoon({ onRenew }: { onRenew: (m: MembershipResponse) => void })
           </div>
         )}
         {expiring.data && expiring.data.length > 6 && (
-          <p className="mt-3 text-xs text-muted-foreground">And {expiring.data.length - 6} more.</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("more", { count: expiring.data.length - 6 })}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -91,6 +100,11 @@ function ExpiringSoon({ onRenew }: { onRenew: (m: MembershipResponse) => void })
 
 /** /dashboard/memberships: every membership by state, with sell / renew / freeze / cancel. */
 export function MembershipsAdmin() {
+  const t = useTranslations("Memberships.list");
+  const tCols = useTranslations("Members.columns");
+  const tEnums = useTranslations("Enums.MembershipState");
+  const f = useFormat();
+  const now = useNow();
   const params = useListParams();
   const rawState = params.string("state");
   const state = (STATES as string[]).includes(rawState) ? (rawState as MembershipState) : null;
@@ -111,55 +125,62 @@ export function MembershipsAdmin() {
     () =>
       col.columns([
         col.accessor("memberName", {
-          header: "Member",
+          header: tCols("member"),
           cell: ({ row }) => (
             <div className="flex min-w-44 items-center gap-3">
               <MemberAvatar name={row.original.memberName} photoUrl={null} />
-              <span className="truncate font-medium">{row.original.memberName}</span>
+              <span className="truncate font-medium">
+                <bdi>{row.original.memberName}</bdi>
+              </span>
             </div>
           ),
         }),
         col.accessor("planName", {
-          header: "Plan",
+          header: tCols("plan"),
           meta: { className: "hidden sm:table-cell" },
           cell: ({ row }) => (
             <div>
-              <p className="font-medium">{row.original.planName}</p>
+              <p className="font-medium">
+                <bdi>{row.original.planName}</bdi>
+              </p>
               <p className="text-xs text-muted-foreground">
-                {formatDuration(row.original.durationDays)}
+                {f.duration(row.original.durationDays)}
               </p>
             </div>
           ),
         }),
         col.accessor("endDate", {
-          header: "Period",
+          header: tCols("period"),
           meta: { className: "hidden md:table-cell" },
           cell: ({ row }) => (
             <div className="whitespace-nowrap">
               <p>
-                {formatDate(row.original.startDate)} → {formatDate(row.original.endDate)}
+                {tCols("dateRange", {
+                  start: f.date(row.original.startDate),
+                  end: f.date(row.original.endDate),
+                })}
               </p>
-              {row.original.state === "Active" && (
+              {row.original.state === "Active" && now && (
                 <p className="text-xs text-muted-foreground">
-                  {formatDays(daysUntil(row.original.endDate))} left
+                  {t("left", { days: f.days(daysUntil(row.original.endDate, now)) })}
                 </p>
               )}
             </div>
           ),
         }),
         col.accessor("pricePaid", {
-          header: "Paid",
+          header: tCols("paid"),
           meta: { className: "hidden lg:table-cell" },
-          cell: ({ getValue }) => <span className="tabular-nums">{formatMoney(getValue())}</span>,
+          cell: ({ getValue }) => <span className="tabular-nums">{f.money(getValue())}</span>,
         }),
         col.accessor("state", {
-          header: "Status",
+          header: tCols("status"),
           cell: ({ row }) => (
             <div className="flex flex-col items-start gap-1">
               <MembershipStateBadge state={row.original.state} />
               {row.original.frozenUntil && (
                 <span className="text-xs text-muted-foreground">
-                  until {formatDate(row.original.frozenUntil)}
+                  {tCols("frozenUntil", { date: f.date(row.original.frozenUntil) })}
                 </span>
               )}
             </div>
@@ -167,43 +188,55 @@ export function MembershipsAdmin() {
         }),
         col.display({
           id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
+          header: () => <span className="sr-only">{tCols("actions")}</span>,
           meta: { className: "w-12 text-end" },
           cell: ({ row }) => (
             <RowActions
-              label={`Actions for ${row.original.memberName}'s membership`}
+              label={t("rowActions", { name: isolate(row.original.memberName) })}
               actions={rowActions(row.original)}
             />
           ),
         }),
       ]),
-    [rowActions],
+    [rowActions, t, tCols, f, now],
   );
 
   const data = memberships.data;
   const filtered = Boolean(search || state);
 
+  // "No frozen membership belongs to a member matching «Ali»." The state word is translated.
+  const noMatchText = () => {
+    const stateWord = state ? tEnums(state) : null;
+    if (search) {
+      const term = isolate(search);
+      return stateWord
+        ? t("noMatchSearchState", { search: term, state: stateWord })
+        : t("noMatchSearch", { search: term });
+    }
+    return t("noMatchState", { state: stateWord ?? "" });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Memberships"
+        title={t("title")}
         description={
           data
             ? filtered
-              ? `${data.totalCount} ${data.totalCount === 1 ? "membership matches" : "memberships match"}.`
-              : `${data.totalCount} memberships sold so far.`
-            : "Sell, renew, freeze and cancel memberships."
+              ? t("countFiltered", { count: data.totalCount })
+              : t("countAll", { count: data.totalCount })
+            : t("description")
         }
         actions={
           <>
             <ExportButton
               name="memberships"
-              itemLabel="memberships"
+              itemLabel={t("itemLabel")}
               filters={{ state, search }}
               disabled={data?.totalCount === 0}
             />
             <Button onClick={() => sell.show(null)}>
-              <Plus /> New membership
+              <Plus /> {t("new")}
             </Button>
           </>
         }
@@ -217,10 +250,10 @@ export function MembershipsAdmin() {
           onValueChange={(value) => params.set({ state: value === "all" ? null : value })}
         >
           <TabsList className="h-auto! flex-wrap">
-            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="all">{t("all")}</TabsTrigger>
             {STATES.map((value) => (
               <TabsTrigger key={value} value={value}>
-                {value}
+                {tEnums(value)}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -228,21 +261,21 @@ export function MembershipsAdmin() {
         <SearchInput
           value={search}
           onChange={(value) => params.set({ search: value })}
-          placeholder="Search by member name or phone"
+          placeholder={t("searchPlaceholder")}
           className="lg:max-w-xs lg:flex-1"
         />
       </div>
 
       {memberships.isError ? (
         <QueryError
-          title="We couldn't load the memberships"
+          title={t("loadError")}
           error={memberships.error}
           onRetry={() => void memberships.refetch()}
           retrying={memberships.isFetching}
         />
       ) : (
         <DataTable
-          label="Memberships"
+          label={t("title")}
           columns={columns}
           data={data?.items}
           getRowId={(m) => String(m.id)}
@@ -254,29 +287,25 @@ export function MembershipsAdmin() {
             filtered ? (
               <EmptyState
                 icon={SearchX}
-                title="No memberships match"
-                description={
-                  search
-                    ? `No ${state ? state.toLowerCase() + " " : ""}membership belongs to a member matching “${search}”.`
-                    : `There are no ${state?.toLowerCase()} memberships right now.`
-                }
+                title={t("noMatchTitle")}
+                description={noMatchText()}
                 action={
                   <Button
                     variant="outline"
                     onClick={() => params.set({ search: null, state: null })}
                   >
-                    Clear filters
+                    {t("clearFilters")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={IdCard}
-                title="No memberships yet"
-                description="Sell the first plan to a member. Their payment is recorded and they can book classes right away."
+                title={t("emptyTitle")}
+                description={t("emptyBody")}
                 action={
                   <Button onClick={() => sell.show(null)}>
-                    <Plus /> New membership
+                    <Plus /> {t("new")}
                   </Button>
                 }
               />
@@ -289,7 +318,7 @@ export function MembershipsAdmin() {
                 pageSize={data.pageSize}
                 totalCount={data.totalCount}
                 totalPages={data.totalPages}
-                itemLabel="memberships"
+                itemLabel={t("itemLabel")}
                 onPageChange={setPage}
                 onPageSizeChange={(size) =>
                   params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })

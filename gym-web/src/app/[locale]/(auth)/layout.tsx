@@ -10,11 +10,12 @@ import { GuestRedirect } from "@/features/auth/components/guest-redirect";
 import { NextClassCard } from "@/features/auth/components/next-class-card";
 import { Link } from "@/i18n/navigation";
 
+// `key` points at the text in Auth.brand.benefits.
 const benefits = [
-  { icon: CalendarCheck, text: "Book your spot in any class in seconds" },
-  { icon: QrCode, text: "Check in at the door with your personal QR code" },
-  { icon: ShieldCheck, text: "Follow your membership, visits and payments in one place" },
-];
+  { icon: CalendarCheck, key: "book" },
+  { icon: QrCode, key: "checkIn" },
+  { icon: ShieldCheck, key: "follow" },
+] as const;
 
 /**
  * Layout for login, register and the password pages: a brand panel on large screens,
@@ -22,6 +23,8 @@ const benefits = [
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations("AuthNav");
+  const tBrand = useTranslations("Auth.brand");
+  const tCommon = useTranslations("Common");
 
   return (
     <div className="grid min-h-svh flex-1 lg:grid-cols-[1fr_1.1fr]">
@@ -29,14 +32,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {/* Soft light shapes for depth. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-32 -right-32 size-[28rem] rounded-full bg-white/10 blur-3xl"
+          className="pointer-events-none absolute -end-32 -top-32 size-[28rem] rounded-full bg-white/10 blur-3xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-24 size-[26rem] rounded-full bg-black/20 blur-3xl"
+          className="pointer-events-none absolute -start-24 -bottom-40 size-[26rem] rounded-full bg-black/20 blur-3xl"
         />
 
-        <Link href="/" className="relative flex items-center gap-3" aria-label="Power Fitness home">
+        <Link href="/" className="relative flex items-center gap-3" aria-label={tBrand("home")}>
           <Image
             src="/images/logo.jpg"
             alt=""
@@ -44,25 +47,25 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             height={44}
             className="rounded-md bg-white p-0.5"
           />
-          <span className="text-lg font-extrabold tracking-tight uppercase">Power Fitness</span>
+          <span className="text-lg font-extrabold tracking-tight uppercase">
+            {tCommon("brand")}
+          </span>
         </Link>
 
         <div className="relative max-w-md space-y-8">
           <div className="space-y-4">
             <h2 className="text-4xl leading-tight font-extrabold tracking-tight text-balance">
-              Your training, your schedule, all in one place.
+              {tBrand("headline")}
             </h2>
-            <p className="text-lg text-white/80">
-              Members, coaches and staff use the same account to keep every session on track.
-            </p>
+            <p className="text-lg text-white/80">{tBrand("subline")}</p>
           </div>
           <ul className="space-y-3">
-            {benefits.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 text-white/90">
+            {benefits.map(({ icon: Icon, key }) => (
+              <li key={key} className="flex items-center gap-3 text-white/90">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/15">
                   <Icon className="size-5" />
                 </span>
-                {text}
+                {tBrand(`benefits.${key}`)}
               </li>
             ))}
           </ul>

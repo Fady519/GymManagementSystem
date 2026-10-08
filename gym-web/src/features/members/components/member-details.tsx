@@ -15,6 +15,7 @@ import {
   Trash2,
   UserX,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
   OverviewTab,
   PaymentsTab,
 } from "@/features/members/components/member-tabs";
+import { isolate } from "@/lib/bidi";
 import {
   useDeleteMember,
   useDeleteMemberPhoto,
@@ -51,9 +53,9 @@ import {
 } from "@/features/members/queries";
 import { PHOTO_TYPES, photoProblem } from "@/features/members/schemas";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { useListParams } from "@/hooks/use-list-params";
 import { ApiError } from "@/lib/api-error";
-import { formatDate } from "@/lib/format";
 import { isAlreadyActivated, toastError, toastInvite } from "@/lib/notify";
 import type { MemberResponse } from "@/types";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -62,8 +64,9 @@ const TABS = ["overview", "memberships", "bookings", "payments", "health"] as co
 type Tab = (typeof TABS)[number];
 
 function DetailsSkeleton() {
+  const t = useTranslations("Members.details");
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading member">
+    <div className="space-y-6" aria-busy="true" aria-label={t("loading")}>
       <Skeleton className="h-8 w-40" />
       <div className="flex items-center gap-5 rounded-xl border p-6">
         <Skeleton className="size-20 rounded-full" />
@@ -80,6 +83,8 @@ function DetailsSkeleton() {
 
 /** The big photo with a camera button to replace it, and a remove link. */
 function ProfilePhoto({ member }: { member: MemberResponse }) {
+  const t = useTranslations("Members.photo");
+  const tErrors = useTranslations("Members.errors");
   const inputId = useId();
   const upload = useUploadMemberPhoto();
   const remove = useDeleteMemberPhoto();
@@ -87,19 +92,21 @@ function ProfilePhoto({ member }: { member: MemberResponse }) {
 
   const onPick = (file: File | undefined) => {
     if (!file) return;
-    const problem = photoProblem(file);
+    const problem = photoProblem(file, tErrors);
     if (problem) {
-      toast.error("That photo can't be used", { description: problem });
+      toast.error(t("cantUse"), { description: problem });
       return;
     }
     upload.mutate(
       { id: member.id, file },
       {
-        onSuccess: () => toast.success("Photo updated"),
-        onError: (error) => toastError("The photo didn't upload", error),
+        onSuccess: () => toast.success(t("uploaded")),
+        onError: (error) => toastError(t("uploadError"), error),
       },
     );
   };
+
+  const cameraLabel = member.photoUrl ? t("change") : t("add");
 
   return (
     <div className="flex flex-col items-center gap-1.5">
@@ -117,8 +124,8 @@ function ProfilePhoto({ member }: { member: MemberResponse }) {
         <label
           htmlFor={inputId}
           className="absolute -end-1 -bottom-1 flex size-8 cursor-pointer items-center justify-center rounded-full border bg-background shadow-sm transition-colors hover:bg-muted"
-          aria-label={member.photoUrl ? "Change photo" : "Add photo"}
-          title={member.photoUrl ? "Change photo" : "Add photo"}
+          aria-label={cameraLabel}
+          title={cameraLabel}
         >
           <Camera className="size-4" />
         </label>
@@ -140,13 +147,13 @@ function ProfilePhoto({ member }: { member: MemberResponse }) {
           disabled={busy}
           onClick={() =>
             remove.mutate(member.id, {
-              onSuccess: () => toast.success("Photo removed"),
-              onError: (error) => toastError("Couldn't remove the photo", error),
+              onSuccess: () => toast.success(t("removed")),
+              onError: (error) => toastError(t("removeError"), error),
             })
           }
           className="text-xs text-muted-foreground hover:text-destructive hover:underline"
         >
-          Remove photo
+          {t("removePhoto")}
         </button>
       )}
     </div>
@@ -154,6 +161,9 @@ function ProfilePhoto({ member }: { member: MemberResponse }) {
 }
 
 function MemberProfile({ member }: { member: MemberResponse }) {
+  const t = useTranslations("Members.details");
+  const tList = useTranslations("Members.list");
+  const f = useFormat();
   const router = useRouter();
   const params = useListParams();
   const rawTab = params.string("tab");
@@ -164,6 +174,7 @@ function MemberProfile({ member }: { member: MemberResponse }) {
   const edit = useDialogState<MemberResponse>();
   const health = useDialogState<MemberResponse>();
   const confirmDelete = useDialogState<MemberResponse>();
+  const name = isolate(member.name);
 
   const sendInvite = () =>
     invite.mutate(member.id, {
@@ -171,18 +182,15 @@ function MemberProfile({ member }: { member: MemberResponse }) {
         toastInvite(result.member.name, result.member.email, result.inviteSent),
       onError: (error) =>
         isAlreadyActivated(error)
-          ? toast.info(`${member.name} already set a password`, {
-              description:
-                "Their online account is active. If they forgot the password, they can use “Forgot password”.",
-            })
-          : toastError(`Couldn't send the invite to ${member.name}`, error),
+          ? toast.info(t("alreadyActive", { name }), { description: t("alreadyActiveBody") })
+          : toastError(t("inviteError", { name }), error),
     });
 
   return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ms-2" asChild>
         <Link href="/dashboard/members">
-          <ArrowLeft /> All members
+          <ArrowLeft className="rtl:rotate-180" /> {t("allMembers")}
         </Link>
       </Button>
 
@@ -192,11 +200,13 @@ function MemberProfile({ member }: { member: MemberResponse }) {
 
           <div className="min-w-0 flex-1 space-y-2 text-center md:text-start">
             <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-              <h1 className="text-2xl font-bold tracking-tight break-words">{member.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight break-words">
+                <bdi>{member.name}</bdi>
+              </h1>
               <MemberStateBadge state={member.membershipState} />
               {member.hasAccount && (
                 <Badge variant="outline" className="gap-1">
-                  <KeyRound className="size-3" /> Online account
+                  <KeyRound className="size-3" /> {t("onlineAccount")}
                 </Badge>
               )}
             </div>
@@ -205,51 +215,51 @@ function MemberProfile({ member }: { member: MemberResponse }) {
                 href={`mailto:${member.email}`}
                 className="flex items-center gap-1.5 hover:text-foreground"
               >
-                <Mail className="size-4" /> {member.email}
+                <Mail className="size-4" /> <span dir="ltr">{member.email}</span>
               </a>
               <a
                 href={`tel:${member.phone}`}
                 className="flex items-center gap-1.5 tabular-nums hover:text-foreground"
               >
-                <Phone className="size-4" /> {member.phone}
+                <Phone className="size-4" /> <span dir="ltr">{member.phone}</span>
               </a>
-              <span>Member since {formatDate(member.createdAt)}</span>
+              <span>{t("memberSince", { date: f.date(member.createdAt) })}</span>
             </div>
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
             <Button variant="outline" onClick={() => edit.show(member)}>
-              <Pencil /> Edit details
+              <Pencil /> {t("edit")}
             </Button>
             {!member.hasAccount && (
               <Button onClick={sendInvite} disabled={invite.isPending}>
                 {invite.isPending ? <Loader2 className="animate-spin" /> : <KeyRound />}
-                Give online access
+                {t("giveAccess")}
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="More actions">
+                <Button variant="outline" size="icon" aria-label={t("moreActions")}>
                   <MoreHorizontal />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-48">
                 <DropdownMenuItem asChild>
                   <Link href={`/dashboard/check-ins?range=all&memberId=${member.id}`}>
-                    <ClipboardList /> Attendance history
+                    <ClipboardList /> {t("attendance")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {member.hasAccount && (
                   <>
                     <DropdownMenuItem onSelect={sendInvite} disabled={invite.isPending}>
-                      <Mail /> Resend invite
+                      <Mail /> {t("resendInvite")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
                 <DropdownMenuItem variant="destructive" onSelect={() => confirmDelete.show(member)}>
-                  <Trash2 /> Delete member
+                  <Trash2 /> {tList("delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -262,11 +272,11 @@ function MemberProfile({ member }: { member: MemberResponse }) {
         onValueChange={(value) => params.set({ tab: value === "overview" ? null : value })}
       >
         <TabsList className="h-auto! flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="memberships">Memberships</TabsTrigger>
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="health">Health</TabsTrigger>
+          {TABS.map((key) => (
+            <TabsTrigger key={key} value={key}>
+              {t(`tabs.${key}`)}
+            </TabsTrigger>
+          ))}
         </TabsList>
         <TabsContent value="overview" className="mt-4">
           <OverviewTab member={member} />
@@ -290,19 +300,19 @@ function MemberProfile({ member }: { member: MemberResponse }) {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title={`Delete ${member.name}?`}
-        description="They disappear from the members list and can no longer book classes. Their payments and attendance stay in the reports. Members with an active membership or upcoming bookings can't be deleted."
-        confirmLabel="Delete member"
+        title={tList("deleteTitle", { name })}
+        description={tList("deleteBody")}
+        confirmLabel={tList("delete")}
         destructive
         pending={deleteMember.isPending}
         onConfirm={() =>
           deleteMember.mutate(member.id, {
             onSuccess: () => {
-              toast.success(`${member.name} was deleted`);
+              toast.success(tList("deleted", { name }));
               router.replace("/dashboard/members");
             },
             onError: (error) => {
-              toastError(`Couldn't delete ${member.name}`, error);
+              toastError(tList("deleteError", { name }), error);
               confirmDelete.setOpen(false);
             },
           })
@@ -314,6 +324,7 @@ function MemberProfile({ member }: { member: MemberResponse }) {
 
 /** /dashboard/members/[id]: one member's profile, history and health. */
 export function MemberDetails() {
+  const t = useTranslations("Members.details");
   const { id } = useParams<{ id: string }>();
   const memberId = Number(id);
   const valid = Number.isInteger(memberId) && memberId > 0;
@@ -326,12 +337,12 @@ export function MemberDetails() {
       <Card>
         <EmptyState
           icon={UserX}
-          title="Member not found"
-          description="This member doesn't exist or was deleted. Check the link, or find them in the members list."
+          title={t("notFoundTitle")}
+          description={t("notFoundBody")}
           action={
             <Button asChild>
               <Link href="/dashboard/members">
-                <ArrowLeft /> Back to members
+                <ArrowLeft className="rtl:rotate-180" /> {t("backToList")}
               </Link>
             </Button>
           }
@@ -343,7 +354,7 @@ export function MemberDetails() {
   if (member.isError) {
     return (
       <QueryError
-        title="We couldn't load this member"
+        title={t("loadError")}
         error={member.error}
         onRetry={() => void member.refetch()}
         retrying={member.isFetching}

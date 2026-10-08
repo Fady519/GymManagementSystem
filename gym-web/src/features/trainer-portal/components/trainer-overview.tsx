@@ -184,7 +184,7 @@ export function TrainerOverview() {
                 view.upcomingCount === 0
                   ? t("kpi.bookedNone")
                   : t("kpi.bookedHint", {
-                      percent: f.number(fillPercent),
+                      percent: f.percent(fillPercent),
                       count: view.upcomingCount,
                     })
               }
@@ -197,9 +197,7 @@ export function TrainerOverview() {
                 icon={Percent}
                 label={t("kpi.attendance")}
                 value={
-                  attendanceRate === null || attendance.isError
-                    ? "—"
-                    : `${f.number(attendanceRate)}%`
+                  attendanceRate === null || attendance.isError ? "—" : f.percent(attendanceRate)
                 }
                 hint={
                   attendance.isError

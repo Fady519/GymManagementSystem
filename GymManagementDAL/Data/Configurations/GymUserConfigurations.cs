@@ -21,6 +21,10 @@ namespace GymManagementDAL.Data.Configurations
             builder.Property(x => x.Email).HasMaxLength(100).IsUnicode(false);
             builder.Property(x => x.Phone).HasMaxLength(11).IsUnicode(false);
 
+            // Stored as text ("Male"/"Female") like every other enum column: readable in SQL and
+            // safe if the enum numbers ever change. The frontend translates the value for display.
+            builder.Property(x => x.Gender).HasConversion<string>().HasMaxLength(10);
+
             builder.ToTable(TableName, t =>
             {
                 t.HasCheckConstraint($"CK_{TableName}_Email", "Email LIKE '_%@_%._%'");

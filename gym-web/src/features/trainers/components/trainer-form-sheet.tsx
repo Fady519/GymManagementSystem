@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,7 @@ import { trainerSchema, type TrainerValues } from "@/features/trainers/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
 import { toastInvite } from "@/lib/notify";
 import { EMPTY_ADDRESS, addressToFields, toAddressDto } from "@/lib/validation";
+import { isolate } from "@/lib/bidi";
 import type { SaveTrainerRequest, TrainerResponse } from "@/types";
 
 const FORM_ID = "trainer-form";
@@ -50,9 +53,14 @@ type TrainerFormProps = {
 };
 
 function TrainerForm({ trainer, onSave }: TrainerFormProps) {
+  const t = useTranslations("Trainers.form");
+  const tErrors = useTranslations("Trainers.errors");
+  const tValidation = useTranslations("Validation");
+  // The rules with messages in the current language.
+  const schema = useMemo(() => trainerSchema(tErrors, tValidation), [tErrors, tValidation]);
   const categories = useCategories();
   const form = useForm<TrainerValues>({
-    resolver: zodResolver(trainerSchema),
+    resolver: zodResolver(schema),
     defaultValues: trainer
       ? {
           name: trainer.name,
@@ -102,25 +110,28 @@ function TrainerForm({ trainer, onSave }: TrainerFormProps) {
       <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
 
-        <FormField id="trainer-name" label="Full name" error={errors.name?.message}>
+        <FormField id="trainer-name" label={t("name")} error={errors.name?.message}>
           <Input
             {...fieldProps("trainer-name", errors.name?.message)}
-            placeholder="e.g. Omar Khaled"
+            placeholder={t("namePlaceholder")}
             maxLength={50}
             autoFocus
+            // Text side follows what is typed (Arabic or English); an empty box keeps the page side.
+            className="[unicode-bidi:plaintext]"
             {...register("name")}
           />
         </FormField>
 
         <FormField
           id="trainer-email"
-          label="Email"
+          label={t("email")}
           error={errors.email?.message}
-          description={trainer?.hasAccount ? "Also their login email." : undefined}
+          description={trainer?.hasAccount ? t("emailHint") : undefined}
         >
           <Input
             {...fieldProps("trainer-email", errors.email?.message, Boolean(trainer?.hasAccount))}
             type="email"
+            dir="ltr"
             placeholder="coach@example.com"
             maxLength={100}
             {...register("email")}
@@ -128,20 +139,22 @@ function TrainerForm({ trainer, onSave }: TrainerFormProps) {
         </FormField>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField id="trainer-phone" label="Mobile number" error={errors.phone?.message}>
+          <FormField id="trainer-phone" label={t("phone")} error={errors.phone?.message}>
             <Input
               {...fieldProps("trainer-phone", errors.phone?.message)}
               type="tel"
+              dir="ltr"
               inputMode="numeric"
               placeholder="01012345678"
               maxLength={11}
               {...register("phone")}
             />
           </FormField>
-          <FormField id="trainer-dob" label="Date of birth" error={errors.dateOfBirth?.message}>
+          <FormField id="trainer-dob" label={t("dateOfBirth")} error={errors.dateOfBirth?.message}>
             <Input
               {...fieldProps("trainer-dob", errors.dateOfBirth?.message)}
               type="date"
+              dir="ltr"
               {...register("dateOfBirth")}
             />
           </FormField>
@@ -149,7 +162,7 @@ function TrainerForm({ trainer, onSave }: TrainerFormProps) {
 
         <GenderField />
 
-        <FormField id="trainer-category" label="Speciality" error={errors.categoryId?.message}>
+        <FormField id="trainer-category" label={t("category")} error={errors.categoryId?.message}>
           <Controller
             control={control}
             name="categoryId"
@@ -162,13 +175,15 @@ function TrainerForm({ trainer, onSave }: TrainerFormProps) {
                   disabled={categories.isPending}
                 >
                   <SelectValue
-                    placeholder={categories.isPending ? "Loading categories…" : "Choose a category"}
+                    placeholder={
+                      categories.isPending ? t("categoryLoading") : t("categoryPlaceholder")
+                    }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.data?.map((category) => (
                     <SelectItem key={category.id} value={String(category.id)}>
-                      {category.name}
+                      <bdi>{category.name}</bdi>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -183,10 +198,7 @@ function TrainerForm({ trainer, onSave }: TrainerFormProps) {
         {!trainer && (
           <Alert>
             <Mail />
-            <AlertDescription>
-              We&apos;ll create their trainer login and email them a link to choose a password.
-              Nobody else ever sees it.
-            </AlertDescription>
+            <AlertDescription>{t("inviteNote")}</AlertDescription>
           </Alert>
         )}
       </form>
@@ -202,16 +214,20 @@ type TrainerFormSheetProps = {
 
 /** The side panel for adding or editing a trainer. */
 export function TrainerFormSheet({ open, onOpenChange, trainer }: TrainerFormSheetProps) {
+  const t = useTranslations("Trainers.form");
+  const tCommon = useTranslations("Common");
   const create = useCreateTrainer();
   const update = useUpdateTrainer();
 
   const save = async (body: SaveTrainerRequest) => {
     if (trainer) {
       const saved = await update.mutateAsync({ id: trainer.id, body });
-      toast.success("Trainer updated", { description: `${saved.name}'s details are saved.` });
+      toast.success(t("updated"), {
+        description: t("updatedDescription", { name: isolate(saved.name) }),
+      });
     } else {
       const result = await create.mutateAsync(body);
-      toast.success(`${result.trainer.name} joined the team`);
+      toast.success(t("joined", { name: isolate(result.trainer.name) }));
       toastInvite(result.trainer.name, result.trainer.email, result.inviteSent);
     }
     onOpenChange(false);
@@ -221,14 +237,10 @@ export function TrainerFormSheet({ open, onOpenChange, trainer }: TrainerFormShe
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={trainer ? `Edit ${trainer.name}` : "Add a trainer"}
-      description={
-        trainer
-          ? "Update their details and speciality."
-          : "Add a coach to the team. They can log in to see their schedule and take attendance."
-      }
+      title={trainer ? t("titleEdit", { name: isolate(trainer.name) }) : t("titleNew")}
+      description={trainer ? t("descriptionEdit") : t("descriptionNew")}
       formId={FORM_ID}
-      submitLabel={trainer ? "Save changes" : "Add trainer"}
+      submitLabel={trainer ? tCommon("save") : t("submitNew")}
       submitting={create.isPending || update.isPending}
     >
       <TrainerForm trainer={trainer} onSave={save} />

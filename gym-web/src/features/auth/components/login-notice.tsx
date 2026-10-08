@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { CircleCheck, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 /**
@@ -11,23 +12,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
  *   ?activated=1  after /set-password (invite)
  */
 export function LoginNotice() {
+  const t = useTranslations("Auth.notice");
   const params = useSearchParams();
 
   if (params.get("expired")) {
     return (
       <Alert className="mb-6">
         <Clock />
-        <AlertDescription>
-          Your session has ended. Please log in again to continue.
-        </AlertDescription>
+        <AlertDescription>{t("expired")}</AlertDescription>
       </Alert>
     );
   }
 
   const success = params.get("reset")
-    ? "Your password has been changed. Log in with your new password."
+    ? t("reset")
     : params.get("activated")
-      ? "Your account is ready. Log in with the password you just created."
+      ? t("activated")
       : null;
 
   if (!success) return null;

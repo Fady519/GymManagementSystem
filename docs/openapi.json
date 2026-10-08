@@ -8513,10 +8513,7 @@
           "email": {
             "type": "string"
           },
-          "addressEn": {
-            "type": "string"
-          },
-          "addressAr": {
+          "address": {
             "type": "string"
           },
           "mapUrl": {
@@ -9757,10 +9754,7 @@
           "email": {
             "type": "string"
           },
-          "addressEn": {
-            "type": "string"
-          },
-          "addressAr": {
+          "address": {
             "type": "string"
           },
           "mapUrl": {

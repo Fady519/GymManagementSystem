@@ -1,4 +1,4 @@
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Logo } from "@/components/shared/logo";
 import { Link } from "@/i18n/navigation";
 import { telLink } from "@/features/public-site/contact-links";
@@ -10,7 +10,6 @@ import type { GymSettingsResponse } from "@/types";
 export function SiteFooter({ gym, year }: { gym: GymSettingsResponse | null; year: number }) {
   const t = useTranslations("Home.footer");
   const tCommon = useTranslations("Common");
-  const locale = useLocale();
   const links = useSectionLinks();
   const name = gym?.gymName ?? tCommon("brand");
 
@@ -47,7 +46,10 @@ export function SiteFooter({ gym, year }: { gym: GymSettingsResponse | null; yea
 
         {gym && (
           <FooterColumn title={name}>
-            <li>{locale === "ar" ? gym.addressAr : gym.addressEn}</li>
+            {/* The address as typed; <bdi> keeps mixed Arabic/English text in the right order. */}
+            <li>
+              <bdi>{gym.address}</bdi>
+            </li>
             <li>
               <a href={telLink(gym.phone)} dir="ltr" className="hover:text-foreground">
                 {gym.phone}

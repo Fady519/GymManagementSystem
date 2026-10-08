@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Mail } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,20 +18,28 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { FormError, FormField, fieldProps } from "@/components/shared/form-field";
 import { useCancelSession } from "@/features/sessions/queries";
-import { cancelReasonSchema, type CancelReasonValues } from "@/features/sessions/schemas";
+import {
+  REASON_MAX,
+  cancelReasonSchema,
+  type CancelReasonValues,
+} from "@/features/sessions/schemas";
+import { useFormat } from "@/hooks/use-format";
 import { applyServerErrors } from "@/lib/form-errors";
-import { formatClassTime } from "@/lib/format";
 import type { SessionResponse } from "@/types";
 
-/** One click fills the most common reasons; the admin can still edit the text. */
-const QUICK_REASONS = [
-  "The coach is unwell today.",
-  "The studio is closed for maintenance.",
-  "Not enough members booked this class.",
-  "The gym is closed for a public holiday.",
-];
+/**
+ * One click fills the most common reasons, in the admin's language; the admin can still edit
+ * the text. The reason is saved as typed (it is the admin's own text, emailed to members).
+ */
+const QUICK_REASONS = ["coachUnwell", "maintenance", "lowBookings", "holiday"] as const;
+
+/** For rich messages: <bdi>name</bdi> keeps a stored name's own direction inside a translated sentence. */
+const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
 
 function CancelForm({ session, onDone }: { session: SessionResponse; onDone: () => void }) {
+  const t = useTranslations("Sessions.cancel");
+  const tErrors = useTranslations("Sessions.errors");
+  const schema = useMemo(() => cancelReasonSchema(tErrors), [tErrors]);
   const cancel = useCancelSession();
   const {
     register,
@@ -38,18 +48,18 @@ function CancelForm({ session, onDone }: { session: SessionResponse; onDone: () 
     setError,
     formState: { errors },
   } = useForm<CancelReasonValues>({
-    resolver: zodResolver(cancelReasonSchema),
+    resolver: zodResolver(schema),
     defaultValues: { reason: "" },
   });
 
   const onSubmit = async ({ reason }: CancelReasonValues) => {
     try {
       await cancel.mutateAsync({ id: session.id, reason });
-      toast.success("Class cancelled", {
+      toast.success(t("done"), {
         description:
           session.bookedCount > 0
-            ? `${session.bookedCount} booked ${session.bookedCount === 1 ? "member was" : "members were"} emailed the reason.`
-            : "Nobody had booked it yet.",
+            ? t("doneNotified", { count: session.bookedCount })
+            : t("doneNobody"),
       });
       onDone();
     } catch (error) {
@@ -63,29 +73,31 @@ function CancelForm({ session, onDone }: { session: SessionResponse; onDone: () 
 
       <FormField
         id="cancel-reason"
-        label="Reason"
+        label={t("reason")}
         error={errors.reason?.message}
-        description="Members read this in the email and on their bookings page."
+        description={t("reasonHint")}
       >
         <Textarea
           {...fieldProps("cancel-reason", errors.reason?.message, true)}
           rows={3}
-          maxLength={200}
+          maxLength={REASON_MAX}
           autoFocus
-          placeholder="e.g. The coach is unwell today."
+          // Text side follows what is typed (Arabic or English); an empty box keeps the page side.
+          className="[unicode-bidi:plaintext]"
+          placeholder={t("reasonPlaceholder")}
           {...register("reason")}
         />
       </FormField>
 
       <div className="flex flex-wrap gap-2">
-        {QUICK_REASONS.map((reason) => (
+        {QUICK_REASONS.map((key) => (
           <button
-            key={reason}
+            key={key}
             type="button"
-            onClick={() => setValue("reason", reason, { shouldValidate: true })}
+            onClick={() => setValue("reason", t(`quick.${key}`), { shouldValidate: true })}
             className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
           >
-            {reason.replace(/\.$/, "")}
+            {t(`quickLabel.${key}`)}
           </button>
         ))}
       </div>
@@ -93,18 +105,17 @@ function CancelForm({ session, onDone }: { session: SessionResponse; onDone: () 
       {session.bookedCount > 0 && (
         <p className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
           <Mail className="mt-0.5 size-3.5 shrink-0" />
-          All {session.bookedCount} bookings are cancelled and each member gets an email with this
-          reason. This can&apos;t be undone.
+          {t("warning", { count: session.bookedCount })}
         </p>
       )}
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={cancel.isPending}>
-          Keep the class
+          {t("keep")}
         </Button>
         <Button type="submit" variant="destructive" disabled={cancel.isPending}>
           {cancel.isPending && <Loader2 className="animate-spin" />}
-          Cancel class
+          {t("confirm")}
         </Button>
       </DialogFooter>
     </form>
@@ -119,16 +130,22 @@ type CancelSessionDialogProps = {
 
 /** Cancelling a class needs a reason: it is saved on the class and emailed to every booked member. */
 export function CancelSessionDialog({ open, onOpenChange, session }: CancelSessionDialogProps) {
+  const t = useTranslations("Sessions.cancel");
+  const f = useFormat();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         {session && (
           <>
             <DialogHeader>
-              <DialogTitle>Cancel this class?</DialogTitle>
+              <DialogTitle>{t("title")}</DialogTitle>
               <DialogDescription>
-                {session.categoryName} with {session.trainerName},{" "}
-                {formatClassTime(session.startDate)}.
+                {t.rich("description", {
+                  category: session.categoryName,
+                  trainer: session.trainerName,
+                  time: f.classTime(session.startDate),
+                  bdi,
+                })}
               </DialogDescription>
             </DialogHeader>
             {/* Mounted only while open, so the reason starts empty every time. */}

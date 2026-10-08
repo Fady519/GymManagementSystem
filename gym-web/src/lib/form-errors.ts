@@ -1,5 +1,5 @@
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
-import { ApiError } from "@/lib/api-error";
+import { ApiError, apiErrorMessage } from "@/lib/api-error";
 
 type ServerErrorOptions<T extends FieldValues> = {
   /** Known API error codes and the field their message belongs under, e.g. { "Auth.EmailTaken": "email" }. */
@@ -11,8 +11,10 @@ type ServerErrorOptions<T extends FieldValues> = {
 /**
  * Shows an API error in the right place on a react-hook-form form:
  * 1. 400 validation errors: each message goes under its field (the API sends camelCase keys like "email").
- * 2. Known error codes (options.codes): the message goes under that field.
- * 3. Anything else: one message at the top of the form (read it with formState.errors.root?.server).
+ *    The API sends these as English text without a code, so they are shown as they come. They are
+ *    rare: the form's own (translated) rules mirror the API's and catch the same mistakes first.
+ * 2. Known error codes (options.codes): the translated message goes under that field.
+ * 3. Anything else: one translated message at the top of the form (read it with formState.errors.root?.server).
  */
 export function applyServerErrors<T extends FieldValues>(
   error: unknown,
@@ -21,7 +23,7 @@ export function applyServerErrors<T extends FieldValues>(
   { codes = {}, aliases = {} }: ServerErrorOptions<T> = {},
 ) {
   if (!(error instanceof ApiError)) {
-    setError("root.server", { type: "server", message: "Something went wrong. Please try again." });
+    setError("root.server", { type: "server", message: apiErrorMessage(error) });
     return;
   }
 
@@ -36,11 +38,15 @@ export function applyServerErrors<T extends FieldValues>(
 
   const fieldForCode = error.code ? codes[error.code] : undefined;
   if (fieldForCode) {
-    setError(fieldForCode, { type: "server", message: error.message }, { shouldFocus: true });
+    setError(
+      fieldForCode,
+      { type: "server", message: apiErrorMessage(error) },
+      { shouldFocus: true },
+    );
     return;
   }
 
   if (!shownOnAField) {
-    setError("root.server", { type: "server", message: error.message });
+    setError("root.server", { type: "server", message: apiErrorMessage(error) });
   }
 }

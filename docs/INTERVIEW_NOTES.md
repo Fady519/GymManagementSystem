@@ -1473,3 +1473,89 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 صفحة رمز الدخول بتعرض QR على خلفية بيضا (عشان الماسح يقراه حتى في الوضع الداكن)، وتحته الكود نفسه كنص مع زرار نسخ، عشان لو الكاميرا في الاستقبال مش شغالة الموظف يكتبه بإيده. ولو العضو حس إن حد صوّر الكود، يقدر يعمل كود جديد بعد تأكيد، والكود القديم بيبطل يشتغل في نفس اللحظة.
 
 > The QR is drawn on white so scanners read it in dark mode, with the code text and a copy button underneath as a fallback when the camera fails. Members can regenerate the code after a confirmation, which invalidates the old one immediately.
+
+---
+
+# F6: Arabic/English Localization and Polish
+
+## 136. Localize the UI, Not the Data
+
+القاعدة اللي مشينا عليها زي المواقع الكبيرة: تغيير اللغة بيغيّر الواجهة بس. كل نصوص الأزرار والعناوين ورسائل الخطأ جاية من ملفات ترجمة في الـ Frontend (`messages/en.json` و`messages/ar.json`)، مش من قاعدة البيانات. أما البيانات اللي المستخدم أو الأدمن بيدخلها (اسم العضو، اسم المدرب، وصف الحصة، اسم الباقة، العنوان) فبتتخزن مرة واحدة زي ما اتكتبت، ومفيش أعمدة عربي وإنجليزي، ومفيش ترجمة آلية. كنا جربنا أعمدة `NameAr` وفي الآخر رفضناها، لأنها بتجبر المستخدم يدخل نفس البيانات مرتين.
+
+> Language switching changes the UI only. Every label, button and error comes from frontend message files; user-entered data (names, descriptions, addresses) is stored once, exactly as typed, with no duplicate Arabic/English columns and no machine translation. Multilingual content structures are added only when a real requirement exists.
+
+---
+
+## 137. Enums Are Stored in English and Translated in the UI
+
+الحالات وطرق الدفع والنوع والحاجات الثابتة دي كلها بتتخزن في قاعدة البيانات كنص إنجليزي ثابت (`Active`، `Cash`، `Female`)، والـ API بيرجعها زي ما هي. الـ Frontend عنده Namespace اسمه `Enums` بيترجمها: ``t(`PaymentMethod.${method}`)``. كده الـ Database والـ API لغتهم واحدة وثابتة، والترجمة في مكان واحد بس، وأي صفحة جديدة بتستخدم نفس الكلمات.
+
+> Fixed values are stored as stable English strings and returned as-is by the API. One canonical `Enums` message namespace translates them in the UI, so every page uses the same wording and the database never depends on the display language.
+
+---
+
+## 138. Fixing Two Schema Violations Safely
+
+المراجعة طلّعت مخالفتين: عنوان الجيم كان في عمودين `AddressEn` و`AddressAr`، والـ `Gender` كان متخزن كرقم في حين إن باقي الـ Enums متخزنة كنص. الحل كان Migration مكتوبة بإيدينا مش اللي EF ولّدها، لأن EF كان هيعمل Rename وتحويل من int لـ nvarchar يحفظ "1" و"2" بدل `Male` و`Female`. الخطوات: عمود مؤقت، نسخ البيانات بـ `CASE`، بعدين NOT NULL، بعدين حذف القديم. لو ظهر رقم مش معروف الـ Migration بتفشل وترجع بدل ما تحفظ قيمة غلط. وقبلها Backup، وبعدها قارنّا عدد الذكور والإناث قبل وبعد.
+
+> The review found duplicated address columns and Gender stored as an int. Both were fixed with hand-written migrations (EF's scaffold would have saved "1"/"2"): add a temp column, copy with CASE, enforce NOT NULL, drop the old one. Unknown values fail and roll back instead of saving garbage. The database was backed up first and counts were compared before and after.
+
+---
+
+## 139. Translating API Errors by Code
+
+الـ API بيرجع ProblemDetails فيها `code` زي `Membership.Overlap` ومعاها `detail` بالإنجليزي. الـ Frontend بيترجم بالـ code من Namespace اسمه `Errors`، ولو الكود مش معروف بيرجع لنص السيرفر كحل أخير. ولأن `toastError` دالة عادية مش React Component ومستخدمة في أكتر من 100 مكان، عملنا Component صغير اسمه `ErrorMessagesBridge` بيسجل دالة الترجمة في متغير، فكل الأماكن القديمة بقت بتترجم من غير ما نغير ولا سطر فيها.
+
+> The API returns a stable error code plus an English detail. The UI translates by code through an `Errors` namespace and falls back to the server text only for unknown codes. A tiny bridge component registers the translator so the plain `toastError` function, used in 100+ places, became localized without touching its callers.
+
+---
+
+## 140. Language Detection and Persistence
+
+أول زيارة: الـ Middleware بتاع next-intl بيقرا `Accept-Language` من المتصفح، فلو المتصفح عربي بيحوّل على `/ar`. بعد كده اختيار المستخدم من زرار اللغة بيتحفظ في Cookie اسمها `NEXT_LOCALE` لمدة سنة (الافتراضي كان Session Cookie بتضيع لما المتصفح يتقفل)، والـ Cookie المحفوظة بتكسب على لغة المتصفح. وزرار اللغة موجود دايمًا في الهيدر حتى على الموبايل.
+
+> First visits follow the browser's Accept-Language; afterwards the user's explicit choice is stored in a one-year NEXT_LOCALE cookie and wins over the browser setting. The language switcher is always visible, including on mobile.
+
+---
+
+## 141. RTL Pitfalls We Actually Hit
+
+شوية مشاكل ظهرت بس في العربي:
+- مكتبة Radix (Tabs وSelect والقوائم) بتفترض LTR لو محدش قالها، فكانت التابات معكوسة والتواريخ جواها متلخبطة. الحل `Direction.Provider` مرة واحدة حوالين التطبيق كله.
+- علامة `%` بعد كلام عربي بتنط للناحية التانية ("%31")، فعملنا `f.percent()` بيعزل الرقم والعلامة كوحدة LTR.
+- `dir="auto"` بيخلي الخانة الفاضية LTR فالـ Placeholder العربي بيظهر شمال؛ حلّيناها بقاعدة CSS واحدة `unicode-bidi: plaintext`.
+- أسماء المستخدمين الإنجليزي جوه جملة عربي بنلفها بـ `<bdi>` أو بعلامات العزل Unicode في النصوص العادية زي الـ Toasts.
+
+> Real RTL bugs: Radix primitives default to LTR (fixed once with a global Direction provider); a bare "%" jumps sides after Arabic text (fixed with an isolated percent formatter); empty dir="auto" inputs render LTR (fixed with unicode-bidi: plaintext); user data inside translated sentences is wrapped in <bdi> or Unicode isolates.
+
+---
+
+## 142. Charts in Right-to-Left
+
+في العربي الوقت لازم يمشي من اليمين للشمال، فمحور X في الرسوم البيانية بيتعكس (`reversed`) والمحور Y بيروح يمين. الأرقام والشهور بتتنسق بـ `Intl` حسب اللغة، والـ Tooltip بياخد اتجاهه صريح. الرسم نفسه جوه Wrapper بـ `dir="ltr"` عشان مكتبة Recharts بتحسب الإحداثيات على أساس LTR، وإحنا اللي بنعكس بقصد.
+
+> In Arabic, time flows right-to-left: the X axis is reversed and the Y axis moves to the right. Numbers and months use Intl for the active locale. Charts render inside an LTR wrapper because Recharts computes coordinates left-to-right, and mirroring is applied deliberately.
+
+---
+
+## 143. Parallel Agents, One Messages File
+
+الترجمة اتقسمت على أكتر من جزء شغالين في نفس الوقت، وكلهم محتاجين يكتبوا في نفس ملفي الترجمة. عشان محدش يمسح شغل التاني، كل جزء بيكتب Patch صغير بالـ Namespaces بتاعته بس، وسكريبت Merge بيدمجه Deep Merge وعليه Lock File. وسكريبت `check-messages` بيتأكد إن الملفين فيهم نفس المفاتيح بالظبط (1711 مفتاح)، فمستحيل صفحة تظهر بمفتاح ناقص في لغة.
+
+> Several workstreams translated in parallel but shared two message files. Each wrote a patch limited to its own namespaces, merged by a deep-merge script guarded by a lock file, and a check script guarantees both languages have exactly the same keys.
+
+---
+
+## 144. A Sweep Test for Leftover English
+
+بعد الترجمة عملنا Sweep أوتوماتيك: بيدخل كل صفحة بكل دور (زائر، أدمن، عضو، مدرب) بالعربي والإنجليزي، ويتأكد من `dir` الصح، ومفيش Console Errors، ومفيش مفاتيح ترجمة ظاهرة زي `Members.title`. وكمان بيطلع الكلمات الإنجليزي اللي في الصفحات العربي بعد ما يشيل الكلمات اللي جاية من قاعدة البيانات (الأسماء والباقات)، فأي نص واجهة نسيناه بيبان على طول. كده لقينا مثلًا إن الـ aria-label بتاع منطقة الإشعارات كان لسه إنجليزي.
+
+> An automated sweep visits every page for every role in both languages, checking the html dir, console errors and raw message keys, and lists Latin words on Arabic pages after removing words that come from the database. It caught leftovers such as the English aria-label of the toast region.
+
+---
+
+## 145. What Stays in English on Purpose
+
+مش كل حاجة لازم تتترجم: الإيميلات اللي السيرفر بيبعتها وعناوين الأعمدة في ملفات Excel/CSV لسه إنجليزي، لأنها بتتولد في الـ Backend من غير ما يكون فيه Request بلغة الواجهة، وترجمتها محتاجة قرار (لغة مفضلة محفوظة لكل مستخدم). وكمان البيانات نفسها زي أسماء الأعضاء والباقات بتفضل زي ما اتكتبت. ده قرار موثّق مش نسيان.
+
+> Server emails and export column headers stay in English because they are generated in the backend without a UI language; localizing them would need a stored per-user language preference. User data stays as typed. These are documented decisions, not omissions.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Controller, useFormContext } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,10 +12,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField, fieldProps } from "@/components/shared/form-field";
+import { NOTE_MAX } from "@/features/members/schemas";
 import { BLOOD_TYPES, type HealthFields } from "@/lib/validation";
 
 /** Height, weight, blood type and a note. Reads the form from react-hook-form's context. */
 export function HealthFieldset() {
+  const t = useTranslations("Members.health");
   const {
     register,
     control,
@@ -25,7 +28,7 @@ export function HealthFieldset() {
   return (
     <div className="grid gap-5">
       <div className="grid gap-5 sm:grid-cols-3">
-        <FormField id="health-height" label="Height (cm)" error={e?.height?.message}>
+        <FormField id="health-height" label={t("height")} error={e?.height?.message}>
           <Input
             {...fieldProps("health-height", e?.height?.message)}
             inputMode="decimal"
@@ -34,7 +37,7 @@ export function HealthFieldset() {
             {...register("healthRecord.height")}
           />
         </FormField>
-        <FormField id="health-weight" label="Weight (kg)" error={e?.weight?.message}>
+        <FormField id="health-weight" label={t("weight")} error={e?.weight?.message}>
           <Input
             {...fieldProps("health-weight", e?.weight?.message)}
             inputMode="decimal"
@@ -43,7 +46,7 @@ export function HealthFieldset() {
             {...register("healthRecord.weight")}
           />
         </FormField>
-        <FormField id="health-blood" label="Blood type" error={e?.bloodType?.message}>
+        <FormField id="health-blood" label={t("bloodType")} error={e?.bloodType?.message}>
           <Controller
             control={control}
             name="healthRecord.bloodType"
@@ -54,12 +57,13 @@ export function HealthFieldset() {
                   className="w-full"
                   onBlur={field.onBlur}
                 >
-                  <SelectValue placeholder="Select" />
+                  <SelectValue placeholder={t("bloodTypePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {BLOOD_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {type}
+                      {/* dir="ltr": in Arabic, "A+" would otherwise show as "+A". */}
+                      <span dir="ltr">{type}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -70,15 +74,16 @@ export function HealthFieldset() {
       </div>
       <FormField
         id="health-note"
-        label="Notes for trainers"
+        label={t("note")}
         error={e?.note?.message}
-        description="Injuries, conditions or anything a coach should know. Optional."
+        description={t("noteHint")}
       >
         <Textarea
           {...fieldProps("health-note", e?.note?.message, true)}
-          placeholder="e.g. Old knee injury: avoid deep squats."
-          maxLength={500}
+          placeholder={t("notePlaceholder")}
+          maxLength={NOTE_MAX}
           rows={3}
+          dir="auto"
           {...register("healthRecord.note")}
         />
       </FormField>

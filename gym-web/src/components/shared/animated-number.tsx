@@ -2,21 +2,24 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { animate, useReducedMotion } from "framer-motion";
-
-const defaultFormat = (n: number) => Math.round(n).toLocaleString("en");
+import { useLocale } from "next-intl";
+import { formatNumber } from "@/lib/format";
 
 /**
  * A number that counts up to its value (and glides to new values when the data refreshes).
  * The text is written straight into the element on each animation frame, so React doesn't
  * re-render 60 times a second. People who prefer reduced motion get the final value at once.
+ * Without `format`, it shows a whole number in the site language's style (like useFormat().number).
  */
 export function AnimatedNumber({
   value,
-  format = defaultFormat,
+  format: customFormat,
 }: {
   value: number;
   format?: (n: number) => string;
 }) {
+  const locale = useLocale();
+  const format = customFormat ?? ((n: number) => formatNumber(Math.round(n), locale));
   const ref = useRef<HTMLSpanElement>(null);
   const shown = useRef(0);
   const formatRef = useRef(format);

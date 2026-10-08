@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, MailCheck, Send } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, fieldProps } from "@/components/shared/form-field";
@@ -19,7 +20,10 @@ import { Link } from "@/i18n/navigation";
  * to find out who has an account.
  */
 export function ForgotPasswordForm() {
-  const [sent, setSent] = useState<{ email: string; message: string } | null>(null);
+  const t = useTranslations("Auth");
+  const tValidation = useTranslations("Validation");
+  const schema = useMemo(() => forgotPasswordSchema(tValidation), [tValidation]);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -27,45 +31,53 @@ export function ForgotPasswordForm() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordValues>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: "" },
   });
 
   const onSubmit = async (values: ForgotPasswordValues) => {
     try {
-      const { message } = await forgotPassword(values);
-      setSent({ email: values.email, message });
+      // The API answers with a fixed English sentence; we show our own translation of it instead.
+      await forgotPassword(values);
+      setSentTo(values.email);
     } catch (error) {
       applyServerErrors(error, setError, ["email"]);
     }
   };
 
-  if (sent) {
+  if (sentTo) {
     return (
       <div className="text-center">
         <div className="mx-auto mb-6 flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <MailCheck className="size-7" />
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Check your inbox</h1>
-        <p className="mt-3 text-muted-foreground">{sent.message}</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("forgot.sentTitle")}</h1>
+        <p className="mt-3 text-muted-foreground">{t("forgot.sentBody")}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sent to <span className="font-medium text-foreground">{sent.email}</span>. The link works
-          for a limited time, and don&apos;t forget to check your spam folder.
+          {t.rich("forgot.sentTo", {
+            address: sentTo,
+            // The email is user data: shown as typed, left-to-right even inside Arabic text.
+            email: (chunks) => (
+              <bdi dir="ltr" className="font-medium text-foreground">
+                {chunks}
+              </bdi>
+            ),
+          })}
         </p>
         <div className="mt-8 grid gap-3">
           <Button size="lg" className="h-11" asChild>
             <Link href="/login">
-              <ArrowLeft /> Back to log in
+              <ArrowLeft className="rtl:rotate-180" /> {t("forgot.back")}
             </Link>
           </Button>
           <Button
             variant="ghost"
             onClick={() => {
               reset();
-              setSent(null);
+              setSentTo(null);
             }}
           >
-            Use a different email
+            {t("forgot.differentEmail")}
           </Button>
         </div>
       </div>
@@ -74,34 +86,36 @@ export function ForgotPasswordForm() {
 
   return (
     <>
-      <AuthHeading
-        title="Forgot your password?"
-        description="Enter the email you use at Power Fitness and we'll send you a link to choose a new one."
-      />
+      <AuthHeading title={t("forgot.title")} description={t("forgot.description")} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
 
-        <FormField id="email" label="Email" error={errors.email?.message}>
+        <FormField id="email" label={t("fields.email")} error={errors.email?.message}>
           <Input
             {...fieldProps("email", errors.email?.message)}
             type="email"
+            dir="ltr"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
         </FormField>
 
         <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={isSubmitting}>
-          {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
-          {isSubmitting ? "Sending…" : "Send reset link"}
+          {isSubmitting ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Send className="rtl:-scale-x-100" />
+          )}
+          {isSubmitting ? t("forgot.submitting") : t("forgot.submit")}
         </Button>
       </form>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Remembered it?{" "}
+        {t("forgot.remembered")}{" "}
         <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
-          Back to log in
+          {t("forgot.back")}
         </Link>
       </p>
     </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarRange, Receipt, Snowflake, UserRound } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +14,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { QueryError } from "@/components/shared/query-error";
 import { MembershipStateBadge } from "@/features/member-portal/components/membership-state-badge";
+import { isolate } from "@/lib/bidi";
 import { useMembership } from "@/features/memberships/queries";
 import { PAYMENT_TYPE_STYLE } from "@/features/payments/payment-meta";
-import { formatDate, formatDateTime, formatDays, formatDuration, formatMoney } from "@/lib/format";
+import { useFormat } from "@/hooks/use-format";
 import { cn } from "@/lib/utils";
 import type { MembershipResponse } from "@/types";
 import { Link } from "@/i18n/navigation";
@@ -60,9 +62,22 @@ export function MembershipDetailsSheet({
   membership,
   actions,
 }: MembershipDetailsSheetProps) {
+  const t = useTranslations("Memberships.details");
+  const tCols = useTranslations("Members.columns");
+  const tEnums = useTranslations("Enums");
+  const f = useFormat();
   const details = useMembership(open && membership ? membership.id : null);
   // Show the row we already have while the details load, then the fresh data.
   const current = details.data?.membership ?? membership;
+
+  const cancelledText = (m: MembershipResponse) => {
+    const date = m.cancelledAt ? f.date(m.cancelledAt) : null;
+    if (m.cancellationReason) {
+      const reason = isolate(m.cancellationReason);
+      return date ? t("cancelledOnReason", { date, reason }) : t("cancelledReason", { reason });
+    }
+    return date ? t("cancelledOn", { date }) : t("cancelled");
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -71,7 +86,9 @@ export function MembershipDetailsSheet({
           <>
             <SheetHeader className="border-b">
               <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle className="text-lg">{current.planName}</SheetTitle>
+                <SheetTitle className="text-lg">
+                  <bdi>{current.planName}</bdi>
+                </SheetTitle>
                 <MembershipStateBadge state={current.state} />
               </div>
               <SheetDescription>
@@ -79,7 +96,7 @@ export function MembershipDetailsSheet({
                   href={`/dashboard/members/${current.memberId}`}
                   className="inline-flex items-center gap-1.5 hover:underline"
                 >
-                  <UserRound className="size-3.5" /> {current.memberName}
+                  <UserRound className="size-3.5" /> <bdi>{current.memberName}</bdi>
                 </Link>
               </SheetDescription>
             </SheetHeader>
@@ -87,10 +104,10 @@ export function MembershipDetailsSheet({
             <div className="flex-1 space-y-6 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Starts", value: formatDate(current.startDate) },
-                  { label: "Ends", value: formatDate(current.endDate) },
-                  { label: "Paid", value: formatMoney(current.pricePaid) },
-                  { label: "Length", value: formatDuration(current.durationDays) },
+                  { label: t("starts"), value: f.date(current.startDate) },
+                  { label: t("ends"), value: f.date(current.endDate) },
+                  { label: t("paid"), value: f.money(current.pricePaid) },
+                  { label: t("length"), value: f.duration(current.durationDays) },
                 ].map((tile) => (
                   <div key={tile.label} className="rounded-xl border bg-muted/30 p-3">
                     <p className="text-xs text-muted-foreground">{tile.label}</p>
@@ -101,13 +118,13 @@ export function MembershipDetailsSheet({
 
               {current.frozenUntil && (
                 <p className="flex items-center gap-2 rounded-lg bg-sky-500/10 p-3 text-sm text-sky-800 dark:text-sky-200">
-                  <Snowflake className="size-4" /> Frozen until {formatDate(current.frozenUntil)}.
+                  <Snowflake className="size-4" />{" "}
+                  {t("frozenUntil", { date: f.date(current.frozenUntil) })}
                 </p>
               )}
               {current.state === "Cancelled" && (
                 <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                  Cancelled {current.cancelledAt ? `on ${formatDate(current.cancelledAt)}` : ""}
-                  {current.cancellationReason ? `: ${current.cancellationReason}` : "."}
+                  {cancelledText(current)}
                 </p>
               )}
 
@@ -115,7 +132,7 @@ export function MembershipDetailsSheet({
 
               {details.isError ? (
                 <QueryError
-                  title="We couldn't load the history"
+                  title={t("loadError")}
                   error={details.error}
                   onRetry={() => void details.refetch()}
                   retrying={details.isFetching}
@@ -128,7 +145,7 @@ export function MembershipDetailsSheet({
                 </div>
               ) : (
                 <>
-                  <Section icon={Receipt} title="Payments">
+                  <Section icon={Receipt} title={t("payments")}>
                     <ul className="divide-y rounded-lg border">
                       {details.data.payments.map((payment) => (
                         <li
@@ -137,11 +154,13 @@ export function MembershipDetailsSheet({
                         >
                           <div>
                             <Badge variant="outline" className={PAYMENT_TYPE_STYLE[payment.type]}>
-                              {payment.type}
+                              {tEnums(`PaymentType.${payment.type}`)}
                             </Badge>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {formatDateTime(payment.paidAt)} · {payment.method}
-                              {payment.receivedBy ? ` · by ${payment.receivedBy}` : ""}
+                              {f.dateTime(payment.paidAt)} ·{" "}
+                              {tEnums(`PaymentMethod.${payment.method}`)}
+                              {payment.receivedBy &&
+                                ` · ${t("receivedBy", { name: isolate(payment.receivedBy) })}`}
                             </p>
                           </div>
                           <span
@@ -151,7 +170,7 @@ export function MembershipDetailsSheet({
                             )}
                           >
                             {payment.type === "Refund" ? "−" : ""}
-                            {formatMoney(payment.amount)}
+                            {f.money(payment.amount)}
                           </span>
                         </li>
                       ))}
@@ -160,25 +179,32 @@ export function MembershipDetailsSheet({
 
                   <Section
                     icon={CalendarRange}
-                    title={`Freezes (${formatDays(current.totalFrozenDays)} used)`}
+                    title={t("freezes", { used: f.days(current.totalFrozenDays) })}
                   >
                     {details.data.freezes.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Never frozen.</p>
+                      <p className="text-sm text-muted-foreground">{t("neverFrozen")}</p>
                     ) : (
                       <ul className="divide-y rounded-lg border">
                         {details.data.freezes.map((freeze) => (
                           <li key={freeze.id} className="p-3 text-sm">
                             <p className="font-medium">
-                              {formatDate(freeze.startDate)} →{" "}
-                              {formatDate(freeze.endedEarlyAt ?? freeze.endDate)}
+                              {tCols("dateRange", {
+                                start: f.date(freeze.startDate),
+                                end: f.date(freeze.endedEarlyAt ?? freeze.endDate),
+                              })}
                               <span className="ms-2 text-xs font-normal text-muted-foreground">
                                 {freeze.endedEarlyAt
-                                  ? `ended early · ${formatDays(usedDays(freeze.startDate, freeze.endedEarlyAt))} of ${freeze.days} used`
-                                  : formatDays(freeze.days)}
+                                  ? t("endedEarly", {
+                                      used: f.days(usedDays(freeze.startDate, freeze.endedEarlyAt)),
+                                      total: f.number(freeze.days),
+                                    })
+                                  : f.days(freeze.days)}
                               </span>
                             </p>
                             {freeze.reason && (
-                              <p className="text-xs text-muted-foreground">{freeze.reason}</p>
+                              <p dir="auto" className="text-xs text-muted-foreground">
+                                {freeze.reason}
+                              </p>
                             )}
                           </li>
                         ))}
@@ -190,7 +216,7 @@ export function MembershipDetailsSheet({
 
               <Button variant="outline" className="w-full" asChild>
                 <Link href={`/dashboard/members/${current.memberId}?tab=memberships`}>
-                  Open member profile
+                  {t("openProfile")}
                 </Link>
               </Button>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useFormat } from "@/hooks/use-format";
 import { PAGE_SIZES } from "@/hooks/use-list-params";
 
 type DataTablePaginationProps = {
@@ -16,8 +18,12 @@ type DataTablePaginationProps = {
   pageSize: number;
   totalCount: number;
   totalPages: number;
-  /** Plural name of the rows, e.g. "members". */
-  itemLabel: string;
+  /**
+   * Plural name of the rows, already translated, e.g. "members". English shows it after the
+   * total ("of 132 members"); Arabic leaves it out ("من أصل 132"), because the noun's form
+   * would have to change with the number.
+   */
+  itemLabel?: string;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   pageSizes?: readonly number[];
@@ -29,11 +35,13 @@ export function DataTablePagination({
   pageSize,
   totalCount,
   totalPages,
-  itemLabel,
+  itemLabel = "",
   onPageChange,
   onPageSizeChange,
   pageSizes = PAGE_SIZES,
 }: DataTablePaginationProps) {
+  const t = useTranslations("DataTable");
+  const f = useFormat();
   if (totalCount === 0) return null;
 
   const first = (page - 1) * pageSize + 1;
@@ -43,25 +51,29 @@ export function DataTablePagination({
   return (
     <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
       <p className="text-muted-foreground">
-        Showing <span className="font-medium text-foreground tabular-nums">{first}</span>–
-        <span className="font-medium text-foreground tabular-nums">{last}</span> of{" "}
-        <span className="font-medium text-foreground tabular-nums">{totalCount}</span> {itemLabel}
+        {t.rich("showing", {
+          first: f.number(first),
+          last: f.number(last),
+          total: f.number(totalCount),
+          items: itemLabel,
+          b: (chunks) => <span className="font-medium text-foreground tabular-nums">{chunks}</span>,
+        })}
       </p>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Rows per page</span>
+          <span className="text-muted-foreground">{t("rowsPerPage")}</span>
           <Select
             value={String(pageSize)}
             onValueChange={(value) => onPageSizeChange(Number(value))}
           >
-            <SelectTrigger size="sm" className="w-18" aria-label="Rows per page">
+            <SelectTrigger size="sm" className="w-18" aria-label={t("rowsPerPage")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {pageSizes.map((size) => (
                 <SelectItem key={size} value={String(size)}>
-                  {size}
+                  {f.number(size)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -70,35 +82,36 @@ export function DataTablePagination({
 
         <div className="flex items-center gap-1">
           <span className="me-2 text-muted-foreground tabular-nums">
-            Page {page} of {lastPage}
+            {t("page", { page: f.number(page), pages: f.number(lastPage) })}
           </span>
+          {/* Arrows point "back" and "forward" in the reading direction, so they flip in Arabic. */}
           <Button
             variant="outline"
             size="icon"
             className="hidden sm:inline-flex"
             onClick={() => onPageChange(1)}
             disabled={page <= 1}
-            aria-label="First page"
+            aria-label={t("firstPage")}
           >
-            <ChevronsLeft />
+            <ChevronsLeft className="rtl:rotate-180" />
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            aria-label="Previous page"
+            aria-label={t("previousPage")}
           >
-            <ChevronLeft />
+            <ChevronLeft className="rtl:rotate-180" />
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= lastPage}
-            aria-label="Next page"
+            aria-label={t("nextPage")}
           >
-            <ChevronRight />
+            <ChevronRight className="rtl:rotate-180" />
           </Button>
           <Button
             variant="outline"
@@ -106,9 +119,9 @@ export function DataTablePagination({
             className="hidden sm:inline-flex"
             onClick={() => onPageChange(lastPage)}
             disabled={page >= lastPage}
-            aria-label="Last page"
+            aria-label={t("lastPage")}
           >
-            <ChevronsRight />
+            <ChevronsRight className="rtl:rotate-180" />
           </Button>
         </div>
       </div>

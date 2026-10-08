@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +20,7 @@ import { FormSheet } from "@/components/shared/form-sheet";
 import { useCategories } from "@/features/categories/queries";
 import { useSaveSession } from "@/features/sessions/queries";
 import {
+  DESCRIPTION_MAX,
   SESSION_RULES,
   formatMinutes,
   minutesBetween,
@@ -26,9 +28,10 @@ import {
   type SessionValues,
 } from "@/features/sessions/schemas";
 import { useTrainers } from "@/features/trainers/queries";
+import { useFormat } from "@/hooks/use-format";
 import { cairoToUtc, cairoToday, utcToCairoInputs } from "@/lib/cairo-time";
-import { formatClassTime } from "@/lib/format";
 import { applyServerErrors } from "@/lib/form-errors";
+import { isolate } from "@/lib/bidi";
 import type { SessionResponse } from "@/types";
 
 const FORM_ID = "session-form";
@@ -92,6 +95,13 @@ type SessionFormProps = {
 };
 
 function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
+  const t = useTranslations("Sessions.form");
+  const tErrors = useTranslations("Sessions.errors");
+  const tValidation = useTranslations("Validation");
+  const tLength = useTranslations("Sessions.length");
+  const f = useFormat();
+  // The rules with messages in the current language.
+  const schema = useMemo(() => sessionSchema(tErrors, tValidation), [tErrors, tValidation]);
   const categories = useCategories();
   const {
     register,
@@ -102,7 +112,7 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
     control,
     formState: { errors },
   } = useForm<SessionValues>({
-    resolver: zodResolver(sessionSchema),
+    resolver: zodResolver(schema),
     defaultValues: defaultsFor(session, preset),
   });
 
@@ -129,8 +139,8 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
   const minutes = startTime && endTime ? minutesBetween(startTime, endTime) : 0;
   const durationHint =
     minutes > 0
-      ? `${formatMinutes(minutes)} class`
-      : `${SESSION_RULES.minMinutes} min to ${SESSION_RULES.maxMinutes / 60} hours`;
+      ? t("lengthHint", { length: formatMinutes(minutes, tLength) })
+      : t("lengthRange", { min: SESSION_RULES.minMinutes, max: SESSION_RULES.maxMinutes / 60 });
 
   const onSubmit = async (values: SessionValues) => {
     try {
@@ -145,8 +155,12 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
           endDate: cairoToUtc(values.date, values.endTime),
         },
       });
-      toast.success(session ? "Class updated" : "Class scheduled", {
-        description: `${saved.categoryName} with ${saved.trainerName}, ${formatClassTime(saved.startDate)}.`,
+      toast.success(session ? t("updated") : t("scheduled"), {
+        description: t("savedDescription", {
+          category: isolate(saved.categoryName),
+          trainer: isolate(saved.trainerName),
+          time: f.classTime(saved.startDate),
+        }),
       });
       onSaved();
     } catch (error) {
@@ -164,7 +178,7 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
       <FormError message={errors.root?.server?.message} />
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <FormField id="session-category" label="Class type" error={errors.categoryId?.message}>
+        <FormField id="session-category" label={t("category")} error={errors.categoryId?.message}>
           <Controller
             control={control}
             name="categoryId"
@@ -176,12 +190,14 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
                   onBlur={field.onBlur}
                   disabled={categories.isPending}
                 >
-                  <SelectValue placeholder={categories.isPending ? "Loading…" : "Choose a type"} />
+                  <SelectValue
+                    placeholder={categories.isPending ? t("loading") : t("categoryPlaceholder")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.data?.map((category) => (
                     <SelectItem key={category.id} value={String(category.id)}>
-                      {category.name}
+                      <bdi>{category.name}</bdi>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -192,9 +208,9 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
 
         <FormField
           id="session-trainer"
-          label="Coach"
+          label={t("trainer")}
           error={errors.trainerId?.message}
-          description={noTrainers ? "No coach teaches this type yet." : undefined}
+          description={noTrainers ? t("trainerNone") : undefined}
         >
           <Controller
             control={control}
@@ -208,13 +224,13 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
                   disabled={!categoryId || trainers.isPending || noTrainers}
                 >
                   <SelectValue
-                    placeholder={!categoryId ? "Pick the type first" : "Choose a coach"}
+                    placeholder={!categoryId ? t("trainerPickType") : t("trainerPlaceholder")}
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {trainers.data?.items.map((trainer) => (
                     <SelectItem key={trainer.id} value={String(trainer.id)}>
-                      {trainer.name}
+                      <bdi>{trainer.name}</bdi>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -226,46 +242,51 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
 
       <FormField
         id="session-description"
-        label="Title / description"
+        label={t("description")}
         error={errors.description?.message}
-        description="Members see this on the schedule, e.g. “Morning HIIT: full-body burn”."
+        description={t("descriptionHint")}
       >
         <Textarea
           {...fieldProps("session-description", errors.description?.message, true)}
-          placeholder="e.g. Evening Yoga flow for all levels"
-          maxLength={500}
+          placeholder={t("descriptionPlaceholder")}
+          maxLength={DESCRIPTION_MAX}
           rows={2}
+          // Text side follows what is typed (Arabic or English); an empty box keeps the page side.
+          className="[unicode-bidi:plaintext]"
           {...register("description")}
         />
       </FormField>
 
-      <FormField id="session-date" label="Day" error={errors.date?.message}>
+      <FormField id="session-date" label={t("date")} error={errors.date?.message}>
         <Input
           {...fieldProps("session-date", errors.date?.message)}
           type="date"
+          dir="ltr"
           min={cairoToday()}
           {...register("date")}
         />
       </FormField>
 
       <div className="grid grid-cols-2 gap-5">
-        <FormField id="session-start" label="Starts" error={errors.startTime?.message}>
+        <FormField id="session-start" label={t("start")} error={errors.startTime?.message}>
           <Input
             {...fieldProps("session-start", errors.startTime?.message)}
             type="time"
+            dir="ltr"
             step={300}
             {...register("startTime")}
           />
         </FormField>
         <FormField
           id="session-end"
-          label="Ends"
+          label={t("end")}
           error={errors.endTime?.message}
           description={durationHint}
         >
           <Input
             {...fieldProps("session-end", errors.endTime?.message, true)}
             type="time"
+            dir="ltr"
             step={300}
             {...register("endTime")}
           />
@@ -273,22 +294,23 @@ function SessionForm({ session, preset, save, onSaved }: SessionFormProps) {
       </div>
 
       <p className="-mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-        <Clock className="size-3.5" /> All times are Cairo time.
+        <Clock className="size-3.5" /> {t("cairoTime")}
       </p>
 
       <FormField
         id="session-capacity"
-        label="Spots"
+        label={t("capacity")}
         error={errors.capacity?.message}
         description={
           session && session.bookedCount > 0
-            ? `${session.bookedCount} already booked, so at least ${session.bookedCount}.`
-            : `Up to ${SESSION_RULES.maxCapacity} members per class.`
+            ? t("capacityBooked", { count: session.bookedCount })
+            : t("capacityMax", { max: SESSION_RULES.maxCapacity })
         }
       >
         <Input
           {...fieldProps("session-capacity", errors.capacity?.message, true)}
           inputMode="numeric"
+          dir="ltr"
           maxLength={2}
           className="sm:max-w-32"
           {...register("capacity")}
@@ -313,20 +335,18 @@ export function SessionFormSheet({
   session,
   preset = null,
 }: SessionFormSheetProps) {
+  const t = useTranslations("Sessions.form");
+  const tCommon = useTranslations("Common");
   const save = useSaveSession();
 
   return (
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={session ? "Edit class" : "Schedule a class"}
-      description={
-        session
-          ? "Booked members keep their spot. If the time changes, let them know."
-          : "Add a class to the timetable. It opens for booking as soon as you save."
-      }
+      title={session ? t("titleEdit") : t("titleNew")}
+      description={session ? t("descriptionEdit") : t("descriptionNew")}
       formId={FORM_ID}
-      submitLabel={session ? "Save changes" : "Schedule class"}
+      submitLabel={session ? tCommon("save") : t("submitNew")}
       submitting={save.isPending}
     >
       <SessionForm

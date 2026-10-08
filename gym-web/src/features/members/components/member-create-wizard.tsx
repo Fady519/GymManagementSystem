@@ -14,6 +14,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,8 +25,11 @@ import { AddressFieldset, GenderField } from "@/components/shared/person-fields"
 import { HealthFieldset } from "@/features/members/components/health-fieldset";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { PhotoPicker, type PickedPhoto } from "@/features/members/components/photo-picker";
+import { isolate } from "@/lib/bidi";
 import { useCreateMember, useUploadMemberPhoto } from "@/features/members/queries";
 import { createMemberSchema, type CreateMemberValues } from "@/features/members/schemas";
+import { useFormat } from "@/hooks/use-format";
+import { useNow } from "@/hooks/use-now";
 import { applyServerErrors } from "@/lib/form-errors";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
@@ -40,9 +44,11 @@ import {
 } from "@/lib/validation";
 import { Link, useRouter } from "@/i18n/navigation";
 
+type StepKey = "personal" | "address" | "health" | "photo";
+
 type Step = {
-  title: string;
-  description: string;
+  /** Its title and description are under Members.wizard.steps.<key>. */
+  key: StepKey;
   icon: LucideIcon;
   optional: boolean;
   /** The fields checked before moving to the next step. */
@@ -51,22 +57,19 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    title: "Personal details",
-    description: "Who is joining? These are required.",
+    key: "personal",
     icon: UserRound,
     optional: false,
     fields: ["name", "email", "phone", "dateOfBirth", "gender"],
   },
   {
-    title: "Address",
-    description: "Where they live. Leave it empty to skip.",
+    key: "address",
     icon: MapPin,
     optional: true,
     fields: ["address.buildingNumber", "address.street", "address.city"],
   },
   {
-    title: "Health",
-    description: "Helps trainers keep them safe. Leave it empty to skip.",
+    key: "health",
     icon: HeartPulse,
     optional: true,
     fields: [
@@ -76,13 +79,7 @@ const STEPS: Step[] = [
       "healthRecord.note",
     ],
   },
-  {
-    title: "Photo",
-    description: "Optional. You can add or change it later.",
-    icon: UserPlus,
-    optional: true,
-    fields: [],
-  },
+  { key: "photo", icon: UserPlus, optional: true, fields: [] },
 ];
 
 const ALL_FIELDS = STEPS.flatMap((step) => step.fields);
@@ -103,6 +100,8 @@ function Stepper({
   reached: number;
   onSelect: (step: number) => void;
 }) {
+  const t = useTranslations("Members.wizard.steps");
+  const f = useFormat();
   return (
     <ol className="grid grid-cols-4 gap-2">
       {STEPS.map((step, index) => {
@@ -110,7 +109,7 @@ function Stepper({
         const active = index === current;
         const clickable = index <= reached && !active;
         return (
-          <li key={step.title}>
+          <li key={step.key}>
             <button
               type="button"
               disabled={!clickable}
@@ -127,7 +126,7 @@ function Stepper({
                   clickable && "group-hover:border-primary",
                 )}
               >
-                {done ? <Check className="size-4" /> : index + 1}
+                {done ? <Check className="size-4" /> : f.number(index + 1)}
               </span>
               <span
                 className={cn(
@@ -135,7 +134,7 @@ function Stepper({
                   active ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                {step.title}
+                {t(`${step.key}.title`)}
               </span>
             </button>
           </li>
@@ -147,36 +146,44 @@ function Stepper({
 
 /** A live preview of what's been typed so far, so reception can double-check before saving. */
 function SummaryCard({ photo }: { photo: PickedPhoto | null }) {
+  const t = useTranslations("Members.wizard.summary");
+  const tForm = useTranslations("Members.form");
+  const tEnums = useTranslations("Enums");
+  const now = useNow();
   const values = useWatch<CreateMemberValues>();
-  const name = values.name?.trim() || "New member";
+  const typedName = values.name?.trim();
   const age =
-    values.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(values.dateOfBirth)
-      ? ageOn(new Date(), values.dateOfBirth)
+    now && values.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(values.dateOfBirth)
+      ? ageOn(now, values.dateOfBirth)
       : null;
+  // Typed values are shown as typed (never translated); only the units around them are.
   const address =
     values.address && !isAddressEmpty({ ...EMPTY_ADDRESS, ...values.address })
       ? [values.address.buildingNumber, values.address.street, values.address.city]
           .filter(Boolean)
-          .join(", ")
+          .join(" · ")
       : null;
   const health =
     values.healthRecord && !isHealthEmpty({ ...EMPTY_HEALTH, ...values.healthRecord })
       ? [
-          values.healthRecord.height && `${values.healthRecord.height} cm`,
-          values.healthRecord.weight && `${values.healthRecord.weight} kg`,
-          values.healthRecord.bloodType,
+          values.healthRecord.height && t("heightValue", { value: values.healthRecord.height }),
+          values.healthRecord.weight && t("weightValue", { value: values.healthRecord.weight }),
+          values.healthRecord.bloodType && isolate(values.healthRecord.bloodType),
         ]
           .filter(Boolean)
           .join(" · ")
       : null;
 
-  const rows: [string, string | null][] = [
-    ["Email", values.email?.trim() || null],
-    ["Mobile", values.phone?.trim() || null],
-    ["Age", age !== null && age >= 0 && age < 120 ? `${age} years` : null],
-    ["Gender", values.gender ?? null],
-    ["Address", address],
-    ["Health", health],
+  const rows: { label: string; value: string | null; dir?: "ltr" | "auto" }[] = [
+    { label: tForm("email"), value: values.email?.trim() || null, dir: "ltr" },
+    { label: t("mobile"), value: values.phone?.trim() || null, dir: "ltr" },
+    {
+      label: t("age"),
+      value: age !== null && age >= 0 && age < 120 ? t("ageValue", { count: age }) : null,
+    },
+    { label: tForm("gender"), value: values.gender ? tEnums(`Gender.${values.gender}`) : null },
+    { label: t("address"), value: address, dir: "auto" },
+    { label: t("health"), value: health },
   ];
 
   return (
@@ -186,18 +193,24 @@ function SummaryCard({ photo }: { photo: PickedPhoto | null }) {
           // eslint-disable-next-line @next/next/no-img-element -- a local data: preview
           <img src={photo.preview} alt="" className="mx-auto size-20 rounded-full object-cover" />
         ) : (
-          <MemberAvatar name={name} photoUrl={null} className="mx-auto size-20 text-xl" />
+          <MemberAvatar
+            name={typedName || t("newMember")}
+            photoUrl={null}
+            className="mx-auto size-20 text-xl"
+          />
         )}
-        <CardTitle className="mt-2 break-words">{name}</CardTitle>
-        <CardDescription>Member profile preview</CardDescription>
+        <CardTitle className="mt-2 break-words">
+          {typedName ? <bdi>{typedName}</bdi> : t("newMember")}
+        </CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <dl className="divide-y text-sm">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex justify-between gap-4 py-2.5">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className={cn("text-end break-all", !value && "text-muted-foreground/60")}>
-                {value ?? "—"}
+          {rows.map((row) => (
+            <div key={row.label} className="flex justify-between gap-4 py-2.5">
+              <dt className="text-muted-foreground">{row.label}</dt>
+              <dd className={cn("text-end break-all", !row.value && "text-muted-foreground/60")}>
+                {row.value ? <bdi dir={row.dir}>{row.value}</bdi> : "—"}
               </dd>
             </div>
           ))}
@@ -213,6 +226,9 @@ function SummaryCard({ photo }: { photo: PickedPhoto | null }) {
  * at the end, then the photo (if any) is uploaded with a second one.
  */
 export function MemberCreateWizard() {
+  const t = useTranslations("Members.wizard");
+  const tForm = useTranslations("Members.form");
+  const tErrors = useTranslations("Members.errors");
   const router = useRouter();
   const create = useCreateMember();
   const upload = useUploadMemberPhoto();
@@ -221,7 +237,7 @@ export function MemberCreateWizard() {
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
 
   const form = useForm<CreateMemberValues>({
-    resolver: zodResolver(createMemberSchema),
+    resolver: zodResolver(createMemberSchema(tErrors)),
     defaultValues: {
       name: "",
       email: "",
@@ -283,12 +299,12 @@ export function MemberCreateWizard() {
         await upload.mutateAsync({ id: memberId, file: photo.file });
       } catch (error) {
         // The member exists; only the photo failed. Say so clearly and carry on to the profile.
-        toastError("Member added, but the photo didn't upload", error);
+        toastError(t("photoFailed"), error);
       }
     }
 
-    toast.success(`${memberName} is now a member`, {
-      description: "Their profile is ready. You can give them an online account from there.",
+    toast.success(t("created", { name: isolate(memberName) }), {
+      description: t("createdBody"),
     });
     router.push(`/dashboard/members/${memberId}`);
   };
@@ -305,12 +321,12 @@ export function MemberCreateWizard() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Add a member"
-        description="Takes about a minute. Only the personal details are required."
+        title={t("title")}
+        description={t("description")}
         actions={
           <Button variant="outline" asChild>
             <Link href="/dashboard/members">
-              <ArrowLeft /> Back to members
+              <ArrowLeft className="rtl:rotate-180" /> {t("backToList")}
             </Link>
           </Button>
         }
@@ -325,8 +341,8 @@ export function MemberCreateWizard() {
                 <current.icon className="size-5" />
               </span>
               <div>
-                <CardTitle className="text-lg">{current.title}</CardTitle>
-                <CardDescription>{current.description}</CardDescription>
+                <CardTitle className="text-lg">{t(`steps.${current.key}.title`)}</CardTitle>
+                <CardDescription>{t(`steps.${current.key}.description`)}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -350,24 +366,26 @@ export function MemberCreateWizard() {
 
                 {step === 0 && (
                   <div className="grid gap-5">
-                    <FormField id="member-name" label="Full name" error={errors.name?.message}>
+                    <FormField id="member-name" label={tForm("name")} error={errors.name?.message}>
                       <Input
                         {...fieldProps("member-name", errors.name?.message)}
-                        placeholder="e.g. Mariam Adel"
+                        placeholder={tForm("namePlaceholder")}
                         maxLength={50}
+                        dir="auto"
                         autoFocus
                         {...register("name")}
                       />
                     </FormField>
                     <FormField
                       id="member-email"
-                      label="Email"
+                      label={tForm("email")}
                       error={errors.email?.message}
-                      description="Used for their online account and receipts."
+                      description={tForm("emailHint")}
                     >
                       <Input
                         {...fieldProps("member-email", errors.email?.message, true)}
                         type="email"
+                        dir="ltr"
                         placeholder="name@example.com"
                         maxLength={100}
                         {...register("email")}
@@ -376,13 +394,14 @@ export function MemberCreateWizard() {
                     <div className="grid gap-5 sm:grid-cols-2">
                       <FormField
                         id="member-phone"
-                        label="Mobile number"
+                        label={tForm("phone")}
                         error={errors.phone?.message}
                       >
                         <Input
                           {...fieldProps("member-phone", errors.phone?.message)}
                           type="tel"
                           inputMode="numeric"
+                          dir="ltr"
                           placeholder="01012345678"
                           maxLength={11}
                           {...register("phone")}
@@ -390,7 +409,7 @@ export function MemberCreateWizard() {
                       </FormField>
                       <FormField
                         id="member-dob"
-                        label="Date of birth"
+                        label={tForm("dateOfBirth")}
                         error={errors.dateOfBirth?.message}
                       >
                         <Input
@@ -415,17 +434,17 @@ export function MemberCreateWizard() {
                     onClick={() => setStep(step - 1)}
                     disabled={step === 0 || busy}
                   >
-                    <ArrowLeft /> Back
+                    <ArrowLeft className="rtl:rotate-180" /> {t("back")}
                   </Button>
                   {step < LAST ? (
                     <Button type="submit">
-                      {current.optional && sectionEmpty ? "Skip for now" : "Continue"}
-                      <ArrowRight />
+                      {current.optional && sectionEmpty ? t("skip") : t("continue")}
+                      <ArrowRight className="rtl:rotate-180" />
                     </Button>
                   ) : (
                     <Button type="submit" disabled={busy}>
                       {busy ? <Loader2 className="animate-spin" /> : <UserPlus />}
-                      {busy ? "Adding member…" : "Add member"}
+                      {busy ? t("submitting") : t("submit")}
                     </Button>
                   )}
                 </div>

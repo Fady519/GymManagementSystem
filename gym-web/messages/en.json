@@ -21,7 +21,10 @@
     "logoLabel": "Power Fitness home",
     "brand": "Power Fitness",
     "spotsLeft": "{count, plural, =0 {Full} one {# spot left} other {# spots left}}",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "optional": "Optional",
+    "loading": "Loading…",
+    "notifications": "Notifications"
   },
   "Nav": {
     "main": "Main navigation",
@@ -129,7 +132,7 @@
       "bestValue": "Best value",
       "length": "{duration} membership",
       "perMonth": "{price} per month",
-      "save": "Save {percent}%",
+      "save": "Save {percent}",
       "perkBooking": "Book group classes online",
       "perkQr": "Fast QR check-in at the door",
       "perkFreeze": "Freeze your membership when you travel",
@@ -208,7 +211,7 @@
     "details": "Gym details",
     "detailsHint": "Shown in the website's contact section and footer.",
     "location": "Location",
-    "locationHint": "Enter the address in both languages. Visitors see the one that matches the language they browse in.",
+    "locationHint": "Type the address once, in any language. Visitors see it exactly as you write it, whatever language they browse in.",
     "hours": "Opening hours",
     "hoursHint": "Saturday to Thursday share the same hours. Friday can have its own hours or be a day off.",
     "social": "Social media",
@@ -219,8 +222,6 @@
       "whatsApp": "WhatsApp number",
       "whatsAppHint": "Optional. Adds “Chat with us” buttons to the website.",
       "email": "Public email",
-      "addressEn": "Address in English",
-      "addressAr": "Address in Arabic",
       "mapUrl": "Google Maps link",
       "mapUrlHint": "Optional. Open your gym in Google Maps, tap Share and paste the link here.",
       "facebookUrl": "Facebook page",
@@ -230,7 +231,8 @@
       "fridayOpen": "Open on Fridays",
       "fridayClosed": "Closed on Fridays",
       "opens": "Opens at",
-      "closes": "Closes at"
+      "closes": "Closes at",
+      "address": "Address"
     },
     "errors": {
       "required": "This field is required.",
@@ -538,7 +540,7 @@
         "weekHint": "Including today",
         "booked": "Spots booked",
         "bookedNone": "No upcoming classes this week",
-        "bookedHint": "{percent}% full across {count, plural, one {# upcoming class} other {# upcoming classes}}",
+        "bookedHint": "{percent} full across {count, plural, one {# upcoming class} other {# upcoming classes}}",
         "attendance": "Attendance rate",
         "attendanceHint": "{count, plural, one {Your last completed class} other {Your last # completed classes}}",
         "attendanceNone": "No bookings in your recent classes",
@@ -630,5 +632,1554 @@
       "noBookings": "No bookings",
       "attended": "{attended} of {booked} attended"
     }
+  },
+  "Enums": {
+    "BookingStatus": {
+      "Booked": "Booked",
+      "Attended": "Attended",
+      "Cancelled": "Cancelled"
+    },
+    "CheckInDenyReason": {
+      "NoMembership": "No membership",
+      "MembershipExpired": "Membership expired",
+      "MembershipFrozen": "Membership frozen",
+      "MembershipNotStarted": "Membership not started yet",
+      "AlreadyCheckedInToday": "Already checked in today"
+    },
+    "CheckInResult": {
+      "Allowed": "Allowed",
+      "Denied": "Denied"
+    },
+    "Gender": {
+      "Male": "Male",
+      "Female": "Female"
+    },
+    "MemberMembershipState": {
+      "None": "No membership",
+      "Active": "Active",
+      "Frozen": "Frozen",
+      "Expired": "Expired"
+    },
+    "MembershipState": {
+      "Upcoming": "Upcoming",
+      "Active": "Active",
+      "Frozen": "Frozen",
+      "Expired": "Expired",
+      "Cancelled": "Cancelled"
+    },
+    "PaymentMethod": {
+      "Cash": "Cash",
+      "Card": "Card",
+      "InstaPay": "InstaPay",
+      "Online": "Online"
+    },
+    "PaymentType": {
+      "Purchase": "New membership",
+      "Renewal": "Renewal",
+      "Refund": "Refund"
+    },
+    "SessionState": {
+      "Upcoming": "Upcoming",
+      "Ongoing": "Live now",
+      "Completed": "Completed",
+      "Cancelled": "Cancelled"
+    },
+    "SessionStatus": {
+      "Scheduled": "Scheduled",
+      "Cancelled": "Cancelled"
+    },
+    "RevenuePeriod": {
+      "Daily": "Daily",
+      "Monthly": "Monthly"
+    },
+    "ExportFormat": {
+      "Xlsx": "Excel (.xlsx)",
+      "Csv": "CSV (.csv)"
+    },
+    "Role": {
+      "Admin": "Admin",
+      "Member": "Member",
+      "Trainer": "Trainer"
+    }
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "greeting": "{greeting}, {name}",
+    "welcome": "Welcome back",
+    "intro": "Here's how the gym is doing.",
+    "updated": "Here's how the gym is doing. Updated at {time}, refreshes every minute.",
+    "loadError": "We couldn't load the dashboard",
+    "actions": {
+      "period": "Chart period",
+      "checkInDesk": "Check-in desk",
+      "addMember": "Add member",
+      "refresh": "Refresh the dashboard",
+      "memberships": "Go to memberships"
+    },
+    "ranges": {
+      "7d": {
+        "label": "Last 7 days",
+        "text": "in the last 7 days"
+      },
+      "30d": {
+        "label": "Last 30 days",
+        "text": "in the last 30 days"
+      },
+      "90d": {
+        "label": "Last 90 days",
+        "text": "in the last 90 days"
+      },
+      "12m": {
+        "label": "Last 12 months",
+        "text": "in the last 12 months"
+      }
+    },
+    "kpi": {
+      "activeMembers": "Active members",
+      "totalMembers": "{count, plural, =0 {No members yet} one {# member in total} other {# members in total}}",
+      "revenueMonth": "Revenue this month",
+      "revenueToday": "{amount} today",
+      "checkInsToday": "Check-ins today",
+      "checkInsHint": "Members through the door",
+      "upcomingClasses": "Upcoming classes",
+      "ongoing": "{count, plural, =0 {None in progress right now} other {# in progress right now}}"
+    },
+    "health": {
+      "title": "Membership health",
+      "description": "How many of your members can train today.",
+      "activeShare": "Active share",
+      "progressLabel": "Share of members with an active membership",
+      "newThisMonth": "New members this month",
+      "frozen": "Frozen memberships",
+      "expiringSoon": "Expiring soon, not renewed yet"
+    },
+    "today": {
+      "title": "Today at the gym",
+      "description": "Live activity across the floor and the schedule.",
+      "revenue": "Revenue today",
+      "checkIns": "Check-ins",
+      "inProgress": "Classes in progress",
+      "comingUp": "Classes coming up",
+      "trainers": "Trainers on the team"
+    },
+    "charts": {
+      "income": "Income",
+      "refunds": "Refunds",
+      "net": "Net",
+      "newMembers": "New members",
+      "totalMembers": "Total members",
+      "booked": "Booked",
+      "attended": "Attended",
+      "noShows": "No-shows",
+      "active": "active",
+      "showedUp": "showed up"
+    },
+    "revenue": {
+      "title": "Revenue",
+      "description": "Net income after refunds {range}.",
+      "breakdown": "{income} in · {refunds} refunded",
+      "comparePrevious": "vs. the previous period",
+      "compareLastYear": "vs. the same period last year",
+      "noComparePrevious": "No revenue in the previous period to compare",
+      "noCompareLastYear": "No revenue in the same period last year to compare",
+      "loadError": "We couldn't load the revenue",
+      "emptyTitle": "No payments in this period",
+      "empty": "Revenue appears here as soon as a membership is sold or renewed."
+    },
+    "growth": {
+      "title": "Member growth",
+      "description": "New sign-ups per month over the last 12 months.",
+      "summary": "{count, plural, one {member} other {members}} today · <b>+{joined}</b> joined in 12 months",
+      "loadError": "We couldn't load member growth",
+      "emptyTitle": "No members yet",
+      "empty": "Add your first member and the growth chart starts here."
+    },
+    "plans": {
+      "title": "Plan mix",
+      "description": "Running memberships by plan, right now.",
+      "loadError": "We couldn't load the plan mix",
+      "emptyTitle": "No running memberships",
+      "empty": "Once members are on a plan, you'll see which plans sell best."
+    },
+    "attendance": {
+      "title": "Class attendance",
+      "description": "Booked members who showed up {range}.",
+      "loadError": "We couldn't load attendance",
+      "emptyTitle": "No finished classes yet",
+      "empty": "Attendance is measured once booked classes in this period have ended."
+    },
+    "categories": {
+      "title": "Popular classes",
+      "description": "Most booked categories {range}.",
+      "loadError": "We couldn't load the popular classes",
+      "emptyTitle": "No bookings in this period",
+      "empty": "Schedule classes and let members book them to see what's popular.",
+      "openSchedule": "Open the schedule"
+    },
+    "renewals": {
+      "title": "Renewals due",
+      "checking": "Checking who needs a renewal…",
+      "count": "{count, plural, =0 {Memberships ending within 7 days with no renewal yet.} one {# membership ends within 7 days with no renewal yet.} other {# memberships end within 7 days with no renewal yet.}}",
+      "allMemberships": "All memberships",
+      "loadError": "We couldn't load the renewals",
+      "emptyTitle": "You're all caught up",
+      "empty": "No membership ends in the next 7 days without a renewal.",
+      "endsTomorrow": "Ends tomorrow",
+      "endsIn": "{count, plural, one {Ends in # day} other {Ends in # days}}",
+      "renew": "Renew",
+      "more": "{count, plural, one {And # more on the memberships page.} other {And # more on the memberships page.}}"
+    }
+  },
+  "CheckIns": {
+    "stats": {
+      "letIn": "Let in",
+      "turnedAway": "Turned away",
+      "total": "Total scans"
+    },
+    "desk": {
+      "title": "Check-in desk",
+      "description": "Scan a member's QR code to let them in. Every scan is logged, including refused ones.",
+      "soundOn": "Sound on",
+      "soundOff": "Sound off",
+      "turnSoundOn": "Turn sound on",
+      "turnSoundOff": "Turn sound off",
+      "log": "Attendance log",
+      "scannerTitle": "Scanner",
+      "scannerDescription": "Members open their QR code in the member app and hold it up to the camera.",
+      "orEnter": "or enter the code",
+      "codeLabel": "Check-in code",
+      "codePlaceholder": "e.g. {example}",
+      "submit": "Check in",
+      "codeHelp": "Shown under the member's QR code. USB barcode scanners can type into this box too.",
+      "codeEmpty": "Enter the member's check-in code.",
+      "codeFormat": "A check-in code has 32 characters: the digits 0–9 and the letters a–f.",
+      "rules": "Members are let in once per day with a running, unfrozen membership. Expired, frozen and not-yet-started memberships are refused with the reason on screen.",
+      "checkInError": "We couldn't check this member in"
+    },
+    "recent": {
+      "title": "Today at the door",
+      "description": "Live, updates every 30 seconds and after each scan.",
+      "loadError": "We couldn't load today's scans",
+      "emptyTitle": "No scans yet today",
+      "empty": "The first member through the door will show up here.",
+      "listLabel": "Recent scans",
+      "fullLog": "Full attendance log"
+    },
+    "camera": {
+      "starting": "Starting the camera… allow access if your browser asks.",
+      "readyTitle": "Ready when you are",
+      "readyText": "Turn on the camera and members can scan the QR code from their app.",
+      "start": "Start camera",
+      "stop": "Stop camera",
+      "running": "Camera on, scanning",
+      "hint": "Hold the member's QR code inside the frame",
+      "paused": "Paused while the result is shown",
+      "checking": "Checking…",
+      "errors": {
+        "insecure": "The camera only works on a secure (HTTPS) connection. Use the code box instead.",
+        "blocked": "Camera access is blocked. Allow the camera in your browser's site settings, then try again.",
+        "notFound": "No camera was found on this device. Connect one, or use the code box below.",
+        "inUse": "The camera is being used by another app. Close it, then try again.",
+        "generic": "The camera couldn't start. Try again, or use the code box below."
+      }
+    },
+    "overlay": {
+      "welcome": "Welcome in",
+      "denied": "Entry denied",
+      "message": {
+        "allowed": "Have a great workout!",
+        "lastDay": "Today is the last day of the membership.",
+        "NoMembership": "This member has no membership. Please buy a plan at the reception.",
+        "MembershipExpired": "The membership has expired. Please renew at the reception.",
+        "MembershipFrozen": "The membership is frozen. Entry is possible again once the freeze ends.",
+        "MembershipNotStarted": "The membership hasn't started yet. The member can come in from its start date.",
+        "AlreadyCheckedInToday": "This member was already let in earlier today. Each member checks in once per day."
+      },
+      "daysLeft": "{count, plural, one {# day left} other {# days left}}",
+      "lastDayChip": "Last day today",
+      "coveredUntil": "Covered until {date}",
+      "scannedAt": "Scanned at {time}",
+      "renewalSoon": "Renewal due soon. A good moment to offer the next plan.",
+      "unknownTitle": "Code not recognised",
+      "unknownText": "This QR code doesn't belong to any member. Ask them to open the latest code in the member app and scan again.",
+      "next": "Next member",
+      "openProfile": "Open profile",
+      "dismiss": "Tap anywhere or press Esc to continue."
+    },
+    "log": {
+      "title": "Attendance log",
+      "intro": "Every scan at the door, including members who were turned away.",
+      "summary": "{count, plural, one {# scan} other {# scans}} {period}{result, select, Allowed {, let in only} Denied {, turned away only} other {}}.",
+      "ranges": {
+        "today": {
+          "label": "Today",
+          "text": "today"
+        },
+        "week": {
+          "label": "This week",
+          "text": "this week"
+        },
+        "month": {
+          "label": "This month",
+          "text": "this month"
+        },
+        "30d": {
+          "label": "Last 30 days",
+          "text": "in the last 30 days"
+        },
+        "all": {
+          "label": "All time",
+          "text": "since the gym opened"
+        },
+        "custom": {
+          "label": "Custom dates",
+          "text": "in the chosen dates"
+        }
+      },
+      "customPeriod": "from {from} to {to}",
+      "periodLabel": "Period",
+      "from": "From",
+      "to": "To",
+      "toSeparator": "to",
+      "resultLabel": "Result",
+      "allResults": "All results",
+      "member": "Member: <b>{name}</b>",
+      "showAllMembers": "Show all members",
+      "reset": "Reset",
+      "badRange": "The end date must be on or after the start date.",
+      "totalsError": "We couldn't load the totals",
+      "recorded": "Recorded {period}",
+      "share": "{percent} of all scans",
+      "noScans": "No scans in this period",
+      "turnedAwayHint": "Refused at the door, with the reason logged",
+      "loadError": "We couldn't load the check-ins",
+      "tableLabel": "Check-ins",
+      "itemLabel": "check-ins",
+      "openDesk": "Open check-in desk",
+      "noMatchTitle": "No check-ins match",
+      "noMatch": "Nobody was scanned {period} with these filters. Try a longer period.",
+      "resetFilters": "Reset filters",
+      "emptyTitle": "No check-ins yet today",
+      "empty": "Scans from the check-in desk appear here the moment they happen.",
+      "columns": {
+        "time": "Time",
+        "member": "Member",
+        "result": "Result",
+        "reason": "Reason",
+        "scannedBy": "Scanned by"
+      }
+    }
+  },
+  "Shared": {
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "gender": {
+      "legend": "Gender"
+    },
+    "address": {
+      "legend": "Address",
+      "building": "Building no.",
+      "street": "Street",
+      "city": "City",
+      "buildingPlaceholder": "12",
+      "streetPlaceholder": "e.g. El-Tahrir St.",
+      "cityPlaceholder": "e.g. Cairo"
+    },
+    "export": {
+      "button": "Export",
+      "preparing": "Preparing…",
+      "includes": "Includes all {items} that match the current filters, not just this page.",
+      "xlsx": "Excel workbook",
+      "xlsxHint": "Formatted, ready to filter",
+      "csv": "CSV file",
+      "csvHint": "For other tools and imports",
+      "ready": "Export ready",
+      "saved": "{file} was saved to your downloads.",
+      "failed": "We couldn't export the {items}"
+    },
+    "invite": {
+      "sentTitle": "Invite sent to {name}",
+      "sentBody": "{email} got a link to choose a password. It expires after a few days.",
+      "failedTitle": "{name}'s login is ready, but the email didn't go out",
+      "failedBody": "The mail server didn't accept it. Use “Resend invite” in a few minutes."
+    }
+  },
+  "DataTable": {
+    "showing": "Showing <b>{first}</b>–<b>{last}</b> of <b>{total}</b> {items}",
+    "rowsPerPage": "Rows per page",
+    "page": "Page {page} of {pages}",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page",
+    "search": "Search…",
+    "clearSearch": "Clear search",
+    "rowActions": "Actions",
+    "noResults": "No results",
+    "noResultsHint": "Try a different search or change the filters."
+  },
+  "Auth": {
+    "fields": {
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "fullName": "Full name",
+      "namePlaceholder": "e.g. Ahmed Hassan",
+      "phone": "Mobile number",
+      "dateOfBirth": "Date of birth",
+      "confirmPassword": "Confirm password",
+      "newPassword": "New password",
+      "confirmNewPassword": "Confirm new password",
+      "currentPassword": "Current password",
+      "gender": "Gender"
+    },
+    "brand": {
+      "home": "Power Fitness home",
+      "headline": "Your training, your schedule, all in one place.",
+      "subline": "Members, coaches and staff use the same account to keep every session on track.",
+      "benefits": {
+        "book": "Book your spot in any class in seconds",
+        "checkIn": "Check in at the door with your personal QR code",
+        "follow": "Follow your membership, visits and payments in one place"
+      }
+    },
+    "nextClass": {
+      "label": "Next class at the gym",
+      "title": "<bdi>{category}</bdi> with <bdi>{trainer}</bdi>",
+      "fullyBooked": "Fully booked",
+      "spotsLeft": "{left} of {capacity} spots left",
+      "fillingFast": "Filling fast"
+    },
+    "login": {
+      "metaTitle": "Log in",
+      "metaDescription": "Log in to your Power Fitness account.",
+      "title": "Welcome back",
+      "description": "Log in to book classes, follow your membership and manage your day at the gym.",
+      "forgot": "Forgot password?",
+      "submit": "Log in",
+      "submitting": "Logging in…",
+      "demoTitle": "Exploring the demo?",
+      "demoHint": "Log in instantly with a sample account.",
+      "noAccount": "New to Power Fitness?",
+      "createAccount": "Create your account"
+    },
+    "notice": {
+      "expired": "Your session has ended. Please log in again to continue.",
+      "reset": "Your password has been changed. Log in with your new password.",
+      "activated": "Your account is ready. Log in with the password you just created."
+    },
+    "register": {
+      "metaTitle": "Create your account",
+      "metaDescription": "Join Power Fitness: create your member account in under a minute.",
+      "title": "Create your account",
+      "description": "Join in under a minute. Then pick a membership at the front desk and start booking classes.",
+      "submit": "Create account",
+      "submitting": "Creating your account…",
+      "welcome": "Welcome to Power Fitness, {name}!",
+      "haveAccount": "Already a member?",
+      "logIn": "Log in"
+    },
+    "forgot": {
+      "metaTitle": "Forgot password",
+      "metaDescription": "Get a link to reset your Power Fitness password.",
+      "title": "Forgot your password?",
+      "description": "Enter the email you use at Power Fitness and we'll send you a link to choose a new one.",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If an account with this email exists, we've sent it a link to reset the password.",
+      "sentTo": "Sent to <email>{address}</email>. The link works for a limited time, and don't forget to check your spam folder.",
+      "back": "Back to log in",
+      "differentEmail": "Use a different email",
+      "remembered": "Remembered it?"
+    },
+    "reset": {
+      "metaTitle": "Reset password",
+      "metaDescription": "Choose a new password for your Power Fitness account.",
+      "title": "Choose a new password",
+      "description": "Pick a strong password you haven't used here before.",
+      "submit": "Update password",
+      "submitting": "Updating…"
+    },
+    "invite": {
+      "metaTitle": "Activate your account",
+      "metaDescription": "Create a password to activate your Power Fitness account.",
+      "title": "Activate your account",
+      "description": "Welcome to Power Fitness! Create a password to start using your account.",
+      "submit": "Activate account",
+      "submitting": "Activating…"
+    },
+    "incomplete": {
+      "title": "This link is incomplete",
+      "reset": "Open the link from your email again, or request a new one.",
+      "invite": "Open the invitation link from your email again, or ask the gym to send a new one.",
+      "requestNew": "Request a new link",
+      "goToLogin": "Go to log in"
+    },
+    "accountLabel": "Account:",
+    "passwordRules": {
+      "label": "Password requirements",
+      "min": "At least {min} characters",
+      "upper": "One uppercase letter",
+      "lower": "One lowercase letter",
+      "number": "One number",
+      "done": "(done)",
+      "missing": "(missing)"
+    }
+  },
+  "Account": {
+    "title": "Account settings",
+    "description": "Manage how you sign in to Power Fitness.",
+    "mustChange": {
+      "title": "Choose a new password to continue",
+      "body": "Your account is using a temporary password. Set your own password below to unlock the rest of the app."
+    },
+    "password": {
+      "title": "Change password",
+      "description": "For your security, changing your password signs you out everywhere else.",
+      "submit": "Update password",
+      "submitting": "Updating…",
+      "success": "Password updated. You've been signed out on your other devices."
+    }
+  },
+  "Validation": {
+    "required": "This field is required.",
+    "emailRequired": "Enter an email address.",
+    "emailMax": "Email can be at most {max} characters.",
+    "email": "Enter a valid email address.",
+    "nameMin": "Name must be at least {min} characters.",
+    "nameMax": "Name can be at most {max} characters.",
+    "namePattern": "Name can only contain letters, spaces, dots, apostrophes and dashes.",
+    "phone": "Enter an Egyptian mobile number, e.g. 01012345678.",
+    "gender": "Select a gender.",
+    "dobRequired": "Enter the date of birth.",
+    "minAge": "Must be at least {age} years old.",
+    "dobInvalid": "Enter a valid date of birth.",
+    "numberRequired": "Enter a number.",
+    "wholeNumber": "Enter a whole number.",
+    "numberRange": "Enter a number from {min} to {max}.",
+    "amountRequired": "Enter the amount.",
+    "amountFormat": "Enter the amount as a number, e.g. 1500.",
+    "amountPositive": "The amount must be more than 0.",
+    "amountMax": "The amount can be at most {max}.",
+    "buildingNumber": "Enter a building number from 1 to 9999.",
+    "street": "Enter the street (2–50 characters).",
+    "city": "Enter the city (2–30 characters).",
+    "heightRequired": "Enter the height.",
+    "heightFormat": "Enter the height as a number, e.g. 175.",
+    "heightRange": "The height must be between 50 and 250 cm.",
+    "weightRequired": "Enter the weight.",
+    "weightFormat": "Enter the weight as a number, e.g. 72.5.",
+    "weightRange": "The weight must be between 20 and 300 kg.",
+    "bloodType": "Select the blood type.",
+    "noteMax": "The note can be at most 500 characters.",
+    "passwordRequired": "Enter your password.",
+    "passwordMin": "Password must be at least {min} characters.",
+    "passwordMax": "Password can be at most {max} characters.",
+    "passwordUpper": "Password must contain an uppercase letter.",
+    "passwordLower": "Password must contain a lowercase letter.",
+    "passwordNumber": "Password must contain a number.",
+    "confirmPassword": "Confirm your password.",
+    "confirmNewPassword": "Confirm your new password.",
+    "passwordsMismatch": "Passwords don't match.",
+    "currentPasswordRequired": "Enter your current password.",
+    "passwordSame": "The new password must be different from the current one."
+  },
+  "Errors": {
+    "fallback": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Can't reach the server. Check your connection and try again.",
+      "timeout": "The server took too long to respond. Please try again.",
+      "server": "An unexpected error occurred. Please try again later.",
+      "badRequest": "Some of the details are not valid. Check them and try again.",
+      "unauthenticated": "Your session has ended. Please log in again.",
+      "forbidden": "You don't have permission to do this.",
+      "notFound": "This item was not found. It may have been removed.",
+      "conflict": "This action conflicts with the current data. Reload the page and try again.",
+      "rateLimit": "Too many attempts. Please wait a minute and try again."
+    },
+    "Auth": {
+      "AccountDisabled": "This account is disabled. Please contact the gym.",
+      "EmailTaken": "An account with this email already exists. Try logging in.",
+      "Forbidden": "You don't have permission to do this.",
+      "IdentityFailed": "The account couldn't be saved. Check the details (for example, the password rules) and try again.",
+      "InvalidCredentials": "Email or password is incorrect.",
+      "InvalidInviteToken": "This invite link is invalid, expired or already used. Ask the gym to send a new one.",
+      "InvalidRefreshToken": "Your session has expired. Please log in again.",
+      "InvalidResetToken": "This reset link is invalid or has expired. Please request a new one.",
+      "LockedOut": "Too many failed attempts. The account is locked for 15 minutes.",
+      "MemberAlreadyExists": "This email is already registered at the gym. Please contact reception to activate your online account.",
+      "NotAMember": "This account is not linked to a member profile.",
+      "NotATrainer": "This account is not linked to a trainer profile.",
+      "PhoneTaken": "This phone number is already registered at the gym.",
+      "RefreshTokenReused": "This session was already used, so all sessions were signed out for safety. Please log in again.",
+      "Unauthenticated": "Your session has ended. Please log in again.",
+      "UserNotFound": "This account no longer exists.",
+      "WrongCurrentPassword": "The current password is incorrect."
+    },
+    "Booking": {
+      "AlreadyBooked": "The member has already booked this class.",
+      "AttendanceNotOpen": "Attendance can only be marked while the class is running.",
+      "CancellationDeadlinePassed": "The deadline for cancelling this booking has passed. Please contact the gym.",
+      "MemberBusy": "The member has another booking at the same time.",
+      "MemberNotFound": "This member was not found.",
+      "MemberRequired": "Choose the member to book.",
+      "NotActive": "This booking is already cancelled or attended.",
+      "NotFound": "This booking was not found.",
+      "NotYours": "You can only manage your own bookings.",
+      "NoValidMembership": "The member needs an active membership that covers the class date.",
+      "SessionNotBookable": "Only upcoming scheduled classes can be booked.",
+      "SessionStarted": "The class has already started."
+    },
+    "Category": {
+      "HasTrainers": "This category can't be deleted while trainers have it as their speciality. Move them to another category first.",
+      "HasUpcomingSessions": "This category can't be deleted while it has upcoming classes.",
+      "NameTaken": "A category with this name already exists.",
+      "NotFound": "This category was not found."
+    },
+    "CheckIn": {
+      "UnknownCode": "This QR code is not valid. Ask the member to open the latest code in the app."
+    },
+    "Export": {
+      "TooManyRows": "The export has too many rows. Narrow the filters (for example, a shorter date range)."
+    },
+    "File": {
+      "Empty": "Please choose a file.",
+      "NotAnImage": "Only JPG, PNG or WEBP images are allowed.",
+      "TooLarge": "The file is too large. Please choose a smaller one."
+    },
+    "Member": {
+      "AlreadyHasAccount": "This member already has an activated login account.",
+      "EmailTaken": "Another member or account already uses this email.",
+      "HasActiveMembership": "This member can't be deleted while they have an active or frozen membership. Cancel it first.",
+      "HasUpcomingBookings": "This member can't be deleted while they have upcoming class bookings. Cancel them first.",
+      "NotFound": "This member was not found.",
+      "PhoneTaken": "Another member already uses this phone number."
+    },
+    "Membership": {
+      "AlreadyHasMembership": "The member already has a running membership. Renew it instead.",
+      "Cancelled": "This membership is cancelled.",
+      "Expired": "This membership has already ended.",
+      "FreezeLimitReached": "This freeze would go over the total freeze days allowed for the membership.",
+      "HasQueuedRenewal": "This membership has a renewal waiting after it. Cancel the renewal first.",
+      "MemberNotFound": "This member was not found.",
+      "NotActive": "Only a running membership that isn't frozen can be frozen.",
+      "NotFound": "This membership was not found.",
+      "NotFrozen": "This membership is not frozen.",
+      "PlanInactive": "This plan is no longer offered. Choose an active plan.",
+      "PlanNotFound": "This plan was not found.",
+      "RefundTooHigh": "The refund can't be more than the amount paid.",
+      "RenewalAlreadyQueued": "The member already has a renewal waiting to start."
+    },
+    "Plan": {
+      "HasActiveMemberships": "This plan can't be deleted while it has active memberships. Deactivate it instead.",
+      "NameTaken": "A plan with this name already exists.",
+      "NotFound": "This plan was not found."
+    },
+    "RateLimit": {
+      "Exceeded": "Too many attempts. Please wait a minute and try again."
+    },
+    "Server": {
+      "Error": "An unexpected error occurred. Please try again later."
+    },
+    "Session": {
+      "CapacityBelowBookings": "The capacity can't be less than the number of current bookings.",
+      "CategoryNotFound": "The selected category was not found.",
+      "Changed": "Someone else changed this class at the same moment. Reload it and try again.",
+      "Full": "This class is full.",
+      "HasBookings": "A class with bookings can't be deleted. Cancel it instead.",
+      "NotFound": "This class was not found.",
+      "NotUpcoming": "Only upcoming scheduled classes can be changed. Past classes are read-only.",
+      "NotYours": "Only the class's trainer or an admin can do this.",
+      "TrainerBusy": "The trainer already has another class at this time.",
+      "TrainerCategoryMismatch": "The class category must match the trainer's speciality.",
+      "TrainerNotFound": "The selected trainer was not found."
+    },
+    "Trainer": {
+      "AlreadyHasAccount": "This trainer already has an activated login account.",
+      "CategoryNotFound": "The selected category was not found.",
+      "EmailTaken": "Another trainer or account already uses this email.",
+      "HasUpcomingSessions": "This trainer can't be deleted while they have upcoming classes. Reassign or cancel them first.",
+      "NotFound": "This trainer was not found.",
+      "PhoneTaken": "Another trainer already uses this phone number."
+    },
+    "User": {
+      "AlreadyActivated": "This account is already activated. Use “Forgot password” instead.",
+      "CannotDisableSuperAdmin": "A super admin account can't be disabled.",
+      "EmailTaken": "An account with this email already exists.",
+      "NotFound": "This account was not found.",
+      "UnknownRole": "The selected role doesn't exist."
+    },
+    "Validation": {
+      "Failed": "Some of the details are not valid. Check the form and try again."
+    }
+  },
+  "Sessions": {
+    "title": "Classes",
+    "description": "Plan the timetable, fill the spots and take attendance.",
+    "descriptionLive": "{live} running right now · {upcoming} coming up.",
+    "descriptionUpcoming": "{count, plural, =0 {No upcoming classes on the timetable.} one {# upcoming class on the timetable.} other {# upcoming classes on the timetable.}}",
+    "schedule": "Schedule class",
+    "scheduleFirst": "Schedule a class",
+    "bookingMissed": "No-show",
+    "noReason": "No reason recorded",
+    "loadError": "We couldn't load the classes",
+    "itemLabel": "classes",
+    "tableLabel": "{state, select, Upcoming {Upcoming classes} Ongoing {Classes running now} Completed {Completed classes} other {Cancelled classes}}",
+    "columns": {
+      "class": "Class",
+      "when": "When",
+      "coach": "Coach",
+      "booked": "Booked",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "attendance": "Take attendance",
+      "open": "Open class",
+      "edit": "Edit class",
+      "cancel": "Cancel class",
+      "delete": "Delete class",
+      "label": "Actions for {category} on {day}"
+    },
+    "view": {
+      "label": "View",
+      "list": "List",
+      "week": "Week"
+    },
+    "filters": {
+      "category": "Filter by class type",
+      "allCategories": "All class types",
+      "trainer": "Filter by coach",
+      "allTrainers": "All coaches",
+      "clear": "Clear filters"
+    },
+    "week": {
+      "previous": "Previous week",
+      "next": "Next week",
+      "thisWeek": "This week",
+      "stats": "{classes, plural, one {# class} other {# classes}} · {booked, plural, one {# booking} other {# bookings}} · {fill} full",
+      "cancelled": "{count} cancelled",
+      "loadError": "We couldn't load this week",
+      "tip": "Tip: click an empty slot to schedule a class at that time. Times are Cairo time."
+    },
+    "empty": {
+      "filteredTitle": "No classes match",
+      "filtered": "No class of this type or coach is in this list. Try another tab or clear the filters.",
+      "upcomingTitle": "Nothing on the timetable",
+      "upcoming": "Schedule the next classes so members can start booking their spots.",
+      "ongoingTitle": "No class is running right now",
+      "ongoing": "When a class starts it shows up here, so you can take attendance.",
+      "completedTitle": "No finished classes yet",
+      "completed": "Past classes and their attendance will be listed here.",
+      "cancelledTitle": "No cancelled classes",
+      "cancelled": "Good news: every class went ahead as planned."
+    },
+    "delete": {
+      "title": "Delete this class?",
+      "descriptionFull": "<bdi>{category}</bdi> with <bdi>{trainer}</bdi> on {day} at {time} is removed from the timetable. Nobody booked it, so nobody is notified.",
+      "description": "It is removed from the timetable. Nobody booked it, so nobody is notified.",
+      "done": "Class deleted",
+      "failed": "Couldn't delete the class"
+    },
+    "calendar": {
+      "classCount": "{count, plural, =0 {No classes} one {# class} other {# classes}}",
+      "slotLabel": "Schedule a class on {day} at {time}",
+      "blockTitle": "{category} · {trainer} · {start}–{end}",
+      "booked": "{booked}/{capacity} booked",
+      "today": "Today",
+      "noClasses": "No classes."
+    },
+    "length": {
+      "minutes": "{count} min",
+      "hours": "{count, plural, one {# hour} other {# hours}}",
+      "hoursMinutes": "{hours} h {minutes} min"
+    },
+    "errors": {
+      "category": "Choose the class type.",
+      "trainer": "Choose the coach.",
+      "descriptionMin": "Describe the class in at least {min} characters.",
+      "descriptionMax": "The description can be at most {max} characters.",
+      "date": "Pick the day.",
+      "startTime": "Pick the start time.",
+      "endTime": "Pick the end time.",
+      "future": "The class must start in the future.",
+      "endAfterStart": "The end time must be after the start time.",
+      "length": "A class lasts between {min} minutes and {max} hours.",
+      "reasonMin": "Tell members why, in at least {min} characters.",
+      "reasonMax": "The reason can be at most {max} characters."
+    },
+    "form": {
+      "category": "Class type",
+      "loading": "Loading…",
+      "categoryPlaceholder": "Choose a type",
+      "trainer": "Coach",
+      "trainerNone": "No coach teaches this type yet.",
+      "trainerPickType": "Pick the type first",
+      "trainerPlaceholder": "Choose a coach",
+      "description": "Title / description",
+      "descriptionHint": "Members see this on the schedule, e.g. “Morning HIIT: full-body burn”.",
+      "descriptionPlaceholder": "e.g. Evening Yoga flow for all levels",
+      "date": "Day",
+      "start": "Starts",
+      "end": "Ends",
+      "lengthHint": "{length} class",
+      "lengthRange": "{min} min to {max} hours",
+      "cairoTime": "All times are Cairo time.",
+      "capacity": "Spots",
+      "capacityBooked": "{count, plural, one {# member already booked, so at least #.} other {# members already booked, so at least #.}}",
+      "capacityMax": "Up to {max} members per class.",
+      "updated": "Class updated",
+      "scheduled": "Class scheduled",
+      "savedDescription": "{category} with {trainer}, {time}.",
+      "titleEdit": "Edit class",
+      "titleNew": "Schedule a class",
+      "descriptionEdit": "Booked members keep their spot. If the time changes, let them know.",
+      "descriptionNew": "Add a class to the timetable. It opens for booking as soon as you save.",
+      "submitNew": "Schedule class"
+    },
+    "cancel": {
+      "title": "Cancel this class?",
+      "description": "<bdi>{category}</bdi> with <bdi>{trainer}</bdi>, {time}.",
+      "done": "Class cancelled",
+      "doneNotified": "{count, plural, one {The booked member was emailed the reason.} other {# booked members were emailed the reason.}}",
+      "doneNobody": "Nobody had booked it yet.",
+      "reason": "Reason",
+      "reasonHint": "Members read this in the email and on their bookings page.",
+      "reasonPlaceholder": "e.g. The coach is unwell today.",
+      "quick": {
+        "coachUnwell": "The coach is unwell today.",
+        "maintenance": "The studio is closed for maintenance.",
+        "lowBookings": "Not enough members booked this class.",
+        "holiday": "The gym is closed for a public holiday."
+      },
+      "quickLabel": {
+        "coachUnwell": "The coach is unwell today",
+        "maintenance": "The studio is closed for maintenance",
+        "lowBookings": "Not enough members booked this class",
+        "holiday": "The gym is closed for a public holiday"
+      },
+      "warning": "{count, plural, one {The booking is cancelled and the member gets an email with this reason. This can't be undone.} other {All # bookings are cancelled and each member gets an email with this reason. This can't be undone.}}",
+      "keep": "Keep the class",
+      "confirm": "Cancel class"
+    },
+    "details": {
+      "metaTitle": "Class",
+      "loading": "Loading class",
+      "back": "All classes",
+      "coach": "Coach <bdi>{name}</bdi>",
+      "spots": "Spots",
+      "edit": "Edit",
+      "more": "More actions",
+      "cancelledTitle": "This class was cancelled",
+      "cancelReason": "Reason: <bdi>{reason}</bdi>",
+      "noReason": "No reason was recorded.",
+      "notFoundTitle": "Class not found",
+      "notFound": "This class doesn't exist or was deleted. Find it on the timetable instead.",
+      "backToClasses": "Back to classes",
+      "loadError": "We couldn't load this class"
+    },
+    "book": {
+      "title": "Book a member",
+      "description": "Only members with a valid membership on this day who are free at this time are listed.",
+      "full": "The class is full. Cancel a booking or raise the number of spots to add someone.",
+      "search": "Search by name or phone",
+      "searchLabel": "Search members to book",
+      "loadError": "We couldn't load the members",
+      "noMatch": "Nobody who can book this class matches “<bdi>{query}</bdi>”.",
+      "allBooked": "Every member who can attend is already booked.",
+      "action": "Book",
+      "firstResults": "Showing the first {count}. Search to narrow down.",
+      "done": "{name} is booked",
+      "doneDescription": "{category}, {day} at {time}.",
+      "failed": "Couldn't book {name}"
+    },
+    "bookings": {
+      "titleAttendance": "Attendance",
+      "titleBooked": "Booked members",
+      "ongoing": "{attended} of {total} checked in. Mark members as they arrive.",
+      "completed": "{attended} of {total} attended.",
+      "cancelled": "Every booking was cancelled with the class.",
+      "upcoming": "{count, plural, =0 {No bookings yet.} one {# booked.} other {# booked.}} Bookings can be cancelled until the class starts.",
+      "hideCancelled": "Hide cancelled",
+      "showCancelled": "Show cancelled ({count})",
+      "loadError": "We couldn't load the bookings",
+      "emptyCancelledTitle": "No bookings",
+      "emptyTitle": "Nobody booked yet",
+      "emptyUpcoming": "Book members from the panel, or share the timetable so they book online.",
+      "emptyPast": "This class had no bookings.",
+      "bookedJustNow": "booked just now",
+      "bookedAt": "booked {date}",
+      "booking": "Booking…",
+      "checkIn": "Check in",
+      "checkedIn": "{name} checked in",
+      "checkInFailed": "Couldn't mark {name} as attended",
+      "cancelTitle": "Cancel {name}'s booking?",
+      "cancelDescription": "Their spot opens up for someone else right away. They can book again if spots are left.",
+      "cancelConfirm": "Cancel booking",
+      "cancelDone": "{name}'s booking was cancelled",
+      "cancelFailed": "Couldn't cancel {name}'s booking"
+    }
+  },
+  "Trainers": {
+    "title": "Trainers",
+    "description": "Your coaching team and their specialities.",
+    "descriptionFiltered": "{count, plural, =0 {No trainers match your filters.} one {# trainer matches your filters.} other {# trainers match your filters.}}",
+    "descriptionCount": "{count, plural, =0 {No coaches on the team yet.} one {# coach on the team.} other {# coaches on the team.}}",
+    "add": "Add trainer",
+    "search": "Search by name, email or phone",
+    "filterSpeciality": "Filter by speciality",
+    "allSpecialities": "All specialities",
+    "clearFilters": "Clear filters",
+    "loadError": "We couldn't load the trainers",
+    "itemLabel": "trainers",
+    "hasLogin": "Has login",
+    "noLogin": "No login",
+    "columns": {
+      "trainer": "Trainer",
+      "phone": "Phone",
+      "speciality": "Speciality",
+      "login": "Login",
+      "joined": "Joined",
+      "actions": "Actions"
+    },
+    "actions": {
+      "label": "Actions for {name}",
+      "edit": "Edit details",
+      "resendInvite": "Resend invite",
+      "invite": "Send login invite",
+      "remove": "Remove trainer"
+    },
+    "empty": {
+      "filteredTitle": "No trainers match",
+      "searchInCategory": "Nobody in <bdi>{category}</bdi> matches “<bdi>{query}</bdi>”. Check the spelling or search by phone number.",
+      "search": "Nobody matches “<bdi>{query}</bdi>”. Check the spelling or search by phone number.",
+      "category": "No trainer has <bdi>{category}</bdi> as their speciality yet.",
+      "categoryUnknown": "No trainer has this speciality yet.",
+      "title": "No trainers yet",
+      "description": "Add your coaches so you can schedule classes with them. Each one gets their own login.",
+      "action": "Add the first trainer"
+    },
+    "remove": {
+      "title": "Remove {name}?",
+      "description": "They leave the team list and their login is turned off. Past classes keep their history. If they still have upcoming classes, reassign or cancel those first.",
+      "done": "{name} was removed from the team",
+      "failed": "Couldn't remove {name}"
+    },
+    "invite": {
+      "alreadyActive": "{name} already set a password",
+      "alreadyActiveDescription": "Their login is active. If they forgot it, they can use “Forgot password”.",
+      "failed": "Couldn't send the invite to {name}"
+    },
+    "form": {
+      "name": "Full name",
+      "namePlaceholder": "e.g. Omar Khaled",
+      "email": "Email",
+      "emailHint": "Also their login email.",
+      "phone": "Mobile number",
+      "dateOfBirth": "Date of birth",
+      "category": "Speciality",
+      "categoryLoading": "Loading specialities…",
+      "categoryPlaceholder": "Choose a speciality",
+      "inviteNote": "We'll create their trainer login and email them a link to choose a password. Nobody else ever sees it.",
+      "updated": "Trainer updated",
+      "updatedDescription": "{name}'s details are saved.",
+      "joined": "{name} joined the team",
+      "titleEdit": "Edit {name}",
+      "titleNew": "Add a trainer",
+      "descriptionEdit": "Update their details and speciality.",
+      "descriptionNew": "Add a coach to the team. They can log in to see their schedule and take attendance.",
+      "submitNew": "Add trainer"
+    },
+    "errors": {
+      "category": "Choose the trainer's speciality."
+    }
+  },
+  "Plans": {
+    "title": "Membership plans",
+    "description": "Set the prices and durations members can buy.",
+    "descriptionOnSale": "{active} of {total} plans on sale, from {price} per month.",
+    "descriptionNone": "No plan is on sale right now. Add one or turn an existing plan back on.",
+    "add": "New plan",
+    "loadError": "We couldn't load the plans",
+    "onSaleLabel": "{name} on sale",
+    "columns": {
+      "plan": "Plan",
+      "duration": "Duration",
+      "price": "Price",
+      "perMonth": "Per month",
+      "onSale": "On sale",
+      "actions": "Actions"
+    },
+    "filters": {
+      "all": "All",
+      "active": "On sale",
+      "inactive": "Hidden"
+    },
+    "status": {
+      "onSale": "{name} is on sale again",
+      "hidden": "{name} is hidden from sale",
+      "onSaleDescription": "Reception can sell it and visitors see it on the website.",
+      "hiddenDescription": "Current members keep their memberships until they end.",
+      "failed": "Couldn't change the plan status"
+    },
+    "actions": {
+      "label": "Actions for {name}",
+      "edit": "Edit plan",
+      "delete": "Delete plan"
+    },
+    "empty": {
+      "title": "No plans yet",
+      "description": "Plans are what members buy: a duration and a price. Create the first one to start selling memberships.",
+      "action": "Create the first plan",
+      "activeTitle": "No plan is on sale",
+      "active": "Every plan is hidden right now, so nothing can be sold. Turn one back on.",
+      "inactiveTitle": "No hidden plans",
+      "inactive": "Every plan is on sale. Switch a plan off to stop selling it without deleting it.",
+      "showAll": "Show all plans"
+    },
+    "delete": {
+      "title": "Delete {name}?",
+      "description": "The plan disappears from the list and can't be sold anymore. Members who already bought it keep their memberships and payment history. If people still have active memberships on it, hide it instead.",
+      "done": "{name} was deleted",
+      "failed": "Couldn't delete {name}"
+    },
+    "form": {
+      "name": "Plan name",
+      "namePlaceholder": "e.g. Quarterly",
+      "description": "Description",
+      "descriptionHint": "Shown to visitors on the pricing section of the website.",
+      "descriptionPlaceholder": "e.g. Full gym access for 3 months, all classes included.",
+      "duration": "Duration (days)",
+      "durationRange": "1–{max} days",
+      "price": "Price (EGP)",
+      "perMonthPreview": "≈ {price} per month",
+      "priceHint": "The full price paid upfront",
+      "updated": "Plan updated",
+      "created": "Plan created",
+      "updatedDescription": "{name} now costs {price}. Existing memberships keep their old price.",
+      "createdDescription": "{name} is active and ready to sell.",
+      "titleEdit": "Edit {name}",
+      "titleNew": "New plan",
+      "descriptionEdit": "Changes apply to new sales and renewals. Members who already paid keep what they bought.",
+      "descriptionNew": "Create a membership plan. It goes on sale as soon as you save it.",
+      "submitNew": "Create plan"
+    },
+    "errors": {
+      "nameMin": "Name must be at least {min} characters.",
+      "nameMax": "Name can be at most {max} characters.",
+      "descriptionMin": "Describe the plan in at least {min} characters.",
+      "descriptionMax": "The description can be at most {max} characters."
+    }
+  },
+  "Categories": {
+    "title": "Class categories",
+    "description": "The types of classes you offer, like Yoga or Boxing.",
+    "descriptionCount": "{count, plural, one {# category} other {# categories}} with {trainers, plural, =0 {no trainers} one {# trainer} other {# trainers}} assigned. Each one is a program on the website and a trainer speciality.",
+    "add": "New category",
+    "loadError": "We couldn't load the categories",
+    "trainerCount": "{count, plural, one {# trainer} other {# trainers}}",
+    "noTrainers": "No trainers yet",
+    "columns": {
+      "category": "Category",
+      "trainers": "Trainers",
+      "added": "Added",
+      "actions": "Actions"
+    },
+    "actions": {
+      "label": "Actions for {name}",
+      "rename": "Rename",
+      "delete": "Delete category"
+    },
+    "empty": {
+      "title": "No categories yet",
+      "description": "Add the types of classes you run. Trainers need one as their speciality, and classes are scheduled under them.",
+      "action": "Add the first category"
+    },
+    "delete": {
+      "title": "Delete {name}?",
+      "hasTrainers": "{count, plural, one {# trainer still has} other {# trainers still have}} <bdi>{name}</bdi> as their speciality. Move them to another category first, then delete it.",
+      "description": "It disappears from the website and can't be used for new classes. Past classes keep their history.",
+      "done": "{name} was deleted",
+      "failed": "Couldn't delete {name}"
+    },
+    "form": {
+      "name": "Category name",
+      "nameHint": "Visitors see it on the website's programs section, and trainers get it as their speciality.",
+      "namePlaceholder": "e.g. CrossFit",
+      "renamed": "Category renamed",
+      "added": "Category added",
+      "renamedDescription": "It's now called {name} everywhere, including the website.",
+      "addedDescription": "{name} is ready. Assign trainers to it and schedule its classes.",
+      "titleEdit": "Rename {name}",
+      "titleNew": "New category",
+      "descriptionEdit": "The new name shows up everywhere this category is used.",
+      "descriptionNew": "A type of class you offer, like Yoga or Boxing.",
+      "submitEdit": "Save name",
+      "submitNew": "Add category"
+    },
+    "errors": {
+      "nameMin": "Name must be at least {min} characters.",
+      "nameMax": "Name can be at most {max} characters."
+    }
+  },
+  "Members": {
+    "list": {
+      "title": "Members",
+      "description": "Everyone registered at the gym.",
+      "countAll": "{count, plural, =0 {No members registered at the gym yet.} one {# member registered at the gym.} other {# members registered at the gym.}}",
+      "countFiltered": "{count, plural, =0 {No member matches your filters.} one {# member matches your filters.} other {# members match your filters.}}",
+      "itemLabel": "members",
+      "add": "Add member",
+      "all": "All",
+      "searchPlaceholder": "Search by name, email or phone",
+      "genderFilter": "Filter by gender",
+      "allGenders": "All genders",
+      "clearFilters": "Clear filters",
+      "loadError": "We couldn't load the members",
+      "columns": {
+        "member": "Member",
+        "phone": "Phone",
+        "gender": "Gender",
+        "membership": "Membership",
+        "joined": "Joined",
+        "actions": "Actions"
+      },
+      "rowActions": "Actions for {name}",
+      "openProfile": "Open profile",
+      "delete": "Delete member",
+      "noMatchTitle": "No members match",
+      "noMatchSearch": "Nobody matches “{search}” with these filters. Check the spelling or try the phone number.",
+      "noMatchFilters": "No member fits these filters right now.",
+      "emptyTitle": "No members yet",
+      "emptyBody": "Register your first member at reception. It takes about a minute.",
+      "emptyAction": "Add the first member",
+      "deleteTitle": "Delete {name}?",
+      "deleteBody": "They disappear from the members list and can no longer book classes. Their payments and attendance stay in the reports. Members with an active membership or upcoming bookings can't be deleted.",
+      "deleted": "{name} was deleted",
+      "deleteError": "Couldn't delete {name}"
+    },
+    "columns": {
+      "member": "Member",
+      "plan": "Plan",
+      "period": "Period",
+      "dateRange": "{start} → {end}",
+      "paid": "Paid",
+      "status": "Status",
+      "frozenUntil": "until {date}",
+      "frozen": "Frozen",
+      "actions": "Actions",
+      "rowActions": "Actions for {name}",
+      "date": "Date",
+      "type": "Type",
+      "method": "Method",
+      "amount": "Amount",
+      "receivedBy": "Received by"
+    },
+    "form": {
+      "name": "Full name",
+      "namePlaceholder": "e.g. Mariam Adel",
+      "email": "Email",
+      "emailHint": "Used for their online account and receipts.",
+      "phone": "Mobile number",
+      "dateOfBirth": "Date of birth",
+      "gender": "Gender"
+    },
+    "health": {
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "bloodType": "Blood type",
+      "bloodTypePlaceholder": "Select",
+      "note": "Notes for trainers",
+      "noteHint": "Injuries, conditions or anything a coach should know. Optional.",
+      "notePlaceholder": "e.g. Old knee injury: avoid deep squats."
+    },
+    "healthSheet": {
+      "addTitle": "Add health record",
+      "editTitle": "Update health record",
+      "description": "Height, weight and anything a coach should know before training them.",
+      "submitAdd": "Save record",
+      "saved": "Health record saved",
+      "savedBody": "{name}'s trainers will see the latest numbers."
+    },
+    "edit": {
+      "title": "Edit {name}",
+      "description": "Personal details and address. Health data has its own tab.",
+      "emailIsLogin": "Also their login email.",
+      "saved": "Profile updated",
+      "savedBody": "{name}'s details are saved."
+    },
+    "photo": {
+      "title": "Add a profile photo",
+      "rules": "Drag it here or choose a file. JPG, PNG or WEBP, up to 2 MB. Reception uses it to recognize members at check-in.",
+      "choose": "Choose photo",
+      "change": "Change photo",
+      "add": "Add photo",
+      "remove": "Remove",
+      "removePhoto": "Remove photo",
+      "previewAlt": "Preview of the member's photo",
+      "pickedHint": "{size} · uploaded when you save",
+      "sizeKb": "{value} KB",
+      "sizeMb": "{value} MB",
+      "cantUse": "That photo can't be used",
+      "uploaded": "Photo updated",
+      "uploadError": "The photo didn't upload",
+      "removed": "Photo removed",
+      "removeError": "Couldn't remove the photo"
+    },
+    "wizard": {
+      "title": "Add a member",
+      "description": "Takes about a minute. Only the personal details are required.",
+      "backToList": "Back to members",
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "submit": "Add member",
+      "submitting": "Adding member…",
+      "photoFailed": "Member added, but the photo didn't upload",
+      "created": "{name} is now a member",
+      "createdBody": "Their profile is ready. You can give them an online account from there.",
+      "steps": {
+        "personal": {
+          "title": "Personal details",
+          "description": "Who is joining? These are required."
+        },
+        "address": {
+          "title": "Address",
+          "description": "Where they live. Leave it empty to skip."
+        },
+        "health": {
+          "title": "Health",
+          "description": "Helps trainers keep them safe. Leave it empty to skip."
+        },
+        "photo": {
+          "title": "Photo",
+          "description": "Optional. You can add or change it later."
+        }
+      },
+      "summary": {
+        "newMember": "New member",
+        "description": "Member profile preview",
+        "mobile": "Mobile",
+        "age": "Age",
+        "ageValue": "{count, plural, one {# year} other {# years}}",
+        "address": "Address",
+        "health": "Health",
+        "heightValue": "{value} cm",
+        "weightValue": "{value} kg"
+      }
+    },
+    "details": {
+      "metaTitle": "Member profile",
+      "loading": "Loading member",
+      "loadError": "We couldn't load this member",
+      "notFoundTitle": "Member not found",
+      "notFoundBody": "This member doesn't exist or was deleted. Check the link, or find them in the members list.",
+      "backToList": "Back to members",
+      "allMembers": "All members",
+      "onlineAccount": "Online account",
+      "memberSince": "Member since {date}",
+      "edit": "Edit details",
+      "giveAccess": "Give online access",
+      "moreActions": "More actions",
+      "attendance": "Attendance history",
+      "resendInvite": "Resend invite",
+      "alreadyActive": "{name} already set a password",
+      "alreadyActiveBody": "Their online account is active. If they forgot the password, they can use “Forgot password”.",
+      "inviteError": "Couldn't send the invite to {name}",
+      "tabs": {
+        "overview": "Overview",
+        "memberships": "Memberships",
+        "bookings": "Bookings",
+        "payments": "Payments",
+        "health": "Health"
+      }
+    },
+    "overview": {
+      "personal": "Personal details",
+      "mobile": "Mobile",
+      "birthday": "{date} · {age, plural, one {# year old} other {# years old}}",
+      "address": "Address",
+      "street": "Street",
+      "city": "City",
+      "noAddress": "No address on file. Add one with “Edit details”."
+    },
+    "membershipsTab": {
+      "loadError": "We couldn't load the memberships",
+      "new": "New membership",
+      "sell": "Sell a membership",
+      "tableLabel": "{name}'s memberships",
+      "emptyTitle": "No memberships yet",
+      "emptyBody": "{name} hasn't bought a plan yet. Sell one now and they can book classes right away."
+    },
+    "bookingsTab": {
+      "title": "Class bookings",
+      "which": "Which bookings",
+      "upcoming": "Upcoming",
+      "history": "All history",
+      "loadError": "We couldn't load the bookings",
+      "emptyUpcomingTitle": "No upcoming classes",
+      "emptyUpcomingBody": "{name} isn't booked into any class. Book them from a class page on the timetable.",
+      "emptyTitle": "No bookings yet",
+      "emptyBody": "{name} hasn't booked a class yet.",
+      "openTimetable": "Open the timetable",
+      "when": "{time} · Coach {trainer}",
+      "classCancelled": "Class cancelled",
+      "classCancelledReason": "Class cancelled: {reason}",
+      "page": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "paymentsTab": {
+      "loadError": "We couldn't load the payments",
+      "totalPaid": "Total paid",
+      "refunded": "Refunded",
+      "netPaid": "Net paid",
+      "tableLabel": "{name}'s payments",
+      "emptyTitle": "No payments yet",
+      "emptyBody": "Every purchase, renewal and refund for this member will be listed here with who received it."
+    },
+    "healthTab": {
+      "title": "Health record",
+      "update": "Update",
+      "add": "Add health record",
+      "emptyTitle": "No health record",
+      "emptyBody": "Add {name}'s height, weight and blood type, plus anything a coach should know before training them.",
+      "height": "Height",
+      "heightValue": "{value} cm",
+      "weight": "Weight",
+      "weightValue": "{value} kg",
+      "bmi": "BMI",
+      "noNotes": "No notes. Nothing special to watch out for."
+    },
+    "errors": {
+      "nameLength": "Name must be {min}–{max} characters.",
+      "nameChars": "Name can only contain letters, spaces, dots, apostrophes and dashes.",
+      "emailRequired": "Enter an email address.",
+      "emailMax": "Email can be at most {max} characters.",
+      "email": "Enter a valid email address.",
+      "phone": "Enter an Egyptian mobile number, e.g. 01012345678.",
+      "dobRequired": "Enter the date of birth.",
+      "dobMinAge": "Members must be at least {min} years old.",
+      "dobInvalid": "Enter a valid date of birth.",
+      "gender": "Select a gender.",
+      "buildingNumber": "Enter a building number from 1 to 9999.",
+      "street": "Enter the street (2–50 characters).",
+      "city": "Enter the city (2–30 characters).",
+      "heightRequired": "Enter the height.",
+      "heightFormat": "Enter the height as a number, e.g. 175.",
+      "heightRange": "Height must be between 50 and 250 cm.",
+      "weightRequired": "Enter the weight.",
+      "weightFormat": "Enter the weight as a number, e.g. 72.5.",
+      "weightRange": "Weight must be between 20 and 300 kg.",
+      "bloodType": "Select the blood type.",
+      "noteMax": "The note can be at most {max} characters.",
+      "photoType": "Choose a JPG, PNG or WEBP image.",
+      "photoSize": "The photo is larger than 2 MB. Choose a smaller one.",
+      "photoRead": "We couldn't read that file. Try another one."
+    }
+  },
+  "Memberships": {
+    "list": {
+      "title": "Memberships",
+      "description": "Sell, renew, freeze and cancel memberships.",
+      "countAll": "{count, plural, =0 {No memberships sold yet.} one {# membership sold so far.} other {# memberships sold so far.}}",
+      "countFiltered": "{count, plural, =0 {No membership matches.} one {# membership matches.} other {# memberships match.}}",
+      "itemLabel": "memberships",
+      "new": "New membership",
+      "all": "All",
+      "searchPlaceholder": "Search by member name or phone",
+      "loadError": "We couldn't load the memberships",
+      "left": "{days} left",
+      "rowActions": "Actions for {name}'s membership",
+      "noMatchTitle": "No memberships match",
+      "noMatchSearch": "No membership belongs to a member matching “{search}”.",
+      "noMatchSearchState": "No membership with the status “{state}” belongs to a member matching “{search}”.",
+      "noMatchState": "There are no memberships with the status “{state}” right now.",
+      "clearFilters": "Clear filters",
+      "emptyTitle": "No memberships yet",
+      "emptyBody": "Sell the first plan to a member. Their payment is recorded and they can book classes right away."
+    },
+    "expiring": {
+      "title": "Ending soon",
+      "description": "{count, plural, one {# membership ends this week with no renewal yet. A quick call keeps them training.} other {# memberships end this week with no renewal yet. A quick call keeps them training.}}",
+      "checking": "Checking who needs a renewal…",
+      "endsIn": "{count, plural, one {ends tomorrow} other {ends in # days}}",
+      "more": "{count, plural, one {And # more.} other {And # more.}}"
+    },
+    "actions": {
+      "details": "View details",
+      "renew": "Renew",
+      "freeze": "Freeze",
+      "unfreeze": "Unfreeze",
+      "cancel": "Cancel membership"
+    },
+    "details": {
+      "starts": "Starts",
+      "ends": "Ends",
+      "paid": "Paid",
+      "length": "Length",
+      "frozenUntil": "Frozen until {date}.",
+      "cancelled": "Cancelled.",
+      "cancelledOn": "Cancelled on {date}.",
+      "cancelledReason": "Cancelled: {reason}",
+      "cancelledOnReason": "Cancelled on {date}: {reason}",
+      "loadError": "We couldn't load the history",
+      "payments": "Payments",
+      "receivedBy": "by {name}",
+      "freezes": "Freezes ({used} used)",
+      "neverFrozen": "Never frozen.",
+      "endedEarly": "ended early · {used} of {total} used",
+      "openProfile": "Open member profile"
+    },
+    "form": {
+      "member": "Member",
+      "plan": "Plan",
+      "paidBy": "Paid by",
+      "notes": "Notes (optional)",
+      "reason": "Reason (optional)"
+    },
+    "pickers": {
+      "plansError": "We couldn't load the plans. Close and try again.",
+      "noPlans": "No plan is on sale. Activate a plan first.",
+      "currentPlan": "Current plan",
+      "perMonth": "≈ {price}/month",
+      "change": "Change",
+      "searchPlaceholder": "Search by name or phone",
+      "noMatch": "No member matches “{search}”.",
+      "noMembers": "No members yet.",
+      "alreadyRunning": "Already has a running membership. Renew it instead.",
+      "showing": "Showing {shown} of {total}. Type to narrow down."
+    },
+    "sell": {
+      "title": "New membership",
+      "description": "Pick the member and the plan, then record how they paid. The receipt is saved in Payments.",
+      "submit": "Confirm payment",
+      "notesPlaceholder": "e.g. Receipt #1042, student discount approved",
+      "previewAmountBy": "{amount} by {method}",
+      "previewPeriod": "Starts today and runs until {end}.",
+      "previewPeriodMember": "Starts today and runs until {end}. {name} can book classes right away.",
+      "done": "{name} is now a member",
+      "doneBody": "{plan} until {end}. {amount} received by {method}."
+    },
+    "renew": {
+      "title": "Renew {name}",
+      "description": "Current: {plan}, ends {end}. The new period is added after it, so no day is lost.",
+      "previewQueued": "starts when the current one ends: {start} → {end}",
+      "previewToday": "starts today: {start} → {end}",
+      "confirm": "Confirm renewal",
+      "done": "Membership renewed",
+      "doneBody": "{name}: {plan} from {start} to {end}."
+    },
+    "freeze": {
+      "title": "Freeze {name}'s membership",
+      "description": "The membership pauses and its end date moves later by the same number of days.",
+      "limitReached": "This membership already used {used} of its {total} freeze days, so it can't be frozen again.",
+      "days": "How many days?",
+      "daysHint": "{min}–{max} days. {left} of {total} freeze days left on this membership.",
+      "reasonPlaceholder": "e.g. Travelling, injury, exams",
+      "status": "Status",
+      "frozenUntil": "Frozen until",
+      "endsOn": "Ends on",
+      "effects": "Class bookings during the freeze are cancelled. Check-in is blocked until it ends.",
+      "confirm": "Freeze membership",
+      "done": "{name}'s membership is frozen",
+      "doneBody": "Paused until {until}. It now ends on {end}."
+    },
+    "unfreeze": {
+      "title": "Unfreeze {name}'s membership?",
+      "body": "The membership becomes active right away and {name} can book and check in again.",
+      "daysBack": "{count, plural, one {The # unused day is given back: it will end on {end} instead of {oldEnd}.} other {The # unused days are given back: it will end on {end} instead of {oldEnd}.}}",
+      "noDaysBack": "All the frozen days were used, so the end date stays the same.",
+      "confirm": "Unfreeze now",
+      "done": "{name}'s membership is active again",
+      "doneBody": "It ends on {end}.",
+      "error": "Couldn't unfreeze the membership",
+      "keep": "Keep it frozen"
+    },
+    "cancel": {
+      "title": "Cancel {name}'s membership?",
+      "description": "{plan}, {start} → {end}.",
+      "refund": "Refund (optional)",
+      "refundHint": "They paid {amount}. Leave empty for no refund.",
+      "fullRefund": "Full refund",
+      "refundedBy": "Refunded by",
+      "reasonPlaceholder": "e.g. Moving to another city",
+      "warning": "The membership ends now. Class bookings it no longer covers are cancelled. This can't be undone.",
+      "keep": "Keep it",
+      "confirm": "Cancel membership",
+      "confirmRefund": "Cancel and refund {amount}",
+      "done": "{name}'s membership was cancelled",
+      "doneRefund": "{amount} refunded by {method}.",
+      "doneNoRefund": "No refund was given."
+    },
+    "errors": {
+      "member": "Choose the member.",
+      "plan": "Choose a plan.",
+      "paymentMethod": "Choose how they paid.",
+      "notesMax": "Notes can be at most {max} characters.",
+      "reasonMax": "Keep the reason under {max} characters.",
+      "daysRequired": "Enter the number of days.",
+      "daysWhole": "The number of days must be a whole number.",
+      "daysRange": "The number of days must be {min}–{max}.",
+      "refundFormat": "Enter the refund as a number, e.g. 500.",
+      "refundTooHigh": "The refund can't be more than the {amount} paid.",
+      "refundMethod": "Choose how the refund is paid back."
+    }
+  },
+  "Payments": {
+    "title": "Payments",
+    "description": "Every purchase, renewal and refund, with who received it.",
+    "count": "{count, plural, =0 {No payments {period}.} one {# payment {period}.} other {# payments {period}.}}",
+    "itemLabel": "payments",
+    "ranges": {
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "30d": "Last 30 days",
+      "all": "All time",
+      "custom": "Custom dates"
+    },
+    "period": {
+      "today": "today",
+      "week": "this week",
+      "month": "this month",
+      "30d": "in the last 30 days",
+      "all": "since the gym opened",
+      "custom": "in the chosen dates",
+      "between": "from {from} to {to}"
+    },
+    "filters": {
+      "period": "Period",
+      "from": "From",
+      "to": "to",
+      "toLabel": "To",
+      "method": "Payment method",
+      "allMethods": "All methods",
+      "type": "Payment type",
+      "allTypes": "All types",
+      "reset": "Reset",
+      "resetAll": "Reset filters",
+      "badRange": "The end date must be on or after the start date."
+    },
+    "stats": {
+      "in": "Money in",
+      "inHint": "New memberships and renewals",
+      "refunded": "Refunded",
+      "refundedHint": "Paid back on cancellations",
+      "net": "Net revenue",
+      "netHint": "Money in minus refunds",
+      "count": "Payments",
+      "countHint": "Recorded {period}"
+    },
+    "totalsError": "We couldn't load the totals",
+    "loadError": "We couldn't load the payments",
+    "noMatchTitle": "No payments match",
+    "noMatchBody": "Nothing was recorded {period} with these filters. Try a longer period.",
+    "emptyTitle": "No payments this month yet",
+    "emptyBody": "Payments appear here as soon as a membership is sold, renewed or refunded.",
+    "emptyAction": "Go to memberships"
   }
 }

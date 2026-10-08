@@ -3,10 +3,10 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarCheck, Check, Hourglass, IdCard, UserRound, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { DENY_REASON_LABEL } from "@/features/check-ins/components/check-in-badges";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import { formatDate, formatDays, formatTime } from "@/lib/format";
+import { useFormat } from "@/hooks/use-format";
 import { cn } from "@/lib/utils";
 import type { CheckInResultResponse } from "@/types";
 import { Link } from "@/i18n/navigation";
@@ -28,7 +28,21 @@ function Chip({ icon: Icon, children }: { icon: typeof Check; children: React.Re
   );
 }
 
+/**
+ * The sentence under the name. The API also sends an English `message`, but we never show it:
+ * the text is built here from the result and the deny reason, in the page language.
+ */
+function useResultMessage(data: CheckInResultResponse): string {
+  const t = useTranslations("CheckIns.overlay.message");
+  if (data.result === "Allowed") return data.daysLeft === 0 ? t("lastDay") : t("allowed");
+  return data.denyReason ? t(data.denyReason) : "";
+}
+
 function ResultDetails({ data }: { data: CheckInResultResponse }) {
+  const t = useTranslations("CheckIns.overlay");
+  const tReason = useTranslations("Enums.CheckInDenyReason");
+  const f = useFormat();
+  const message = useResultMessage(data);
   const allowed = data.result === "Allowed";
   const daysLeft = data.daysLeft;
 
@@ -41,33 +55,36 @@ function ResultDetails({ data }: { data: CheckInResultResponse }) {
         fallbackClassName="bg-white/20 text-3xl text-white sm:text-4xl"
       />
       <div className="space-y-2">
-        <p className="text-sm font-semibold tracking-[0.2em] text-white/80 uppercase">
-          {allowed ? "Welcome in" : "Entry denied"}
+        {/* Letter spacing breaks the joined Arabic letters, so it's turned off in RTL. */}
+        <p className="text-sm font-semibold tracking-[0.2em] text-white/80 uppercase rtl:tracking-normal">
+          {allowed ? t("welcome") : t("denied")}
         </p>
         <h2 id="check-in-result-title" className="text-4xl font-bold tracking-tight sm:text-6xl">
-          {data.memberName}
+          <bdi>{data.memberName}</bdi>
         </h2>
         {!allowed && data.denyReason && (
-          <p className="text-2xl font-semibold sm:text-3xl">{DENY_REASON_LABEL[data.denyReason]}</p>
+          <p className="text-2xl font-semibold sm:text-3xl">{tReason(data.denyReason)}</p>
         )}
-        <p className="mx-auto max-w-xl text-lg text-white/85">{data.message}</p>
+        {message && <p className="mx-auto max-w-xl text-lg text-white/85">{message}</p>}
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        {data.planName && <Chip icon={IdCard}>{data.planName}</Chip>}
+        {data.planName && (
+          <Chip icon={IdCard}>
+            <bdi>{data.planName}</bdi>
+          </Chip>
+        )}
         {allowed && daysLeft !== null && (
           <Chip icon={Hourglass}>
-            {daysLeft === 0 ? "Last day today" : `${formatDays(daysLeft)} left`}
+            {daysLeft === 0 ? t("lastDayChip") : t("daysLeft", { count: daysLeft })}
           </Chip>
         )}
         {allowed && data.coveredUntil && (
-          <Chip icon={CalendarCheck}>Covered until {formatDate(data.coveredUntil)}</Chip>
+          <Chip icon={CalendarCheck}>{t("coveredUntil", { date: f.date(data.coveredUntil) })}</Chip>
         )}
-        <Chip icon={Check}>Scanned at {formatTime(data.checkedInAt)}</Chip>
+        <Chip icon={Check}>{t("scannedAt", { time: f.time(data.checkedInAt) })}</Chip>
       </div>
       {allowed && daysLeft !== null && daysLeft <= 7 && (
-        <p className="rounded-lg bg-black/20 px-4 py-2 text-sm font-medium">
-          Renewal due soon. A good moment to offer the next plan.
-        </p>
+        <p className="rounded-lg bg-black/20 px-4 py-2 text-sm font-medium">{t("renewalSoon")}</p>
       )}
     </>
   );
@@ -85,6 +102,7 @@ export function CheckInResultOverlay({
   outcome: CheckInOutcome | null;
   onClose: () => void;
 }) {
+  const t = useTranslations("CheckIns.overlay");
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -149,16 +167,13 @@ export function CheckInResultOverlay({
               <ResultDetails data={outcome.data} />
             ) : (
               <div className="space-y-2">
-                <p className="text-sm font-semibold tracking-[0.2em] text-white/80 uppercase">
-                  Entry denied
+                <p className="text-sm font-semibold tracking-[0.2em] text-white/80 uppercase rtl:tracking-normal">
+                  {t("denied")}
                 </p>
                 <h2 id="check-in-result-title" className="text-4xl font-bold sm:text-5xl">
-                  Code not recognised
+                  {t("unknownTitle")}
                 </h2>
-                <p className="mx-auto max-w-lg text-lg text-white/85">
-                  This QR code doesn&apos;t belong to any member. Ask them to open the latest code
-                  in the member app and scan again.
-                </p>
+                <p className="mx-auto max-w-lg text-lg text-white/85">{t("unknownText")}</p>
               </div>
             )}
 
@@ -172,7 +187,7 @@ export function CheckInResultOverlay({
                   onClose();
                 }}
               >
-                Next member
+                {t("next")}
               </Button>
               {outcome.kind === "result" && (
                 <Button
@@ -185,16 +200,17 @@ export function CheckInResultOverlay({
                     href={`/dashboard/members/${outcome.data.memberId}`}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <UserRound /> Open profile
+                    <UserRound /> {t("openProfile")}
                   </Link>
                 </Button>
               )}
             </div>
-            <p className="text-sm text-white/70">Tap anywhere or press Esc to continue.</p>
+            <p className="text-sm text-white/70">{t("dismiss")}</p>
           </motion.div>
 
+          {/* The countdown bar shrinks toward the start side (left in English, right in Arabic). */}
           <motion.div
-            className="absolute bottom-0 left-0 h-1.5 bg-white/70"
+            className="absolute start-0 bottom-0 h-1.5 bg-white/70"
             initial={{ width: "100%" }}
             animate={{ width: "0%" }}
             transition={{ duration: RESULT_SECONDS, ease: "linear" }}

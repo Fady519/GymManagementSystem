@@ -14,6 +14,7 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,29 +44,21 @@ import { WeekCalendar } from "@/features/sessions/components/week-calendar";
 import { useDeleteSession, useSessions } from "@/features/sessions/queries";
 import { useTrainers } from "@/features/trainers/queries";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
-import {
-  addDays,
-  cairoToUtc,
-  cairoToday,
-  formatWeekRange,
-  isPlainDate,
-  startOfWeek,
-} from "@/lib/cairo-time";
-import { formatDay, formatTime } from "@/lib/format";
+import { addDays, cairoToUtc, cairoToday, isPlainDate, startOfWeek } from "@/lib/cairo-time";
+import { GYM_TIME_ZONE, intlLocale } from "@/lib/format";
 import { toastError } from "@/lib/notify";
+import { isolate, isolateLtr } from "@/lib/bidi";
 import type { SessionResponse, SessionState } from "@/types";
 import { useRouter } from "@/i18n/navigation";
 
 const col = createColumns<SessionResponse>();
 const DEFAULT_PAGE_SIZE = 10;
 const STATES: SessionState[] = ["Upcoming", "Ongoing", "Completed", "Cancelled"];
-const STATE_TAB_LABEL: Record<SessionState, string> = {
-  Upcoming: "Upcoming",
-  Ongoing: "Live now",
-  Completed: "Completed",
-  Cancelled: "Cancelled",
-};
+
+/** For rich messages: <bdi>name</bdi> keeps a stored name's own direction inside a translated sentence. */
+const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
 
 /** The number shown on a state tab (one tiny request per tab: pageSize 1, we only read totalCount). */
 function useStateCount(state: SessionState, trainerId: number | null, categoryId: number | null) {
@@ -83,6 +76,9 @@ function useStateCount(state: SessionState, trainerId: number | null, categoryId
 
 /** /dashboard/sessions: the timetable as a list per state, or as a weekly calendar. */
 export function SessionsAdmin() {
+  const t = useTranslations("Sessions");
+  const tState = useTranslations("Enums.SessionState");
+  const f = useFormat();
   const router = useRouter();
   const params = useListParams();
   const view = params.string("view") === "week" ? "week" : "list";
@@ -145,31 +141,38 @@ export function SessionsAdmin() {
     () =>
       col.columns([
         col.accessor("categoryName", {
-          header: "Class",
+          header: t("columns.class"),
           cell: ({ row }) => (
             <div className="min-w-48 space-y-1">
-              <Badge variant="secondary">{row.original.categoryName}</Badge>
-              <p className="line-clamp-1 text-sm font-medium">{row.original.description}</p>
+              <Badge variant="secondary">
+                <bdi>{row.original.categoryName}</bdi>
+              </Badge>
+              <p className="line-clamp-1 text-sm font-medium">
+                <bdi>{row.original.description}</bdi>
+              </p>
             </div>
           ),
         }),
         col.accessor("startDate", {
-          header: "When",
+          header: t("columns.when"),
           cell: ({ row }) => (
             <div className="whitespace-nowrap">
-              <p className="font-medium">{formatDay(row.original.startDate)}</p>
+              <p className="font-medium">{f.day(row.original.startDate)}</p>
               <p className="text-xs text-muted-foreground tabular-nums">
-                {formatTime(row.original.startDate)} – {formatTime(row.original.endDate)}
+                <span dir="ltr">
+                  {f.time(row.original.startDate)} – {f.time(row.original.endDate)}
+                </span>
               </p>
             </div>
           ),
         }),
         col.accessor("trainerName", {
-          header: "Coach",
+          header: t("columns.coach"),
           meta: { className: "hidden md:table-cell" },
+          cell: ({ getValue }) => <bdi>{getValue()}</bdi>,
         }),
         col.accessor("bookedCount", {
-          header: "Booked",
+          header: t("columns.booked"),
           meta: { className: "hidden sm:table-cell" },
           cell: ({ row }) =>
             row.original.state === "Cancelled" ? (
@@ -177,35 +180,35 @@ export function SessionsAdmin() {
                 className="line-clamp-2 max-w-48 text-xs text-muted-foreground"
                 title={row.original.cancelReason ?? ""}
               >
-                {row.original.cancelReason ?? "No reason recorded"}
+                {row.original.cancelReason ? <bdi>{row.original.cancelReason}</bdi> : t("noReason")}
               </span>
             ) : (
               <CapacityMeter booked={row.original.bookedCount} capacity={row.original.capacity} />
             ),
         }),
         col.accessor("state", {
-          header: "Status",
+          header: t("columns.status"),
           meta: { className: "hidden lg:table-cell" },
           cell: ({ getValue }) => <SessionStateBadge state={getValue()} />,
         }),
         col.display({
           id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
+          header: () => <span className="sr-only">{t("columns.actions")}</span>,
           meta: { className: "w-12 text-end" },
           cell: ({ row }) => {
             const session = row.original;
             const actions: RowAction[] = [
               {
-                label: session.state === "Ongoing" ? "Take attendance" : "Open class",
+                label: session.state === "Ongoing" ? t("actions.attendance") : t("actions.open"),
                 icon: Eye,
                 onSelect: () => openSession(session),
               },
             ];
             if (session.state === "Upcoming") {
               actions.push(
-                { label: "Edit class", icon: Pencil, onSelect: () => showForm(session) },
+                { label: t("actions.edit"), icon: Pencil, onSelect: () => showForm(session) },
                 {
-                  label: "Cancel class",
+                  label: t("actions.cancel"),
                   icon: XCircle,
                   destructive: true,
                   onSelect: () => showCancel(session),
@@ -213,7 +216,7 @@ export function SessionsAdmin() {
               );
               if (session.bookedCount === 0) {
                 actions.push({
-                  label: "Delete class",
+                  label: t("actions.delete"),
                   icon: Trash2,
                   destructive: true,
                   onSelect: () => showDelete(session),
@@ -222,14 +225,17 @@ export function SessionsAdmin() {
             }
             return (
               <RowActions
-                label={`Actions for ${session.categoryName} on ${formatDay(session.startDate)}`}
+                label={t("actions.label", {
+                  category: isolate(session.categoryName),
+                  day: f.day(session.startDate),
+                })}
                 actions={actions}
               />
             );
           },
         }),
       ]),
-    [openSession, showForm, showCancel, showDelete],
+    [t, f, openSession, showForm, showCancel, showDelete],
   );
 
   const filtered = Boolean(trainerId || categoryId);
@@ -249,20 +255,35 @@ export function SessionsAdmin() {
   const toDelete = confirmDelete.item;
   const thisWeek = startOfWeek(cairoToday());
 
+  // "10–16 Oct 2026" / "10–16 أكتوبر 2026": Intl shortens the range by itself (noon Cairo = that day).
+  const weekLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(intlLocale(f.locale), {
+        timeZone: GYM_TIME_ZONE,
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).formatRange(
+        new Date(cairoToUtc(weekStart, "12:00")),
+        new Date(cairoToUtc(addDays(weekStart, 6), "12:00")),
+      ),
+    [f.locale, weekStart],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Classes"
+        title={t("title")}
         description={
           counts.Upcoming === undefined
-            ? "Plan the timetable, fill the spots and take attendance."
+            ? t("description")
             : counts.Ongoing
-              ? `${counts.Ongoing} running right now · ${counts.Upcoming} coming up.`
-              : `${counts.Upcoming} upcoming ${counts.Upcoming === 1 ? "class" : "classes"} on the timetable.`
+              ? t("descriptionLive", { live: counts.Ongoing, upcoming: counts.Upcoming })
+              : t("descriptionUpcoming", { count: counts.Upcoming })
         }
         actions={
           <Button onClick={() => form.show(null)}>
-            <Plus /> Schedule class
+            <Plus /> {t("schedule")}
           </Button>
         }
       />
@@ -271,12 +292,12 @@ export function SessionsAdmin() {
         <div
           className="inline-flex w-fit rounded-lg border bg-muted/40 p-0.5"
           role="group"
-          aria-label="View"
+          aria-label={t("view.label")}
         >
           {(
             [
-              { value: "list", label: "List", icon: List },
-              { value: "week", label: "Week", icon: CalendarDays },
+              { value: "list", label: t("view.list"), icon: List },
+              { value: "week", label: t("view.week"), icon: CalendarDays },
             ] as const
           ).map((option) => (
             <Button
@@ -297,14 +318,14 @@ export function SessionsAdmin() {
             value={categoryId ? String(categoryId) : "all"}
             onValueChange={(value) => params.set({ categoryId: value === "all" ? null : value })}
           >
-            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by class type">
+            <SelectTrigger className="w-full sm:w-44" aria-label={t("filters.category")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All class types</SelectItem>
+              <SelectItem value="all">{t("filters.allCategories")}</SelectItem>
               {categories.data?.map((category) => (
                 <SelectItem key={category.id} value={String(category.id)}>
-                  {category.name}
+                  <bdi>{category.name}</bdi>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -313,21 +334,21 @@ export function SessionsAdmin() {
             value={trainerId ? String(trainerId) : "all"}
             onValueChange={(value) => params.set({ trainerId: value === "all" ? null : value })}
           >
-            <SelectTrigger className="w-full sm:w-44" aria-label="Filter by coach">
+            <SelectTrigger className="w-full sm:w-44" aria-label={t("filters.trainer")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All coaches</SelectItem>
+              <SelectItem value="all">{t("filters.allTrainers")}</SelectItem>
               {trainers.data?.items.map((trainer) => (
                 <SelectItem key={trainer.id} value={String(trainer.id)}>
-                  {trainer.name}
+                  <bdi>{trainer.name}</bdi>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {filtered && (
             <Button variant="ghost" onClick={clearFilters}>
-              Clear filters
+              {t("filters.clear")}
             </Button>
           )}
         </div>
@@ -340,7 +361,7 @@ export function SessionsAdmin() {
               <Button
                 variant="outline"
                 size="icon"
-                aria-label="Previous week"
+                aria-label={t("week.previous")}
                 onClick={() => params.set({ week: addDays(weekStart, -7) })}
               >
                 <ChevronLeft className="rtl:rotate-180" />
@@ -348,30 +369,35 @@ export function SessionsAdmin() {
               <Button
                 variant="outline"
                 size="icon"
-                aria-label="Next week"
+                aria-label={t("week.next")}
                 onClick={() => params.set({ week: addDays(weekStart, 7) })}
               >
                 <ChevronRight className="rtl:rotate-180" />
               </Button>
-              <h2 className="ms-1 text-lg font-semibold">{formatWeekRange(weekStart)}</h2>
+              <h2 className="ms-1 text-lg font-semibold">{weekLabel}</h2>
               {weekStart !== thisWeek && (
                 <Button variant="ghost" size="sm" onClick={() => params.set({ week: null })}>
-                  This week
+                  {t("week.thisWeek")}
                 </Button>
               )}
             </div>
             {weekQuery.data && (
               <p className="text-sm text-muted-foreground">
-                {weekStats.classes} {weekStats.classes === 1 ? "class" : "classes"} ·{" "}
-                {weekStats.booked} bookings · {weekStats.fill}% full
-                {weekStats.cancelled > 0 && ` · ${weekStats.cancelled} cancelled`}
+                {t("week.stats", {
+                  classes: weekStats.classes,
+                  booked: weekStats.booked,
+                  // "31%" as one LTR piece, or Arabic text shows it as "%31".
+                  fill: isolateLtr(`${f.number(weekStats.fill)}%`),
+                })}
+                {weekStats.cancelled > 0 &&
+                  ` · ${t("week.cancelled", { count: weekStats.cancelled })}`}
               </p>
             )}
           </div>
 
           {weekQuery.isError ? (
             <QueryError
-              title="We couldn't load this week"
+              title={t("week.loadError")}
               error={weekQuery.error}
               onRetry={() => void weekQuery.refetch()}
               retrying={weekQuery.isFetching}
@@ -387,9 +413,7 @@ export function SessionsAdmin() {
               onSlotClick={(date, time) => presetDialog.show({ date, startTime: time })}
             />
           )}
-          <p className="hidden text-xs text-muted-foreground md:block">
-            Tip: click an empty slot to schedule a class at that time. Times are Cairo time.
-          </p>
+          <p className="hidden text-xs text-muted-foreground md:block">{t("week.tip")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -400,10 +424,10 @@ export function SessionsAdmin() {
             <TabsList className="h-auto! flex-wrap">
               {STATES.map((value) => (
                 <TabsTrigger key={value} value={value} className="gap-2">
-                  {STATE_TAB_LABEL[value]}
+                  {tState(value)}
                   {counts[value] !== undefined && (
                     <span className="rounded-full bg-muted px-1.5 text-[11px] text-muted-foreground tabular-nums">
-                      {counts[value]}
+                      {f.number(counts[value])}
                     </span>
                   )}
                 </TabsTrigger>
@@ -413,14 +437,14 @@ export function SessionsAdmin() {
 
           {listQuery.isError ? (
             <QueryError
-              title="We couldn't load the classes"
+              title={t("loadError")}
               error={listQuery.error}
               onRetry={() => void listQuery.refetch()}
               retrying={listQuery.isFetching}
             />
           ) : (
             <DataTable
-              label={`${STATE_TAB_LABEL[state]} classes`}
+              label={t("tableLabel", { state })}
               columns={columns}
               data={listQuery.data?.items}
               getRowId={(s) => String(s.id)}
@@ -432,22 +456,22 @@ export function SessionsAdmin() {
                 filtered ? (
                   <EmptyState
                     icon={SearchX}
-                    title="No classes match"
-                    description="No class of this type or coach is in this list. Try another tab or clear the filters."
+                    title={t("empty.filteredTitle")}
+                    description={t("empty.filtered")}
                     action={
                       <Button variant="outline" onClick={clearFilters}>
-                        Clear filters
+                        {t("filters.clear")}
                       </Button>
                     }
                   />
                 ) : state === "Upcoming" ? (
                   <EmptyState
                     icon={CalendarDays}
-                    title="Nothing on the timetable"
-                    description="Schedule the next classes so members can start booking their spots."
+                    title={t("empty.upcomingTitle")}
+                    description={t("empty.upcoming")}
                     action={
                       <Button onClick={() => form.show(null)}>
-                        <Plus /> Schedule a class
+                        <Plus /> {t("scheduleFirst")}
                       </Button>
                     }
                   />
@@ -456,17 +480,17 @@ export function SessionsAdmin() {
                     icon={CalendarOff}
                     title={
                       state === "Ongoing"
-                        ? "No class is running right now"
+                        ? t("empty.ongoingTitle")
                         : state === "Completed"
-                          ? "No finished classes yet"
-                          : "No cancelled classes"
+                          ? t("empty.completedTitle")
+                          : t("empty.cancelledTitle")
                     }
                     description={
                       state === "Ongoing"
-                        ? "When a class starts it shows up here, so you can take attendance."
+                        ? t("empty.ongoing")
                         : state === "Completed"
-                          ? "Past classes and their attendance will be listed here."
-                          : "Good news: every class went ahead as planned."
+                          ? t("empty.completed")
+                          : t("empty.cancelled")
                     }
                   />
                 )
@@ -478,7 +502,7 @@ export function SessionsAdmin() {
                     pageSize={listQuery.data.pageSize}
                     totalCount={listQuery.data.totalCount}
                     totalPages={listQuery.data.totalPages}
-                    itemLabel="classes"
+                    itemLabel={t("itemLabel")}
                     onPageChange={setPage}
                     onPageSizeChange={(size) =>
                       params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })
@@ -506,20 +530,26 @@ export function SessionsAdmin() {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title="Delete this class?"
+        title={t("delete.title")}
         description={
           toDelete
-            ? `${toDelete.categoryName} with ${toDelete.trainerName} on ${formatDay(toDelete.startDate)} at ${formatTime(toDelete.startDate)} is removed from the timetable. Nobody booked it, so nobody is notified.`
+            ? t.rich("delete.descriptionFull", {
+                category: toDelete.categoryName,
+                trainer: toDelete.trainerName,
+                day: f.day(toDelete.startDate),
+                time: f.time(toDelete.startDate),
+                bdi,
+              })
             : ""
         }
-        confirmLabel="Delete class"
+        confirmLabel={t("actions.delete")}
         destructive
         pending={deleteSession.isPending}
         onConfirm={() => {
           if (!toDelete) return;
           deleteSession.mutate(toDelete.id, {
-            onSuccess: () => toast.success("Class deleted"),
-            onError: (error) => toastError("Couldn't delete the class", error),
+            onSuccess: () => toast.success(t("delete.done")),
+            onError: (error) => toastError(t("delete.failed"), error),
             onSettled: () => confirmDelete.setOpen(false),
           });
         }}

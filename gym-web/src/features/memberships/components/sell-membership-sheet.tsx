@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CalendarCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { FormError, FormField, fieldProps } from "@/components/shared/form-field";
 import { FormSheet } from "@/components/shared/form-sheet";
+import { isolate } from "@/lib/bidi";
 import {
   MemberPicker,
   PaymentMethodPicker,
@@ -16,8 +18,8 @@ import {
 } from "@/features/memberships/components/membership-pickers";
 import { useCreateMembership } from "@/features/memberships/queries";
 import { sellSchema, type SellValues } from "@/features/memberships/schemas";
+import { useFormat } from "@/hooks/use-format";
 import { applyServerErrors } from "@/lib/form-errors";
-import { formatDate, formatMoney } from "@/lib/format";
 import type { PlanResponse } from "@/types";
 
 const FORM_ID = "sell-membership-form";
@@ -38,6 +40,11 @@ type SellFormProps = {
 };
 
 function SellForm({ presetMember, create, onSaved }: SellFormProps) {
+  const t = useTranslations("Memberships.sell");
+  const tForm = useTranslations("Memberships.form");
+  const tErrors = useTranslations("Memberships.errors");
+  const tEnums = useTranslations("Enums.PaymentMethod");
+  const f = useFormat();
   const [member, setMember] = useState<PickedMember | null>(presetMember);
   const [plan, setPlan] = useState<PlanResponse | null>(null);
   // Read the clock once (not on every render) for the end-date preview.
@@ -50,7 +57,7 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
     control,
     formState: { errors },
   } = useForm<SellValues>({
-    resolver: zodResolver(sellSchema),
+    resolver: zodResolver(sellSchema(tErrors)),
     defaultValues: { memberId: presetMember?.id ?? 0, planId: "", notes: "" },
   });
   const paymentMethod = useWatch({ control, name: "paymentMethod" });
@@ -63,8 +70,13 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
         paymentMethod: values.paymentMethod,
         notes: values.notes || null,
       });
-      toast.success(`${saved.memberName} is now a member`, {
-        description: `${saved.planName} until ${formatDate(saved.endDate)}. ${formatMoney(saved.pricePaid)} received by ${values.paymentMethod}.`,
+      toast.success(t("done", { name: isolate(saved.memberName) }), {
+        description: t("doneBody", {
+          plan: isolate(saved.planName),
+          end: f.date(saved.endDate),
+          amount: f.money(saved.pricePaid),
+          method: tEnums(values.paymentMethod),
+        }),
       });
       onSaved();
     } catch (error) {
@@ -72,11 +84,13 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
     }
   };
 
+  const end = plan ? f.date(new Date(openedAt + plan.durationDays * DAY_MS)) : "";
+
   return (
     <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-6">
       <FormError message={errors.root?.server?.message} />
 
-      <FormField id="sell-member" label="Member" error={errors.memberId?.message}>
+      <FormField id="sell-member" label={tForm("member")} error={errors.memberId?.message}>
         <MemberPicker
           id="sell-member"
           value={member}
@@ -88,7 +102,7 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
         />
       </FormField>
 
-      <FormField id="sell-plan" label="Plan" error={errors.planId?.message}>
+      <FormField id="sell-plan" label={tForm("plan")} error={errors.planId?.message}>
         <Controller
           control={control}
           name="planId"
@@ -106,7 +120,7 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
         />
       </FormField>
 
-      <FormField id="sell-method" label="Paid by" error={errors.paymentMethod?.message}>
+      <FormField id="sell-method" label={tForm("paidBy")} error={errors.paymentMethod?.message}>
         <Controller
           control={control}
           name="paymentMethod"
@@ -121,12 +135,13 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
         />
       </FormField>
 
-      <FormField id="sell-notes" label="Notes (optional)" error={errors.notes?.message}>
+      <FormField id="sell-notes" label={tForm("notes")} error={errors.notes?.message}>
         <Textarea
           {...fieldProps("sell-notes", errors.notes?.message)}
           rows={2}
           maxLength={500}
-          placeholder="e.g. Receipt #1042, student discount approved"
+          dir="auto"
+          placeholder={t("notesPlaceholder")}
           {...register("notes")}
         />
       </FormField>
@@ -136,12 +151,17 @@ function SellForm({ presetMember, create, onSaved }: SellFormProps) {
           <CalendarCheck className="mt-0.5 size-5 shrink-0 text-primary" />
           <div className="text-sm">
             <p className="font-semibold">
-              {formatMoney(plan.price)} {paymentMethod ? `by ${paymentMethod}` : ""}
+              {paymentMethod
+                ? t("previewAmountBy", {
+                    amount: f.money(plan.price),
+                    method: tEnums(paymentMethod),
+                  })
+                : f.money(plan.price)}
             </p>
             <p className="text-muted-foreground">
-              Starts today and runs until{" "}
-              {formatDate(new Date(openedAt + plan.durationDays * DAY_MS))}.
-              {member ? ` ${member.name} can book classes right away.` : ""}
+              {member
+                ? t("previewPeriodMember", { end, name: isolate(member.name) })
+                : t("previewPeriod", { end })}
             </p>
           </div>
         </div>
@@ -163,16 +183,17 @@ export function SellMembershipSheet({
   onOpenChange,
   presetMember = null,
 }: SellMembershipSheetProps) {
+  const t = useTranslations("Memberships.sell");
   const create = useCreateMembership();
 
   return (
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title="New membership"
-      description="Pick the member and the plan, then record how they paid. The receipt is saved in Payments."
+      title={t("title")}
+      description={t("description")}
       formId={FORM_ID}
-      submitLabel="Confirm payment"
+      submitLabel={t("submit")}
       submitting={create.isPending}
     >
       <SellForm presetMember={presetMember} create={create} onSaved={() => onOpenChange(false)} />

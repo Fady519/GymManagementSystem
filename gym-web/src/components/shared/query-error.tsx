@@ -4,6 +4,7 @@ import { RefreshCw, ServerCrash } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { apiErrorMessage } from "@/lib/api-error";
 
 type QueryErrorProps = {
   title: string;
@@ -20,7 +21,8 @@ export function QueryError({ title, error, onRetry, retrying }: QueryErrorProps)
       <ServerCrash />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
-        <p>{error.message}</p>
+        {/* The reason in the visitor's language, worked out from the API error code. */}
+        <p>{apiErrorMessage(error)}</p>
         <Button variant="outline" size="sm" className="mt-2" onClick={onRetry} disabled={retrying}>
           <RefreshCw className={retrying ? "animate-spin" : undefined} /> {t("retry")}
         </Button>

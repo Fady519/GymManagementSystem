@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2, Snowflake } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FormError, FormField, fieldProps } from "@/components/shared/form-field";
+import { isolate } from "@/lib/bidi";
 import {
   PaymentMethodPicker,
   PlanPicker,
@@ -38,8 +40,9 @@ import {
   type FreezeValues,
   type RenewValues,
 } from "@/features/memberships/schemas";
+import { useFormat } from "@/hooks/use-format";
 import { applyServerErrors } from "@/lib/form-errors";
-import { formatDate, formatMoney } from "@/lib/format";
+import { firstName } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import type { MembershipResponse, PaymentMethod, PlanResponse } from "@/types";
@@ -71,6 +74,11 @@ function Change({ label, before, after }: { label: string; before: string; after
 // ---------- Renew ----------
 
 function RenewForm({ membership, onDone }: { membership: MembershipResponse; onDone: () => void }) {
+  const t = useTranslations("Memberships.renew");
+  const tForm = useTranslations("Memberships.form");
+  const tErrors = useTranslations("Memberships.errors");
+  const tCommon = useTranslations("Common");
+  const f = useFormat();
   const renew = useRenewMembership();
   const [plan, setPlan] = useState<PlanResponse | null>(null);
   const [openedAt] = useState(() => Date.now());
@@ -81,7 +89,7 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
     setError,
     formState: { errors },
   } = useForm<RenewValues>({
-    resolver: zodResolver(renewSchema),
+    resolver: zodResolver(renewSchema(tErrors)),
     defaultValues: { planId: "", notes: "" },
   });
 
@@ -99,8 +107,13 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
           notes: values.notes || null,
         },
       });
-      toast.success("Membership renewed", {
-        description: `${saved.memberName}: ${saved.planName} from ${formatDate(saved.startDate)} to ${formatDate(saved.endDate)}.`,
+      toast.success(t("done"), {
+        description: t("doneBody", {
+          name: isolate(saved.memberName),
+          plan: isolate(saved.planName),
+          start: f.date(saved.startDate),
+          end: f.date(saved.endDate),
+        }),
       });
       onDone();
     } catch (error) {
@@ -113,7 +126,7 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
       <FormError message={errors.root?.server?.message} />
-      <FormField id="renew-plan" label="Plan" error={errors.planId?.message}>
+      <FormField id="renew-plan" label={tForm("plan")} error={errors.planId?.message}>
         <Controller
           control={control}
           name="planId"
@@ -131,7 +144,7 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
           )}
         />
       </FormField>
-      <FormField id="renew-method" label="Paid by" error={errors.paymentMethod?.message}>
+      <FormField id="renew-method" label={tForm("paidBy")} error={errors.paymentMethod?.message}>
         <Controller
           control={control}
           name="paymentMethod"
@@ -145,27 +158,30 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
           )}
         />
       </FormField>
-      <FormField id="renew-notes" label="Notes (optional)" error={errors.notes?.message}>
+      <FormField id="renew-notes" label={tForm("notes")} error={errors.notes?.message}>
         <Input
           {...fieldProps("renew-notes", errors.notes?.message)}
           maxLength={500}
+          dir="auto"
           {...register("notes")}
         />
       </FormField>
       {plan && (
         <p className="rounded-lg bg-muted/60 p-3 text-sm">
-          <span className="font-semibold">{formatMoney(plan.price)}</span> ·{" "}
-          {queued ? "starts when the current one ends" : "starts today"}:{" "}
-          {formatDate(new Date(start))} → {formatDate(addDaysTo(start, plan.durationDays))}
+          <span className="font-semibold">{f.money(plan.price)}</span> ·{" "}
+          {t(queued ? "previewQueued" : "previewToday", {
+            start: f.date(new Date(start)),
+            end: f.date(addDaysTo(start, plan.durationDays)),
+          })}
         </p>
       )}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={renew.isPending}>
-          Close
+          {tCommon("close")}
         </Button>
         <Button type="submit" disabled={renew.isPending}>
           {renew.isPending && <Loader2 className="animate-spin" />}
-          Confirm renewal
+          {t("confirm")}
         </Button>
       </DialogFooter>
     </form>
@@ -173,16 +189,20 @@ function RenewForm({ membership, onDone }: { membership: MembershipResponse; onD
 }
 
 export function RenewMembershipDialog({ open, onOpenChange, membership }: DialogProps) {
+  const t = useTranslations("Memberships.renew");
+  const f = useFormat();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         {membership && (
           <>
             <DialogHeader>
-              <DialogTitle>Renew {membership.memberName}</DialogTitle>
+              <DialogTitle>{t("title", { name: isolate(membership.memberName) })}</DialogTitle>
               <DialogDescription>
-                Current: {membership.planName}, ends {formatDate(membership.endDate)}. The new
-                period is added after it, so no day is lost.
+                {t("description", {
+                  plan: isolate(membership.planName),
+                  end: f.date(membership.endDate),
+                })}
               </DialogDescription>
             </DialogHeader>
             <RenewForm membership={membership} onDone={() => onOpenChange(false)} />
@@ -202,9 +222,16 @@ function FreezeForm({
   membership: MembershipResponse;
   onDone: () => void;
 }) {
+  const t = useTranslations("Memberships.freeze");
+  const tForm = useTranslations("Memberships.form");
+  const tErrors = useTranslations("Memberships.errors");
+  const tEnums = useTranslations("Enums.MembershipState");
+  const tCommon = useTranslations("Common");
+  const f = useFormat();
   const freeze = useFreezeMembership();
   const [openedAt] = useState(() => Date.now());
-  const maxDays = Math.min(FREEZE_RULES.maxDays, freezeAllowance(membership.totalFrozenDays));
+  const allowance = freezeAllowance(membership.totalFrozenDays);
+  const maxDays = Math.min(FREEZE_RULES.maxDays, allowance);
   const {
     control,
     handleSubmit,
@@ -213,7 +240,7 @@ function FreezeForm({
     setError,
     formState: { errors },
   } = useForm<FreezeValues>({
-    resolver: zodResolver(freezeSchema(maxDays)),
+    resolver: zodResolver(freezeSchema(tErrors, maxDays)),
     defaultValues: { days: String(Math.min(7, maxDays)), reason: "" },
   });
   const daysText = useWatch({ control, name: "days" });
@@ -228,8 +255,11 @@ function FreezeForm({
         days: Number(values.days),
         reason: values.reason || null,
       });
-      toast.success(`${saved.memberName}'s membership is frozen`, {
-        description: `Paused until ${formatDate(saved.frozenUntil!)}. It now ends on ${formatDate(saved.endDate)}.`,
+      toast.success(t("done", { name: isolate(saved.memberName) }), {
+        description: t("doneBody", {
+          until: f.date(saved.frozenUntil!),
+          end: f.date(saved.endDate),
+        }),
       });
       onDone();
     } catch (error) {
@@ -244,9 +274,14 @@ function FreezeForm({
       <FormError message={errors.root?.server?.message} />
       <FormField
         id="freeze-days"
-        label="How many days?"
+        label={t("days")}
         error={errors.days?.message}
-        description={`${FREEZE_RULES.minDays}–${maxDays} days. ${freezeAllowance(membership.totalFrozenDays)} of ${FREEZE_RULES.maxTotalDays} freeze days left on this membership.`}
+        description={t("daysHint", {
+          min: f.number(FREEZE_RULES.minDays),
+          max: f.number(maxDays),
+          left: f.number(allowance),
+          total: f.number(FREEZE_RULES.maxTotalDays),
+        })}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -269,44 +304,43 @@ function FreezeForm({
                   : "text-muted-foreground hover:bg-muted",
               )}
             >
-              {d} days
+              {f.days(d)}
             </button>
           ))}
         </div>
       </FormField>
-      <FormField id="freeze-reason" label="Reason (optional)" error={errors.reason?.message}>
+      <FormField id="freeze-reason" label={tForm("reason")} error={errors.reason?.message}>
         <Input
           {...fieldProps("freeze-reason", errors.reason?.message)}
           maxLength={200}
-          placeholder="e.g. Travelling, injury, exams"
+          dir="auto"
+          placeholder={t("reasonPlaceholder")}
           {...register("reason")}
         />
       </FormField>
 
       <div className="space-y-2 rounded-xl border bg-sky-500/5 p-4">
-        <Change label="Status" before="Active" after="Frozen" />
+        <Change label={t("status")} before={tEnums("Active")} after={tEnums("Frozen")} />
         <Change
-          label="Frozen until"
+          label={t("frozenUntil")}
           before="—"
-          after={validDays ? formatDate(addDaysTo(openedAt, days)) : "—"}
+          after={validDays ? f.date(addDaysTo(openedAt, days)) : "—"}
         />
         <Change
-          label="Ends on"
-          before={formatDate(membership.endDate)}
-          after={validDays ? formatDate(addDaysTo(membership.endDate, days)) : "—"}
+          label={t("endsOn")}
+          before={f.date(membership.endDate)}
+          after={validDays ? f.date(addDaysTo(membership.endDate, days)) : "—"}
         />
-        <p className="pt-1 text-xs text-muted-foreground">
-          Class bookings during the freeze are cancelled. Check-in is blocked until it ends.
-        </p>
+        <p className="pt-1 text-xs text-muted-foreground">{t("effects")}</p>
       </div>
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={freeze.isPending}>
-          Close
+          {tCommon("close")}
         </Button>
         <Button type="submit" disabled={freeze.isPending}>
           {freeze.isPending ? <Loader2 className="animate-spin" /> : <Snowflake />}
-          Freeze membership
+          {t("confirm")}
         </Button>
       </DialogFooter>
     </form>
@@ -314,6 +348,9 @@ function FreezeForm({
 }
 
 export function FreezeMembershipDialog({ open, onOpenChange, membership }: DialogProps) {
+  const t = useTranslations("Memberships.freeze");
+  const tCommon = useTranslations("Common");
+  const f = useFormat();
   const allowance = membership ? freezeAllowance(membership.totalFrozenDays) : 0;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -321,20 +358,20 @@ export function FreezeMembershipDialog({ open, onOpenChange, membership }: Dialo
         {membership && (
           <>
             <DialogHeader>
-              <DialogTitle>Freeze {membership.memberName}&apos;s membership</DialogTitle>
-              <DialogDescription>
-                The membership pauses and its end date moves later by the same number of days.
-              </DialogDescription>
+              <DialogTitle>{t("title", { name: isolate(membership.memberName) })}</DialogTitle>
+              <DialogDescription>{t("description")}</DialogDescription>
             </DialogHeader>
             {allowance < FREEZE_RULES.minDays ? (
               <>
                 <p className="rounded-lg bg-muted p-3 text-sm">
-                  This membership already used {membership.totalFrozenDays} of its{" "}
-                  {FREEZE_RULES.maxTotalDays} freeze days, so it can&apos;t be frozen again.
+                  {t("limitReached", {
+                    used: f.number(membership.totalFrozenDays),
+                    total: f.number(FREEZE_RULES.maxTotalDays),
+                  })}
                 </p>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                    Close
+                    {tCommon("close")}
                   </Button>
                 </DialogFooter>
               </>
@@ -356,6 +393,8 @@ export function UnfreezeMembershipDialog(props: DialogProps) {
 }
 
 function UnfreezeConfirm({ open, onOpenChange, membership }: DialogProps) {
+  const t = useTranslations("Memberships.unfreeze");
+  const f = useFormat();
   const unfreeze = useUnfreezeMembership();
   const [now] = useState(() => Date.now());
   // A started day counts as used, so only whole days left are given back (same rule as the API).
@@ -367,34 +406,39 @@ function UnfreezeConfirm({ open, onOpenChange, membership }: DialogProps) {
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={`Unfreeze ${membership?.memberName ?? "membership"}?`}
+      title={membership ? t("title", { name: isolate(membership.memberName) }) : t("confirm")}
       description={
         membership ? (
           <span className="block space-y-2">
             <span className="block">
-              The membership becomes active right away and {membership.memberName.split(" ")[0]} can
-              book and check in again.
+              {t("body", { name: isolate(firstName(membership.memberName)) })}
             </span>
             <span className="block">
               {unused > 0
-                ? `The ${unused} unused ${unused === 1 ? "day is" : "days are"} given back: it will end on ${formatDate(addDaysTo(membership.endDate, -unused))} instead of ${formatDate(membership.endDate)}.`
-                : "All the frozen days were used, so the end date stays the same."}
+                ? t("daysBack", {
+                    count: unused,
+                    end: f.date(addDaysTo(membership.endDate, -unused)),
+                    oldEnd: f.date(membership.endDate),
+                  })
+                : t("noDaysBack")}
             </span>
           </span>
         ) : (
           ""
         )
       }
-      confirmLabel="Unfreeze now"
+      confirmLabel={t("confirm")}
+      // "Cancel" next to "Unfreeze" reads badly in Arabic (both start with "إلغاء").
+      cancelLabel={t("keep")}
       pending={unfreeze.isPending}
       onConfirm={() => {
         if (!membership) return;
         unfreeze.mutate(membership.id, {
           onSuccess: (saved) =>
-            toast.success(`${saved.memberName}'s membership is active again`, {
-              description: `It ends on ${formatDate(saved.endDate)}.`,
+            toast.success(t("done", { name: isolate(saved.memberName) }), {
+              description: t("doneBody", { end: f.date(saved.endDate) }),
             }),
-          onError: (error) => toastError("Couldn't unfreeze the membership", error),
+          onError: (error) => toastError(t("error"), error),
           onSettled: () => onOpenChange(false),
         });
       }}
@@ -411,6 +455,11 @@ function CancelForm({
   membership: MembershipResponse;
   onDone: () => void;
 }) {
+  const t = useTranslations("Memberships.cancel");
+  const tForm = useTranslations("Memberships.form");
+  const tErrors = useTranslations("Memberships.errors");
+  const tEnums = useTranslations("Enums.PaymentMethod");
+  const f = useFormat();
   const cancel = useCancelMembership();
   const {
     control,
@@ -420,7 +469,9 @@ function CancelForm({
     setValue,
     formState: { errors },
   } = useForm<CancelMembershipValues>({
-    resolver: zodResolver(cancelMembershipSchema(membership.pricePaid)),
+    resolver: zodResolver(
+      cancelMembershipSchema(tErrors, membership.pricePaid, f.money(membership.pricePaid)),
+    ),
     defaultValues: { refundAmount: "", refundMethod: "", reason: "" },
   });
   const refundText = useWatch({ control, name: "refundAmount" });
@@ -437,11 +488,14 @@ function CancelForm({
           reason: values.reason || null,
         },
       });
-      toast.success(`${saved.memberName}'s membership was cancelled`, {
+      toast.success(t("done", { name: isolate(saved.memberName) }), {
         description:
           amount > 0
-            ? `${formatMoney(amount)} refunded by ${values.refundMethod}.`
-            : "No refund was given.",
+            ? t("doneRefund", {
+                amount: f.money(amount),
+                method: tEnums(values.refundMethod as PaymentMethod),
+              })
+            : t("doneNoRefund"),
       });
       onDone();
     } catch (error) {
@@ -456,9 +510,9 @@ function CancelForm({
       <FormError message={errors.root?.server?.message} />
       <FormField
         id="cancel-refund"
-        label="Refund (optional)"
+        label={t("refund")}
         error={errors.refundAmount?.message}
-        description={`They paid ${formatMoney(membership.pricePaid)}. Leave empty for no refund.`}
+        description={t("refundHint", { amount: f.money(membership.pricePaid) })}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -477,12 +531,12 @@ function CancelForm({
               setValue("refundAmount", String(membership.pricePaid), { shouldValidate: true })
             }
           >
-            Full refund
+            {t("fullRefund")}
           </Button>
         </div>
       </FormField>
       {refund > 0 && (
-        <FormField id="cancel-method" label="Refunded by" error={errors.refundMethod?.message}>
+        <FormField id="cancel-method" label={t("refundedBy")} error={errors.refundMethod?.message}>
           <Controller
             control={control}
             name="refundMethod"
@@ -499,28 +553,28 @@ function CancelForm({
       )}
       <FormField
         id="cancel-membership-reason"
-        label="Reason (optional)"
+        label={tForm("reason")}
         error={errors.reason?.message}
       >
         <Textarea
           {...fieldProps("cancel-membership-reason", errors.reason?.message)}
           rows={2}
           maxLength={200}
-          placeholder="e.g. Moving to another city"
+          dir="auto"
+          placeholder={t("reasonPlaceholder")}
           {...register("reason")}
         />
       </FormField>
       <p className="rounded-lg bg-destructive/5 p-3 text-xs text-muted-foreground">
-        The membership ends now. Class bookings it no longer covers are cancelled. This can&apos;t
-        be undone.
+        {t("warning")}
       </p>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone} disabled={cancel.isPending}>
-          Keep it
+          {t("keep")}
         </Button>
         <Button type="submit" variant="destructive" disabled={cancel.isPending}>
           {cancel.isPending && <Loader2 className="animate-spin" />}
-          {refund > 0 ? `Cancel and refund ${formatMoney(refund)}` : "Cancel membership"}
+          {refund > 0 ? t("confirmRefund", { amount: f.money(refund) }) : t("confirm")}
         </Button>
       </DialogFooter>
     </form>
@@ -528,16 +582,21 @@ function CancelForm({
 }
 
 export function CancelMembershipDialog({ open, onOpenChange, membership }: DialogProps) {
+  const t = useTranslations("Memberships.cancel");
+  const f = useFormat();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         {membership && (
           <>
             <DialogHeader>
-              <DialogTitle>Cancel {membership.memberName}&apos;s membership?</DialogTitle>
+              <DialogTitle>{t("title", { name: isolate(membership.memberName) })}</DialogTitle>
               <DialogDescription>
-                {membership.planName}, {formatDate(membership.startDate)} →{" "}
-                {formatDate(membership.endDate)}.
+                {t("description", {
+                  plan: isolate(membership.planName),
+                  start: f.date(membership.startDate),
+                  end: f.date(membership.endDate),
+                })}
               </DialogDescription>
             </DialogHeader>
             <CancelForm membership={membership} onDone={() => onOpenChange(false)} />

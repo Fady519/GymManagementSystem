@@ -11,6 +11,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,10 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
-import {
-  CheckInResultBadge,
-  DENY_REASON_LABEL,
-} from "@/features/check-ins/components/check-in-badges";
+import { CheckInResultBadge } from "@/features/check-ins/components/check-in-badges";
 import {
   CheckInResultOverlay,
   type CheckInOutcome,
@@ -29,9 +27,9 @@ import {
 import { QrScanner } from "@/features/check-ins/components/qr-scanner";
 import { useCheckIn, useCheckIns } from "@/features/check-ins/queries";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { useFormat } from "@/hooks/use-format";
 import { ApiError } from "@/lib/api-error";
 import { cairoToday } from "@/lib/cairo-time";
-import { formatTime } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { playCue } from "@/lib/sound";
 import { cn } from "@/lib/utils";
@@ -42,6 +40,11 @@ const CODE_PATTERN = /^[0-9a-f]{32}$/;
 /** The same code seen again within this time is the member still holding the phone up. */
 const SAME_CODE_COOLDOWN_MS = 8_000;
 const SOUND_PREF_KEY = "pf-checkin-sound";
+/** Shown as an example in the empty code box. */
+const EXAMPLE_CODE = "3f9a1c0b7d2e4f6a8b1c3d5e7f9a0b2c";
+
+/** What's wrong with a typed code: the sentence is CheckIns.desk.codeEmpty / codeFormat. */
+type CodeError = "codeEmpty" | "codeFormat";
 
 function readSoundPref(): boolean {
   try {
@@ -61,6 +64,7 @@ function TodayStat({
   value: number | undefined;
   tone: "success" | "destructive" | "muted";
 }) {
+  const f = useFormat();
   return (
     <div className="rounded-xl border bg-card p-4">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -74,7 +78,7 @@ function TodayStat({
             tone === "destructive" && "text-destructive",
           )}
         >
-          {value}
+          {f.number(value)}
         </p>
       )}
     </div>
@@ -83,6 +87,9 @@ function TodayStat({
 
 /** The latest scans of today, refreshed every 30 seconds (another desk may be scanning too). */
 function RecentScans({ today }: { today: string }) {
+  const t = useTranslations("CheckIns");
+  const tReason = useTranslations("Enums.CheckInDenyReason");
+  const f = useFormat();
   const filters = { from: today, to: today, memberId: null };
   const recent = useCheckIns({ ...filters, result: null, page: 1, pageSize: 8 }, { live: true });
   const allowed = useCheckIns(
@@ -97,19 +104,23 @@ function RecentScans({ today }: { today: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Today at the door</CardTitle>
-        <CardDescription>Live, updates every 30 seconds and after each scan.</CardDescription>
+        <CardTitle>{t("recent.title")}</CardTitle>
+        <CardDescription>{t("recent.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="grid grid-cols-3 gap-3">
-          <TodayStat label="Let in" value={allowed.data?.totalCount} tone="success" />
-          <TodayStat label="Turned away" value={denied.data?.totalCount} tone="destructive" />
-          <TodayStat label="Total scans" value={recent.data?.totalCount} tone="muted" />
+          <TodayStat label={t("stats.letIn")} value={allowed.data?.totalCount} tone="success" />
+          <TodayStat
+            label={t("stats.turnedAway")}
+            value={denied.data?.totalCount}
+            tone="destructive"
+          />
+          <TodayStat label={t("stats.total")} value={recent.data?.totalCount} tone="muted" />
         </div>
 
         {recent.isError ? (
           <QueryError
-            title="We couldn't load today's scans"
+            title={t("recent.loadError")}
             error={recent.error}
             onRetry={() => void recent.refetch()}
             retrying={recent.isFetching}
@@ -121,13 +132,9 @@ function RecentScans({ today }: { today: string }) {
             ))}
           </div>
         ) : recent.data.items.length === 0 ? (
-          <EmptyState
-            icon={LogIn}
-            title="No scans yet today"
-            description="The first member through the door will show up here."
-          />
+          <EmptyState icon={LogIn} title={t("recent.emptyTitle")} description={t("recent.empty")} />
         ) : (
-          <ul className="divide-y" aria-label="Recent scans">
+          <ul className="divide-y" aria-label={t("recent.listLabel")}>
             {recent.data.items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-2.5">
                 <MemberAvatar name={item.memberName} photoUrl={null} className="size-8 text-xs" />
@@ -136,11 +143,11 @@ function RecentScans({ today }: { today: string }) {
                     href={`/dashboard/members/${item.memberId}`}
                     className="block truncate text-sm font-medium hover:underline"
                   >
-                    {item.memberName}
+                    <bdi>{item.memberName}</bdi>
                   </Link>
                   <p className="truncate text-xs text-muted-foreground">
-                    {formatTime(item.checkedInAt)}
-                    {item.denyReason && ` · ${DENY_REASON_LABEL[item.denyReason]}`}
+                    {f.time(item.checkedInAt)}
+                    {item.denyReason && ` · ${tReason(item.denyReason)}`}
                   </p>
                 </div>
                 <CheckInResultBadge result={item.result} />
@@ -151,7 +158,7 @@ function RecentScans({ today }: { today: string }) {
 
         <Button variant="outline" className="w-full" asChild>
           <Link href="/dashboard/check-ins">
-            Full attendance log <ArrowRight className="rtl:rotate-180" />
+            {t("recent.fullLog")} <ArrowRight className="rtl:rotate-180" />
           </Link>
         </Button>
       </CardContent>
@@ -164,11 +171,12 @@ function RecentScans({ today }: { today: string }) {
  * get a big green or red answer, and see today's traffic on the side.
  */
 export function CheckInDesk() {
+  const t = useTranslations("CheckIns.desk");
   const checkIn = useCheckIn();
   const { mutateAsync, isPending } = checkIn;
   const [outcome, setOutcome] = useState<CheckInOutcome | null>(null);
   const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeError, setCodeError] = useState<CodeError | null>(null);
   const [sound, setSound] = useState(readSoundPref);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastScan = useRef<{ code: string; at: number } | null>(null);
@@ -211,11 +219,11 @@ export function CheckInDesk() {
         if (error instanceof ApiError && error.status === 404) {
           show({ kind: "unknown", id: now });
         } else {
-          toastError("We couldn't check this member in", error);
+          toastError(t("checkInError"), error);
         }
       }
     },
-    [mutateAsync, show],
+    [mutateAsync, show, t],
   );
 
   const onCameraScan = useCallback(
@@ -236,11 +244,11 @@ export function CheckInDesk() {
     event.preventDefault();
     const value = code.trim().toLowerCase();
     if (!value) {
-      setCodeError("Enter the member's check-in code.");
+      setCodeError("codeEmpty");
       return;
     }
     if (!CODE_PATTERN.test(value)) {
-      setCodeError("A check-in code has 32 characters: the digits 0–9 and the letters a–f.");
+      setCodeError("codeFormat");
       return;
     }
     setCodeError(null);
@@ -261,22 +269,22 @@ export function CheckInDesk() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Check-in desk"
-        description="Scan a member's QR code to let them in. Every scan is logged, including refused ones."
+        title={t("title")}
+        description={t("description")}
         actions={
           <>
             <Button
               variant="outline"
               onClick={toggleSound}
               aria-pressed={sound}
-              aria-label={sound ? "Turn sound off" : "Turn sound on"}
+              aria-label={sound ? t("turnSoundOff") : t("turnSoundOn")}
             >
               {sound ? <Volume2 /> : <VolumeX />}
-              {sound ? "Sound on" : "Sound off"}
+              {sound ? t("soundOn") : t("soundOff")}
             </Button>
             <Button variant="outline" asChild>
               <Link href="/dashboard/check-ins">
-                <History /> Attendance log
+                <History /> {t("log")}
               </Link>
             </Button>
           </>
@@ -286,17 +294,16 @@ export function CheckInDesk() {
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Scanner</CardTitle>
-            <CardDescription>
-              Members open their QR code in the member app and hold it up to the camera.
-            </CardDescription>
+            <CardTitle>{t("scannerTitle")}</CardTitle>
+            <CardDescription>{t("scannerDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <QrScanner paused={outcome !== null} busy={isPending} onScan={onCameraScan} />
 
-            <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {/* Letter spacing breaks the joined Arabic letters, so it's turned off in RTL. */}
+            <div className="flex items-center gap-3 text-xs font-medium tracking-wide text-muted-foreground uppercase rtl:tracking-normal">
               <span className="h-px flex-1 bg-border" />
-              or enter the code
+              {t("orEnter")}
               <span className="h-px flex-1 bg-border" />
             </div>
 
@@ -305,18 +312,20 @@ export function CheckInDesk() {
                 htmlFor="check-in-code"
                 className="flex items-center gap-2 text-sm font-medium"
               >
-                <Keyboard className="size-4 text-muted-foreground" /> Check-in code
+                <Keyboard className="size-4 text-muted-foreground" /> {t("codeLabel")}
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
+                {/* Codes are Latin letters and digits: always typed and shown left to right. */}
                 <Input
                   id="check-in-code"
                   ref={inputRef}
+                  dir="ltr"
                   value={code}
                   onChange={(event) => {
                     setCode(event.target.value);
                     if (codeError) setCodeError(null);
                   }}
-                  placeholder="e.g. 3f9a1c0b7d2e4f6a8b1c3d5e7f9a0b2c"
+                  placeholder={t("codePlaceholder", { example: EXAMPLE_CODE })}
                   autoComplete="off"
                   spellCheck={false}
                   maxLength={64}
@@ -326,7 +335,7 @@ export function CheckInDesk() {
                 />
                 <Button type="submit" disabled={isPending} className="sm:w-36">
                   {isPending ? <Loader2 className="animate-spin" /> : <LogIn />}
-                  Check in
+                  {t("submit")}
                 </Button>
               </div>
               <p
@@ -334,17 +343,13 @@ export function CheckInDesk() {
                 className={cn("text-xs", codeError ? "text-destructive" : "text-muted-foreground")}
                 role={codeError ? "alert" : undefined}
               >
-                {codeError ??
-                  "Shown under the member's QR code. USB barcode scanners can type into this box too."}
+                {codeError ? t(codeError) : t("codeHelp")}
               </p>
             </form>
 
             <div className="flex items-start gap-3 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
               <ShieldX className="mt-0.5 size-4 shrink-0" />
-              <p>
-                Members are let in once per day with a running, unfrozen membership. Expired, frozen
-                and not-yet-started memberships are refused with the reason on screen.
-              </p>
+              <p>{t("rules")}</p>
             </div>
           </CardContent>
         </Card>

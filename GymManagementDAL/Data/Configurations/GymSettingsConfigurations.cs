@@ -28,8 +28,7 @@ namespace GymManagementDAL.Data.Configurations
             builder.Property(x => x.Phone).HasMaxLength(20).IsUnicode(false);
             builder.Property(x => x.WhatsApp).HasMaxLength(20).IsUnicode(false);
             builder.Property(x => x.Email).HasMaxLength(100).IsUnicode(false);
-            builder.Property(x => x.AddressEn).HasMaxLength(200).IsUnicode();
-            builder.Property(x => x.AddressAr).HasMaxLength(200).IsUnicode();
+            builder.Property(x => x.Address).HasMaxLength(200).IsUnicode();
             builder.Property(x => x.MapUrl).HasMaxLength(500).IsUnicode();
             builder.Property(x => x.FacebookUrl).HasMaxLength(300).IsUnicode();
             builder.Property(x => x.InstagramUrl).HasMaxLength(300).IsUnicode();
@@ -43,8 +42,7 @@ namespace GymManagementDAL.Data.Configurations
                 Phone = "+20 100 555 0199",
                 WhatsApp = "+20 100 555 0199",
                 Email = "hello@powerfitness.eg",
-                AddressEn = "12 Abbas El Akkad St, Nasr City, Cairo",
-                AddressAr = "12 شارع عباس العقاد، مدينة نصر، القاهرة",
+                Address = "12 Abbas El Akkad St, Nasr City, Cairo",
                 MapUrl = "https://maps.google.com/?q=Abbas+El+Akkad+Nasr+City+Cairo",
                 FacebookUrl = null,
                 InstagramUrl = null,

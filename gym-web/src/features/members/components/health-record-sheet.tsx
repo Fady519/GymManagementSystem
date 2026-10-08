@@ -2,10 +2,12 @@
 
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { FormError } from "@/components/shared/form-field";
 import { FormSheet } from "@/components/shared/form-sheet";
 import { HealthFieldset } from "@/features/members/components/health-fieldset";
+import { isolate } from "@/lib/bidi";
 import { useSaveHealthRecord } from "@/features/members/queries";
 import { healthRecordSchema, type HealthRecordValues } from "@/features/members/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
@@ -27,8 +29,10 @@ type HealthFormProps = {
 };
 
 function HealthForm({ member, save, onSaved }: HealthFormProps) {
+  const t = useTranslations("Members.healthSheet");
+  const tErrors = useTranslations("Members.errors");
   const form = useForm<HealthRecordValues>({
-    resolver: zodResolver(healthRecordSchema),
+    resolver: zodResolver(healthRecordSchema(tErrors)),
     defaultValues: { healthRecord: healthToFields(member.healthRecord) },
   });
   const {
@@ -48,9 +52,7 @@ function HealthForm({ member, save, onSaved }: HealthFormProps) {
           note: healthRecord.note.trim() || null,
         },
       });
-      toast.success("Health record saved", {
-        description: `${member.name}'s trainers will see the latest numbers.`,
-      });
+      toast.success(t("saved"), { description: t("savedBody", { name: isolate(member.name) }) });
       onSaved();
     } catch (error) {
       // The API names these fields without the "healthRecord." prefix (the body is the record itself).
@@ -83,6 +85,8 @@ type HealthRecordSheetProps = {
 
 /** The side panel for adding or updating a member's health record. */
 export function HealthRecordSheet({ open, onOpenChange, member }: HealthRecordSheetProps) {
+  const t = useTranslations("Members.healthSheet");
+  const tCommon = useTranslations("Common");
   const save = useSaveHealthRecord();
   const editing = member.healthRecord !== null;
 
@@ -90,10 +94,10 @@ export function HealthRecordSheet({ open, onOpenChange, member }: HealthRecordSh
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={editing ? "Update health record" : "Add health record"}
-      description="Height, weight and anything a coach should know before training them."
+      title={editing ? t("editTitle") : t("addTitle")}
+      description={t("description")}
       formId={FORM_ID}
-      submitLabel={editing ? "Save changes" : "Save record"}
+      submitLabel={editing ? tCommon("save") : t("submitAdd")}
       submitting={save.isPending}
     >
       <HealthForm member={member} save={save} onSaved={() => onOpenChange(false)} />

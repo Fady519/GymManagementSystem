@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { SetPasswordForm } from "@/features/auth/components/set-password-form";
 import { FormSkeleton } from "@/features/auth/components/form-skeleton";
 
-export const metadata: Metadata = {
-  title: "Reset password",
-  description: "Choose a new password for your Power Fitness account.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Auth.reset");
+  return { title: t("metaTitle"), description: t("metaDescription") };
+}
 
 /** Opened from the "reset your password" email: /reset-password?email=...&token=... */
 export default function ResetPasswordPage() {

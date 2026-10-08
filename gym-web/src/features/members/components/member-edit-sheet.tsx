@@ -2,12 +2,14 @@
 
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { FormError, FormField, fieldProps } from "@/components/shared/form-field";
 import { FormSheet } from "@/components/shared/form-sheet";
 import { AddressFieldset, GenderField } from "@/components/shared/person-fields";
+import { isolate } from "@/lib/bidi";
 import { useUpdateMember } from "@/features/members/queries";
 import { editMemberSchema, type EditMemberValues } from "@/features/members/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
@@ -34,8 +36,11 @@ type MemberEditFormProps = {
 };
 
 function MemberEditForm({ member, update, onSaved }: MemberEditFormProps) {
+  const t = useTranslations("Members.form");
+  const tEdit = useTranslations("Members.edit");
+  const tErrors = useTranslations("Members.errors");
   const form = useForm<EditMemberValues>({
-    resolver: zodResolver(editMemberSchema),
+    resolver: zodResolver(editMemberSchema(tErrors)),
     defaultValues: {
       name: member.name,
       email: member.email,
@@ -65,7 +70,9 @@ function MemberEditForm({ member, update, onSaved }: MemberEditFormProps) {
           address: toAddressDto(values.address),
         },
       });
-      toast.success("Profile updated", { description: `${saved.name}'s details are saved.` });
+      toast.success(tEdit("saved"), {
+        description: tEdit("savedBody", { name: isolate(saved.name) }),
+      });
       onSaved();
     } catch (error) {
       applyServerErrors(error, setError, FIELDS, {
@@ -78,37 +85,40 @@ function MemberEditForm({ member, update, onSaved }: MemberEditFormProps) {
     <FormProvider {...form}>
       <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
-        <FormField id="edit-name" label="Full name" error={errors.name?.message}>
+        <FormField id="edit-name" label={t("name")} error={errors.name?.message}>
           <Input
             {...fieldProps("edit-name", errors.name?.message)}
             maxLength={50}
+            dir="auto"
             {...register("name")}
           />
         </FormField>
         <FormField
           id="edit-email"
-          label="Email"
+          label={t("email")}
           error={errors.email?.message}
-          description={member.hasAccount ? "Also their login email." : undefined}
+          description={member.hasAccount ? tEdit("emailIsLogin") : undefined}
         >
           <Input
             {...fieldProps("edit-email", errors.email?.message, member.hasAccount)}
             type="email"
+            dir="ltr"
             maxLength={100}
             {...register("email")}
           />
         </FormField>
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField id="edit-phone" label="Mobile number" error={errors.phone?.message}>
+          <FormField id="edit-phone" label={t("phone")} error={errors.phone?.message}>
             <Input
               {...fieldProps("edit-phone", errors.phone?.message)}
               type="tel"
               inputMode="numeric"
+              dir="ltr"
               maxLength={11}
               {...register("phone")}
             />
           </FormField>
-          <FormField id="edit-dob" label="Date of birth" error={errors.dateOfBirth?.message}>
+          <FormField id="edit-dob" label={t("dateOfBirth")} error={errors.dateOfBirth?.message}>
             <Input
               {...fieldProps("edit-dob", errors.dateOfBirth?.message)}
               type="date"
@@ -132,16 +142,18 @@ type MemberEditSheetProps = {
 
 /** The side panel for editing a member's personal details and address. */
 export function MemberEditSheet({ open, onOpenChange, member }: MemberEditSheetProps) {
+  const t = useTranslations("Members.edit");
+  const tCommon = useTranslations("Common");
   const update = useUpdateMember();
 
   return (
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={`Edit ${member.name}`}
-      description="Personal details and address. Health data has its own tab."
+      title={t("title", { name: isolate(member.name) })}
+      description={t("description")}
       formId={FORM_ID}
-      submitLabel="Save changes"
+      submitLabel={tCommon("save")}
       submitting={update.isPending}
     >
       <MemberEditForm member={member} update={update} onSaved={() => onOpenChange(false)} />

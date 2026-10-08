@@ -1,23 +1,16 @@
 import { CheckCircle2, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { CheckInDenyReason, CheckInResult } from "@/types";
+import type { CheckInResult } from "@/types";
 
-/** Short reason labels for the log and the result screen. */
-export const DENY_REASON_LABEL: Record<CheckInDenyReason, string> = {
-  NoMembership: "No membership",
-  MembershipExpired: "Membership expired",
-  MembershipFrozen: "Membership frozen",
-  MembershipNotStarted: "Not started yet",
-  AlreadyCheckedInToday: "Already checked in today",
-};
+/**
+ * The two results the API can return (fixed English values). Their labels, and the deny reason
+ * labels, are in the messages: Enums.CheckInResult.* and Enums.CheckInDenyReason.*.
+ */
+export const CHECK_IN_RESULTS: readonly CheckInResult[] = ["Allowed", "Denied"];
 
-export const CHECK_IN_RESULTS: { value: CheckInResult; label: string }[] = [
-  { value: "Allowed", label: "Let in" },
-  { value: "Denied", label: "Turned away" },
-];
-
-/** Green "Let in" or red "Turned away" pill. */
+/** Green "Allowed" or red "Denied" pill. */
 export function CheckInResultBadge({
   result,
   className,
@@ -25,6 +18,7 @@ export function CheckInResultBadge({
   result: CheckInResult;
   className?: string;
 }) {
+  const t = useTranslations("Enums.CheckInResult");
   const allowed = result === "Allowed";
   const Icon = allowed ? CheckCircle2 : XCircle;
   return (
@@ -39,7 +33,7 @@ export function CheckInResultBadge({
       )}
     >
       <Icon className="size-3" />
-      {allowed ? "Let in" : "Turned away"}
+      {t(result)}
     </Badge>
   );
 }

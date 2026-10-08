@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, SearchX } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   createColumnHelper,
   tableFeatures,
@@ -8,6 +9,7 @@ import {
   type ColumnDef,
   type RowData,
 } from "@tanstack/react-table";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -57,8 +59,8 @@ type DataTableProps<TData extends RowData> = {
   isPending: boolean;
   /** True while a new page/filter is loading: the old rows stay visible but dimmed. */
   isFetching?: boolean;
-  /** Shown instead of the rows when the list is empty. */
-  emptyState: React.ReactNode;
+  /** Shown instead of the rows when the list is empty (default: a translated "No results"). */
+  emptyState?: React.ReactNode;
   sort?: SortState;
   onSortChange?: (key: string) => void;
   /** Makes the whole row clickable (e.g. open the details page). */
@@ -93,6 +95,7 @@ export function DataTable<TData extends RowData>({
   footer,
   skeletonRows = 8,
 }: DataTableProps<TData>) {
+  const t = useTranslations("DataTable");
   const table = useTable({
     features: dataTableFeatures,
     columns,
@@ -168,8 +171,15 @@ export function DataTable<TData extends RowData>({
             ))
           ) : rows.length === 0 ? (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={columnCount} className="p-0">
-                {emptyState}
+              {/* whitespace-normal: cells are nowrap by default, so long hints would be clipped on phones. */}
+              <TableCell colSpan={columnCount} className="p-0 whitespace-normal">
+                {emptyState ?? (
+                  <EmptyState
+                    icon={SearchX}
+                    title={t("noResults")}
+                    description={t("noResultsHint")}
+                  />
+                )}
               </TableCell>
             </TableRow>
           ) : (

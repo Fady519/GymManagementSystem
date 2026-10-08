@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,13 +15,16 @@ import { AuthHeading, FormError } from "@/features/auth/components/auth-heading"
 import { PasswordChecklist } from "@/features/auth/components/password-checklist";
 import { useStartSession } from "@/features/auth/hooks";
 import { registerSchema, type RegisterValues } from "@/features/auth/schemas";
+import { isolate } from "@/lib/bidi";
 import { applyServerErrors } from "@/lib/form-errors";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { GENDERS } from "@/lib/validation";
 import { Link } from "@/i18n/navigation";
 
 const FIELDS = ["name", "email", "phone", "dateOfBirth", "gender", "password"] as const;
 
-/** API conflict codes, and the field each message belongs under. */
+/** API conflict codes, and the field each (translated) message belongs under. */
 const CODE_TO_FIELD = {
   "Auth.EmailTaken": "email",
   "Auth.MemberAlreadyExists": "email",
@@ -28,11 +33,13 @@ const CODE_TO_FIELD = {
   "Member.PhoneTaken": "phone",
 } as const;
 
-const GENDERS = ["Male", "Female"] as const;
-
 /** Sign-up for new members. One request creates the login account and the member profile. */
 export function RegisterForm() {
+  const t = useTranslations("Auth");
+  const tValidation = useTranslations("Validation");
+  const tGender = useTranslations("Enums.Gender");
   const startSession = useStartSession();
+  const schema = useMemo(() => registerSchema(tValidation), [tValidation]);
   const {
     register,
     handleSubmit,
@@ -40,7 +47,7 @@ export function RegisterForm() {
     control,
     formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm<RegisterValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       email: "",
@@ -63,7 +70,8 @@ export function RegisterForm() {
         gender: values.gender,
         password: values.password,
       });
-      toast.success(`Welcome to Power Fitness, ${auth.user.fullName.split(" ")[0]}!`);
+      // The name is shown as typed; isolate() keeps an English name readable in an Arabic sentence.
+      toast.success(t("register.welcome", { name: isolate(firstName(auth.user.fullName)) }));
       startSession(auth);
     } catch (error) {
       applyServerErrors(error, setError, FIELDS, { codes: CODE_TO_FIELD });
@@ -74,38 +82,38 @@ export function RegisterForm() {
 
   return (
     <>
-      <AuthHeading
-        title="Create your account"
-        description="Join in under a minute. Then pick a membership at the front desk and start booking classes."
-      />
+      <AuthHeading title={t("register.title")} description={t("register.description")} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
 
-        <FormField id="name" label="Full name" error={errors.name?.message}>
+        <FormField id="name" label={t("fields.fullName")} error={errors.name?.message}>
           <Input
             {...fieldProps("name", errors.name?.message)}
             autoComplete="name"
-            placeholder="e.g. Ahmed Hassan"
+            dir="auto"
+            placeholder={t("fields.namePlaceholder")}
             {...register("name")}
           />
         </FormField>
 
-        <FormField id="email" label="Email" error={errors.email?.message}>
+        <FormField id="email" label={t("fields.email")} error={errors.email?.message}>
           <Input
             {...fieldProps("email", errors.email?.message)}
             type="email"
+            dir="ltr"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
         </FormField>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField id="phone" label="Mobile number" error={errors.phone?.message}>
+          <FormField id="phone" label={t("fields.phone")} error={errors.phone?.message}>
             <Input
               {...fieldProps("phone", errors.phone?.message)}
               type="tel"
+              dir="ltr"
               inputMode="numeric"
               autoComplete="tel-national"
               placeholder="01012345678"
@@ -114,7 +122,11 @@ export function RegisterForm() {
             />
           </FormField>
 
-          <FormField id="dateOfBirth" label="Date of birth" error={errors.dateOfBirth?.message}>
+          <FormField
+            id="dateOfBirth"
+            label={t("fields.dateOfBirth")}
+            error={errors.dateOfBirth?.message}
+          >
             <Input
               {...fieldProps("dateOfBirth", errors.dateOfBirth?.message)}
               type="date"
@@ -125,7 +137,7 @@ export function RegisterForm() {
         </div>
 
         <fieldset className="grid gap-2">
-          <legend className="mb-2 text-sm leading-none font-medium">Gender</legend>
+          <legend className="mb-2 text-sm leading-none font-medium">{t("fields.gender")}</legend>
           <div className="grid grid-cols-2 gap-2">
             {GENDERS.map((gender) => (
               <label
@@ -144,7 +156,8 @@ export function RegisterForm() {
                   aria-describedby={errors.gender ? "gender-error" : undefined}
                   {...register("gender")}
                 />
-                {gender}
+                {/* The value sent to the API stays "Male"/"Female"; only the label is translated. */}
+                {tGender(gender)}
               </label>
             ))}
           </div>
@@ -157,7 +170,7 @@ export function RegisterForm() {
 
         <FormField
           id="password"
-          label="Password"
+          label={t("fields.password")}
           error={errors.password?.message}
           description={<PasswordChecklist value={password} />}
         >
@@ -170,7 +183,7 @@ export function RegisterForm() {
 
         <FormField
           id="confirmPassword"
-          label="Confirm password"
+          label={t("fields.confirmPassword")}
           error={errors.confirmPassword?.message}
         >
           <PasswordInput
@@ -182,14 +195,14 @@ export function RegisterForm() {
 
         <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <UserPlus />}
-          {busy ? "Creating your account…" : "Create account"}
+          {busy ? t("register.submitting") : t("register.submit")}
         </Button>
       </form>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        Already a member?{" "}
+        {t("register.haveAccount")}{" "}
         <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
-          Log in
+          {t("register.logIn")}
         </Link>
       </p>
     </>

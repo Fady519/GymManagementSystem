@@ -1,10 +1,17 @@
+import type { useTranslations } from "next-intl";
 import { z } from "zod";
 
 /**
  * Form rules shared by many forms. They mirror the API validators (GymManagementBLL/Validators),
  * so most mistakes are caught before the request is sent. The API still checks everything:
  * these are for a fast, friendly form, not for security.
+ *
+ * The rules below with English messages are kept for older forms. New and translated forms use
+ * validationRules(t) at the bottom of this file: the same rules, with messages in the visitor's language.
  */
+
+/** The "Validation" messages, e.g. from useTranslations("Validation") or getTranslations("Validation"). */
+export type ValidationText = ReturnType<typeof useTranslations<"Validation">>;
 
 // Same numbers as CommonRules.cs
 export const NAME_MIN = 2;
@@ -208,4 +215,129 @@ export function healthToFields(
         note: h.note ?? "",
       }
     : EMPTY_HEALTH;
+}
+
+/**
+ * The shared rules with messages in the visitor's language. Build them once per form:
+ *
+ *   const tValidation = useTranslations("Validation");
+ *   const schema = useMemo(() => {
+ *     const rules = validationRules(tValidation);
+ *     return z.object({ name: rules.personName, phone: rules.egyptianPhone });
+ *   }, [tValidation]);
+ *
+ * Messages don't repeat the field's label (it is shown right above the error), which also keeps
+ * the Arabic grammar right.
+ */
+export function validationRules(t: ValidationText) {
+  const wholeNumberRule = (min: number, max: number) =>
+    z
+      .string()
+      .trim()
+      .min(1, t("numberRequired"))
+      .refine((v) => /^\d+$/.test(v), t("wholeNumber"))
+      .refine((v) => Number(v) >= min && Number(v) <= max, t("numberRange", { min, max }));
+
+  const decimalRule = (
+    min: number,
+    max: number,
+    messages: { required: string; format: string; range: string },
+  ) =>
+    z
+      .string()
+      .trim()
+      .min(1, messages.required)
+      .refine((v) => /^\d+(\.\d{1,2})?$/.test(v), messages.format)
+      .refine((v) => Number(v) >= min && Number(v) <= max, messages.range);
+
+  const addressRulesT = z.object({
+    buildingNumber: z
+      .string()
+      .trim()
+      .regex(/^\d{1,4}$/, t("buildingNumber"))
+      .refine((v) => Number(v) >= 1, t("buildingNumber")),
+    street: z.string().trim().min(2, t("street")).max(50, t("street")),
+    city: z.string().trim().min(2, t("city")).max(30, t("city")),
+  });
+
+  const healthRulesT = z.object({
+    height: decimalRule(50, 250, {
+      required: t("heightRequired"),
+      format: t("heightFormat"),
+      range: t("heightRange"),
+    }),
+    weight: decimalRule(20, 300, {
+      required: t("weightRequired"),
+      format: t("weightFormat"),
+      range: t("weightRange"),
+    }),
+    bloodType: z.enum(BLOOD_TYPES, t("bloodType")),
+    note: z.string().max(500, t("noteMax")),
+  });
+
+  return {
+    personName: z
+      .string()
+      .trim()
+      .min(NAME_MIN, t("nameMin", { min: NAME_MIN }))
+      .max(NAME_MAX, t("nameMax", { max: NAME_MAX }))
+      .regex(NAME_PATTERN, t("namePattern")),
+
+    emailAddress: z
+      .string()
+      .trim()
+      .min(1, t("emailRequired"))
+      .max(EMAIL_MAX, t("emailMax", { max: EMAIL_MAX }))
+      .pipe(z.email(t("email"))),
+
+    egyptianPhone: z.string().trim().regex(PHONE_PATTERN, t("phone")),
+
+    gender: z.enum(GENDERS, t("gender")),
+
+    /** A "yyyy-mm-dd" date of birth for someone aged between minAge and 100. */
+    dateOfBirth: (minAge: number) =>
+      z
+        .string()
+        .min(1, t("dobRequired"))
+        // new Date() runs when the form is checked (a click), never while rendering.
+        .refine((value) => ageOn(new Date(), value) >= minAge, t("minAge", { age: minAge }))
+        .refine((value) => ageOn(new Date(), value) < MAX_AGE, t("dobInvalid")),
+
+    /** A required whole number typed in a text box (the box gives a string). */
+    wholeNumber: wholeNumberRule,
+
+    /**
+     * A required amount of money with at most 2 decimals, e.g. "1250" or "99.50".
+     * `maxText` is the limit as shown in the message, e.g. useFormat().money(max).
+     */
+    money: (max: number, maxText: string = String(max)) =>
+      z
+        .string()
+        .trim()
+        .min(1, t("amountRequired"))
+        .refine((v) => /^\d+(\.\d{1,2})?$/.test(v), t("amountFormat"))
+        .refine((v) => Number(v) > 0, t("amountPositive"))
+        .refine((v) => Number(v) <= max, t("amountMax", { max: maxText })),
+
+    /** Same as checkOptionalSection above, with translated messages. */
+    checkOptionalSection(
+      ctx: z.RefinementCtx,
+      section: "address" | "healthRecord",
+      values: AddressFields | HealthFields,
+      required = false,
+    ) {
+      const empty =
+        section === "address"
+          ? isAddressEmpty(values as AddressFields)
+          : isHealthEmpty(values as HealthFields);
+      if (empty && !required) return;
+
+      const result = (section === "address" ? addressRulesT : healthRulesT).safeParse(values);
+      if (result.success) return;
+
+      for (const issue of result.error.issues) {
+        ctx.addIssue({ code: "custom", message: issue.message, path: [section, ...issue.path] });
+      }
+    },
+  };
 }

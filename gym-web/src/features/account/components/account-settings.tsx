@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Loader2, ShieldAlert } from "lucide-react";
@@ -25,7 +26,11 @@ import { roleKey } from "@/lib/roles";
 const EMPTY: ChangePasswordValues = { currentPassword: "", newPassword: "", confirmPassword: "" };
 
 function ChangePasswordCard() {
+  const t = useTranslations("Account.password");
+  const tFields = useTranslations("Auth.fields");
+  const tValidation = useTranslations("Validation");
   const startSession = useStartSession();
+  const schema = useMemo(() => changePasswordSchema(tValidation), [tValidation]);
   const {
     register,
     handleSubmit,
@@ -34,7 +39,7 @@ function ChangePasswordCard() {
     control,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordValues>({
-    resolver: zodResolver(changePasswordSchema),
+    resolver: zodResolver(schema),
     defaultValues: EMPTY,
   });
   const newPassword = useWatch({ control, name: "newPassword" });
@@ -48,7 +53,7 @@ function ChangePasswordCard() {
       });
       startSession(auth);
       reset(EMPTY);
-      toast.success("Password updated. You've been signed out on your other devices.");
+      toast.success(t("success"));
     } catch (error) {
       applyServerErrors(error, setError, ["currentPassword", "newPassword"], {
         codes: { "Auth.WrongCurrentPassword": "currentPassword" },
@@ -59,10 +64,8 @@ function ChangePasswordCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change password</CardTitle>
-        <CardDescription>
-          For your security, changing your password signs you out everywhere else.
-        </CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid max-w-md gap-5">
@@ -70,7 +73,7 @@ function ChangePasswordCard() {
 
           <FormField
             id="currentPassword"
-            label="Current password"
+            label={tFields("currentPassword")}
             error={errors.currentPassword?.message}
           >
             <PasswordInput
@@ -82,7 +85,7 @@ function ChangePasswordCard() {
 
           <FormField
             id="newPassword"
-            label="New password"
+            label={tFields("newPassword")}
             error={errors.newPassword?.message}
             description={<PasswordChecklist value={newPassword} />}
           >
@@ -95,7 +98,7 @@ function ChangePasswordCard() {
 
           <FormField
             id="confirmPassword"
-            label="Confirm new password"
+            label={tFields("confirmNewPassword")}
             error={errors.confirmPassword?.message}
           >
             <PasswordInput
@@ -107,7 +110,7 @@ function ChangePasswordCard() {
 
           <Button type="submit" className="h-10 w-fit px-5" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="animate-spin" /> : <KeyRound />}
-            {isSubmitting ? "Updating…" : "Update password"}
+            {isSubmitting ? t("submitting") : t("submit")}
           </Button>
         </form>
       </CardContent>
@@ -117,22 +120,20 @@ function ChangePasswordCard() {
 
 /** Account settings, shared by every role: who you are, and changing your password. */
 export function AccountSettings() {
+  const t = useTranslations("Account");
   const tRoles = useTranslations("Roles");
   const { user } = useAuth();
   if (!user) return null;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Account settings" description="Manage how you sign in to Power Fitness." />
+      <PageHeader title={t("title")} description={t("description")} />
 
       {user.mustChangePassword && (
         <Alert className="border-warning/50 bg-warning/10">
           <ShieldAlert />
-          <AlertTitle>Choose a new password to continue</AlertTitle>
-          <AlertDescription>
-            Your account is using a temporary password. Set your own password below to unlock the
-            rest of the app.
-          </AlertDescription>
+          <AlertTitle>{t("mustChange.title")}</AlertTitle>
+          <AlertDescription>{t("mustChange.body")}</AlertDescription>
         </Alert>
       )}
 
@@ -144,8 +145,13 @@ export function AccountSettings() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-semibold">{user.fullName}</p>
-            <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+            {/* The name is shown exactly as stored; dir="auto" lets it read in its own direction. */}
+            <p className="truncate text-lg font-semibold" dir="auto">
+              {user.fullName}
+            </p>
+            <p className="truncate text-sm text-muted-foreground" dir="ltr">
+              {user.email}
+            </p>
           </div>
           <Badge variant="secondary">{tRoles(roleKey(user.roles))}</Badge>
         </CardContent>

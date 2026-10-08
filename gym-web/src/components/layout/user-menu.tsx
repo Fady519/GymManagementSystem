@@ -35,14 +35,17 @@ export function UserMenu({ user }: { user: CurrentUserResponse }) {
               {initialsOf(user.fullName)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-40 truncate text-sm font-medium sm:inline">
+          <span className="hidden max-w-40 truncate text-sm font-medium sm:inline" dir="auto">
             {user.fullName}
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="space-y-1 font-normal">
-          <p className="truncate text-sm font-semibold text-foreground">{user.fullName}</p>
+          {/* The name is shown as stored; dir="auto" lets an English name read correctly in Arabic. */}
+          <p className="truncate text-sm font-semibold text-foreground" dir="auto">
+            {user.fullName}
+          </p>
           <p className="truncate text-xs text-muted-foreground" dir="ltr">
             {user.email}
           </p>

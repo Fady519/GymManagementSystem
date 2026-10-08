@@ -16,9 +16,9 @@ namespace GymManagementDAL.Entities
         public string? WhatsApp { get; set; }
         public string Email { get; set; } = null!;
 
-        // The website is bilingual, so the address is stored in both languages.
-        public string AddressEn { get; set; } = null!;
-        public string AddressAr { get; set; } = null!;
+        // Stored once, exactly as the admin typed it (any language). Switching the website
+        // language only changes the UI labels, never this value.
+        public string Address { get; set; } = null!;
 
         public string? MapUrl { get; set; }
         public string? FacebookUrl { get; set; }

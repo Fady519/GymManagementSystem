@@ -4,15 +4,11 @@ import type { RevenuePeriod } from "@/types";
 /**
  * The period picker on top of the dashboard charts. The value is kept in the URL (?range=90d),
  * so a reload or a shared link shows the same view.
+ * The words ("Last 7 days", "in the last 7 days") are in the messages: Dashboard.ranges.{value}.
  */
-export const DASHBOARD_RANGES = [
-  { value: "7d", label: "Last 7 days", text: "in the last 7 days" },
-  { value: "30d", label: "Last 30 days", text: "in the last 30 days" },
-  { value: "90d", label: "Last 90 days", text: "in the last 90 days" },
-  { value: "12m", label: "Last 12 months", text: "in the last 12 months" },
-] as const;
+export const DASHBOARD_RANGES = ["7d", "30d", "90d", "12m"] as const;
 
-export type DashboardRange = (typeof DASHBOARD_RANGES)[number]["value"];
+export type DashboardRange = (typeof DASHBOARD_RANGES)[number];
 
 export const DEFAULT_RANGE: DashboardRange = "30d";
 
@@ -46,7 +42,7 @@ export function resolveRange(range: DashboardRange, today: string = cairoToday()
 }
 
 export function isDashboardRange(value: string): value is DashboardRange {
-  return DASHBOARD_RANGES.some((r) => r.value === value);
+  return (DASHBOARD_RANGES as readonly string[]).includes(value);
 }
 
 /** Days between two plain dates, both included: ("2026-10-01", "2026-10-30") -> 30. */
