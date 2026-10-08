@@ -1,18 +1,18 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { TablePageSkeleton } from "@/components/data-table/table-page-skeleton";
-import { AdminOverview } from "@/features/dashboard/components/admin-overview";
+import { CheckInsLog } from "@/features/check-ins/components/check-ins-log";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Attendance log" };
 
 // Rendered only in the browser after the session is restored (see the (app) layout).
 export const instant = false;
 
-export default function DashboardPage() {
-  // Suspense is required because the chart period is read from the URL (useSearchParams).
+export default function CheckInsPage() {
+  // Suspense is required because the page reads the URL's search params (useSearchParams).
   return (
     <Suspense fallback={<TablePageSkeleton />}>
-      <AdminOverview />
+      <CheckInsLog />
     </Suspense>
   );
 }

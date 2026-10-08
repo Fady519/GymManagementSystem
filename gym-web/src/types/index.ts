@@ -92,3 +92,25 @@ export type CancelMembershipRequest = WithNullable<
   "refundMethod"
 >;
 export type FreezeMembershipRequest = Schemas["FreezeMembershipRequest"];
+
+// Analytics (dashboard charts)
+export type RevenuePeriod = Schemas["RevenuePeriod"];
+export type RevenuePoint = Schemas["RevenuePoint"];
+export type RevenueResponse = Schemas["RevenueResponse"];
+export type MembersGrowthPoint = Schemas["MembersGrowthPoint"];
+export type AttendanceRateResponse = Schemas["AttendanceRateResponse"];
+export type PlanDistributionItem = Schemas["PlanDistributionItem"];
+export type TopCategoryItem = Schemas["TopCategoryItem"];
+
+// Check-ins (denyReason is null when the member was let in)
+export type CheckInResult = Schemas["CheckInResult"];
+export type CheckInDenyReason = Schemas["CheckInDenyReason"];
+export type CheckInRequest = Schemas["CheckInRequest"];
+export type CheckInResultResponse = WithNullable<Schemas["CheckInResultResponse"], "denyReason">;
+export type CheckInResponse = WithNullable<Schemas["CheckInResponse"], "denyReason">;
+export type CheckInResponsePagedResult = Omit<Schemas["CheckInResponsePagedResult"], "items"> & {
+  items: CheckInResponse[];
+};
+
+// Exports
+export type ExportFormat = Schemas["ExportFormat"];

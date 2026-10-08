@@ -1,11 +1,13 @@
 import {
   BadgePercent,
   CalendarDays,
+  ClipboardList,
   Dumbbell,
   Home,
   IdCard,
   LayoutDashboard,
   Receipt,
+  ScanLine,
   Tags,
   UserCog,
   Users,
@@ -22,10 +24,12 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
 export const AREA_NAV: Record<Area, NavItem[]> = {
   admin: [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/dashboard/check-in", label: "Check-in desk", icon: ScanLine },
     { href: "/dashboard/members", label: "Members", icon: Users },
     { href: "/dashboard/sessions", label: "Classes", icon: CalendarDays },
     { href: "/dashboard/memberships", label: "Memberships", icon: IdCard },
     { href: "/dashboard/payments", label: "Payments", icon: Receipt },
+    { href: "/dashboard/check-ins", label: "Attendance log", icon: ClipboardList },
     { href: "/dashboard/trainers", label: "Trainers", icon: Dumbbell },
     { href: "/dashboard/plans", label: "Plans", icon: BadgePercent },
     { href: "/dashboard/categories", label: "Categories", icon: Tags },

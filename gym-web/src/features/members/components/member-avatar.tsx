@@ -7,15 +7,18 @@ export function MemberAvatar({
   name,
   photoUrl,
   className,
+  fallbackClassName,
 }: {
   name: string;
   photoUrl: string | null;
   className?: string;
+  /** Extra classes for the initials circle (e.g. bigger text on a large avatar). */
+  fallbackClassName?: string;
 }) {
   return (
     <Avatar className={cn("size-9", className)}>
       {photoUrl && <AvatarImage src={photoUrl} alt={name} className="object-cover" />}
-      <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+      <AvatarFallback className={cn("bg-primary/10 font-semibold text-primary", fallbackClassName)}>
         {initialsOf(name)}
       </AvatarFallback>
     </Avatar>

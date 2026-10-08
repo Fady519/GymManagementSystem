@@ -1305,3 +1305,75 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 وفي الآخر بيطبع أي طلب API رجع بخطأ وأي Error في الـ Console. ده مسك مشاكل حقيقية، زي طلبات 404 بعد مسح كلاس، وقائمة Completed اللي كانت بتبدأ بأقدم كلاس بدل أحدث واحد.
 
 > A script drives headless Edge over the DevTools Protocol through the real flows (schedule, book until full, cancel, freeze, renew, refund, filter payments), checks the database with sqlcmd after each step, and reports failed API calls and console errors. It caught real issues such as 404s after a delete and the Completed list sorted oldest first.
+
+---
+
+# F4: Dashboard, QR Check-in and Exports
+
+## 119. Lazy Loading the Charts With next/dynamic
+
+مكتبة **Recharts** تقيلة، ولو اتحمّلت مع أول صفحة هتبطّأ فتح الداشبورد. عشان كده كل رسم بياني في ملف `charts.tsx` بيتحمّل بـ `next/dynamic` مع `ssr: false`. يعني الكود بتاعه بينزل في ملف لوحده **بعد** ما الصفحة تفتح، وفي الوقت ده بيظهر Skeleton بنفس مقاس الكارت عشان الصفحة متتنططش.
+
+وكل كارت ليه 4 حالات واضحة: بيحمّل، فيه خطأ مع زرار Retry، مفيش داتا، أو الرسم نفسه. ولما تغيّر الفترة من 30 يوم لـ 12 شهر بنستخدم `placeholderData` فالرسم القديم يفضل باهت لحد ما الجديد يوصل بدل ما يختفي.
+
+> Recharts is heavy, so every chart is loaded with next/dynamic and ssr: false. The chart code downloads in its own chunk after the page is interactive, while a same-size skeleton holds the layout. Each card handles loading, error with retry, empty and data states, and keeps the previous data faded while a new range loads.
+
+---
+
+## 120. Downloading Files That Need a Token
+
+زرار Export مينفعش يكون لينك عادي `<a href>`، لأن الـ API محتاج **JWT** في الـ Header، واللينك العادي مش بيبعت Headers. الحل في `lib/download.ts`: بنطلب الملف بـ Axios مع `responseType: "blob"`، فالـ Interceptor بيحط التوكن وبيعمل Refresh لو انتهى. بعدين بنعمل `URL.createObjectURL` ونضغط على لينك مؤقت، واسم الملف بناخده من Header اسمه `Content-Disposition`.
+
+المشكلة الخفية: لو السيرفر رجّع خطأ، الرد هيبقى Blob برضه مش JSON، فرسالة الخطأ هتضيع. عشان كده الدالة `readBlobError` بتقرا الـ Blob كنص وتحوّله JSON تاني قبل ما نعرض الرسالة.
+
+> Exports need the JWT, so a plain link cannot work. Axios downloads the file as a blob (the interceptor adds the token and refreshes it), then a temporary object URL saves it with the name from Content-Disposition. Error responses also arrive as blobs, so they are parsed back into ProblemDetails JSON before showing the message.
+
+---
+
+## 121. Export Respects the Filters on Screen
+
+لو الأدمن فلتر المدفوعات على "آخر 30 يوم" ونوع "Refund" ودوس Export، لازم الملف يطلع **نفس الصفوف اللي شايفها** بالظبط. عشان كده زرار `ExportButton` بياخد نفس الـ Object اللي بنبعته لقائمة الصفحة، ومش بيحسب فلاتر لوحده.
+
+وده سهل لأن كل الفلاتر متخزنة في الـ **URL**: الجدول والكروت والـ Export بيقروا من نفس المكان. واختبرناها: عدد صفوف ملف CSV طلع نفس الـ `totalCount` اللي راجع من الـ API في الأعضاء والاشتراكات والمدفوعات وسجل الحضور.
+
+> The export button receives the exact filter object the list uses, so the file always contains the rows on screen. Because filters live in the URL, the table, the summary cards and the export all read from one source. The browser test compared CSV row counts with the API totals for every page.
+
+---
+
+## 122. Running the Camera Safely With html5-qrcode
+
+الكاميرا عملية **Async**: التشغيل بياخد وقت، ولو المستخدم داس Stop وهي لسه بتشتغل، أو React شغّل الـ Effect مرتين، المكتبة بترمي Error. الحل إن كل أوامر Start و Stop بتدخل **طابور** (Queue) وبتتنفذ واحدة ورا التانية، فمفيش أمرين بيتداخلوا.
+
+كمان المكتبة بتتحمّل بـ `import()` جوه المتصفح بس، وأخطاء الكاميرا (مفيش إذن، مفيش كاميرا، الكاميرا مستخدمة في برنامج تاني) بتتحوّل لرسائل مفهومة. ولو نفس الكود اتقرا تاني خلال 8 ثواني بنتجاهله، عشان العضو اللي لسه ماسك الموبايل قدام الكاميرا ميتسجلش مرتين.
+
+> Starting and stopping the camera are async and fail if they overlap (a quick Stop, or React running effects twice), so every start/stop call goes through a promise queue. The library is imported only in the browser, camera errors become readable messages, and the same code is ignored for 8 seconds so one member is not logged twice.
+
+---
+
+## 123. A Big, Clear Result at the Door
+
+الموظف اللي على الباب مش هيقرا جدول. فبعد كل Scan بتظهر شاشة كاملة **خضرا** أو **حمرا** بـ Framer Motion، فيها صورة العضو واسمه وعدد الأيام الباقية، أو سبب الرفض زي "Membership frozen" أو "Already checked in today"، ومعاها صوت مختلف للقبول والرفض بالـ Web Audio API.
+
+الشاشة بتقفل لوحدها بعد 5 ثواني أو بـ Esc أو بلمسة، عشان الطابور يمشي. وكل محاولة بتتسجل في الداتا بيز حتى المرفوضة، فالأدمن يقدر يراجعها في Attendance log ويفلترها.
+
+> The door needs a result readable from a distance: a full-screen green or red overlay with the photo, name and days left, or the refusal reason, plus distinct sounds. It closes after 5 seconds, on Esc or on tap so the queue keeps moving. Every attempt, refused or not, is logged and can be filtered in the attendance log.
+
+---
+
+## 124. Animated Numbers Without Re-rendering React
+
+أرقام الكروت في الداشبورد بتعد من 0 لحد القيمة. لو عملنا ده بـ `useState` هنعمل Re-render للكارت 60 مرة في الثانية. بدل كده `AnimatedNumber` بيستخدم `animate` من Framer Motion ويكتب الرقم مباشرة في `nodeValue` بتاع الـ Text Node جوه `useLayoutEffect`.
+
+يعني React بيرسم الرقم النهائي مرة واحدة (فالـ SEO وقارئ الشاشة بيشوفوا الرقم الصح)، والحركة نفسها بتحصل بره React من غير أي Render إضافي.
+
+> Count-up numbers would re-render 60 times a second with useState. AnimatedNumber renders the final value once, then Framer Motion's animate writes frames straight into the text node's nodeValue inside a layout effect, so the animation costs no React renders and the DOM always ends on the real number.
+
+---
+
+## 125. Checking the Dashboard Numbers Against the Database
+
+داشبورد بأرقام غلط أسوأ من مفيش داشبورد. فسكريبت المتصفح بيقارن كل رقم: الكروت مع `GET /api/analytics/summary`، وإجمالي الإيراد في الرسم مع `SUM` في SQL بعد تحويل الأيام لتوقيت القاهرة.
+
+واكتشفنا حاجة مهمة في الاختبار: الصورة الكاملة للصفحة (Full-page Screenshot) كانت بتطلع الرسوم فاضية، مع إن الرسوم شغالة في المتصفح. السبب إن طريقة التصوير بتغيّر مقاس الصفحة فجأة، وRecharts بيعيد الرسم. الحل إننا نكبّر الشاشة الأول ونستنى ثانيتين وبعدين نصوّر، والدرس إنك تتأكد إن المشكلة في الكود مش في أداة الاختبار.
+
+> The test compares every KPI with the summary endpoint and the revenue total with a SQL SUM over Cairo-local days. Full-page screenshots showed blank charts even though the browser rendered them: the capture resizes the page and Recharts redraws. Enlarging the viewport and waiting before capturing fixed it, a reminder to separate tool artifacts from real bugs.
