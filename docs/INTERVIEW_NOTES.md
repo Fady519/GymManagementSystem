@@ -977,6 +977,7 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 المتصفح بيثق في شهادة الـ HTTPS بتاعة ASP.NET على الجهاز، لكن Node.js (اللي بيعمل الـ Rewrite) مبيثقش فيها، فكان بيرجع 500. الحل: Script صغير بيشتغل قبل `npm run dev` ويطلّع الجزء العام من الشهادة لفولدر `.certs` (متجاهل في Git)، وبعدين `NODE_EXTRA_CA_CERTS` بيقول لـ Node يثق فيها. **مقفلناش التحقق من الشهادات**، وده الحل الآمن.
 
 > The browser trusts the ASP.NET Core dev certificate but Node.js didn't, so the proxy failed. A pre-dev script exports the certificate's public part to a git-ignored folder, and NODE_EXTRA_CA_CERTS tells Node to trust it. TLS verification is never disabled.
+
 ---
 
 ## 89. No Dead UI: Everything on Screen Is Real
@@ -988,3 +989,95 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 وكل جزء بيحمّل داتا ليه 3 حالات: Skeleton وهو بيحمّل، ورسالة واضحة وزرار Try again لو فشل، وحالة فاضية بكلام مناسب لو مفيش داتا.
 
 > Everything a visitor sees is real: every number, plan, program and class comes from the API, and every button works. Actions like sign-up or booking only appear once their pages exist. Values are computed, not hard-coded; for example, "Best value" goes to the lowest price per month. Every data section has loading, error-with-retry and empty states.
+
+---
+
+# F1: Auth, Layouts and Route Protection
+
+## 90. Where the Tokens Live
+
+الـ **Access Token** (15 دقيقة) متخزن في الذاكرة بس (Redux)، مش في `localStorage`، عشان لو حصل XSS الـ Script ميلاقيهوش متخزن. والـ **Refresh Token** (7 أيام) في Cookie نوعها `HttpOnly`، يعني JavaScript مش قادر يقراها أصلاً، ومسارها `/api/auth` بس، فمبتتبعتش غير لـ Endpoints الـ Auth.
+
+العيب إن الـ Access Token بيضيع لما الصفحة تتعمل Refresh، فأول ما التطبيق يفتح بنطلب `/api/auth/refresh` ونرجّع الجلسة من غير ما المستخدم يحس.
+
+> The access token (15 minutes) is kept in memory only, never in localStorage, so an XSS script can't read it from storage. The refresh token (7 days) is an HttpOnly cookie scoped to /api/auth, so JavaScript can't read it at all. Because memory is lost on reload, the app calls /api/auth/refresh once on startup to restore the session silently.
+
+---
+
+## 91. Silent Refresh With a 401 Interceptor
+
+لما أي Request يرجع **401** لأن الـ Access Token خلص، الـ Interceptor بتاع Axios بيعمل Refresh مرة واحدة ويعيد نفس الـ Request بالتوكن الجديد. المستخدم مبيشوفش أي خطأ.
+
+وفيه شرطين مهمين: الـ Retry بيحصل **مرة واحدة بس** لكل Request (علامة `_retried`)، و**مبيحصلش** على Endpoints زي login وregister، لأن الـ 401 هناك معناها "باسورد غلط" مش "التوكن خلص". وطلب الـ Refresh نفسه بيروح من Axios Instance تانية من غير Interceptors، عشان لو فشل ميعملش Refresh للأبد.
+
+> When a request fails with 401 because the access token expired, the Axios interceptor refreshes once and replays the request, so the user never notices. Each request is retried at most once, auth endpoints like login are excluded (their 401 means wrong credentials), and the refresh call uses a separate Axios instance without interceptors to avoid infinite loops.
+
+---
+
+## 92. Refresh Token Rotation Needs Single-Flight
+
+الباك بيعمل **Rotation**: كل Refresh Token بيشتغل مرة واحدة، ولو نفس التوكن اتبعت تاني، الباك بيعتبره مسروق ويقفل **كل** جلسات المستخدم. يعني لو طلبين عملوا Refresh في نفس اللحظة، المستخدم هيتطرد.
+
+عشان كده `refreshSession()` **Single-Flight**: لو فيه Refresh شغال، أي حد تاني بيطلب بياخد نفس الـ Promise. ولو المستخدم فاتح الموقع في كذا Tab، بنستخدم **Web Locks API** (`navigator.locks`) فالـ Tabs التانية بتستنى، وبعدين بتبعت الـ Cookie الجديدة مش القديمة. ودي كمان بتحمي من React Strict Mode اللي بيشغّل الـ Effect مرتين في الـ Development.
+
+> The API rotates refresh tokens and treats a reused token as theft, signing the user out everywhere. So two refreshes at the same moment would log the user out. refreshSession() is single-flight: concurrent callers share one promise, and the Web Locks API makes other tabs wait so they send the new cookie, not the used one. This also covers React Strict Mode running effects twice in development.
+
+---
+
+## 93. Route Protection in Three Layers
+
+الحماية على 3 مستويات:
+
+1. **`proxy.ts`** (اسمه كان Middleware قبل Next.js 16): بيشتغل على السيرفر قبل الصفحة. لو مفيش جلسة بيحوّل لـ `/login?next=...`، ولو عضو فتح `/dashboard` بيحوّله لـ `/me`.
+2. **`AppShell`** في المتصفح: مبيعرضش أي صفحة غير لما يتأكد من المستخدم ودوره، وبيجبر اللي عنده باسورد مؤقت يغيّره الأول.
+3. **الـ API**: ده الحماية الحقيقية. كل Endpoint بيتأكد من الـ JWT والـ Role.
+
+الـ Proxy مش بيقدر يشوف الـ Refresh Cookie (مسارها `/api/auth`)، فبنحط Cookie صغيرة مقروءة اسمها `pf_session` فيها المنطقة بس (`admin`/`trainer`/`member`). دي **للـ UX مش للأمان**: لو حد غيّرها، هيشوف Shell فاضي والـ API هيرفض كل طلباته.
+
+> Protection has three layers: proxy.ts redirects on the server before the page loads, the AppShell guard in the browser renders nothing until the user and role are known, and the API is the real enforcement (JWT and roles on every endpoint). The proxy can't see the HttpOnly refresh cookie, so a small readable hint cookie holds only the area. It is for UX, not security: a forged hint shows an empty shell and the API rejects every request.
+
+---
+
+## 94. Role-Based Areas and Safe Redirects
+
+كل دور ليه منطقة بـ Prefix واحد: الأدمن `/dashboard/...`، المدرب `/trainer/...`، العضو `/me/...`، و`/account` للكل. ده بيخلي الحماية سطر واحد: نشوف المسار بيبدأ بإيه.
+
+وبعد اللوجين بنرجّع المستخدم للصفحة اللي كان عايزها من `?next=`، بس **بعد ما نتأكد** إنها مسار داخلي (بيبدأ بـ `/` واحدة) وإنها من منطقته. غير كده بيروح للصفحة الرئيسية بتاعته. ده بيمنع **Open Redirect** زي `/login?next=https://evil.com`.
+
+> Each role has one URL prefix (/dashboard, /trainer, /me; /account is shared), so access checks are a simple prefix match. After login the user returns to ?next= only if it is an internal path inside their own area; otherwise they go to their home page. This prevents open-redirect attacks like /login?next=https://evil.com.
+
+---
+
+## 95. Forms: Same Rules on Both Sides
+
+الفورمز بـ **React Hook Form + Zod**. قواعد Zod منسوخة من الـ FluentValidation في الباك بنفس الأرقام (طول الاسم، رقم الموبايل المصري، الباسورد القوي، السن من 12 لـ 100)، فأغلب الأخطاء بتظهر قبل ما الطلب يتبعت.
+
+وأخطاء السيرفر بتظهر **تحت الحقل الصح**: أخطاء الـ 400 بتيجي بأسماء الحقول، وأكواد زي `Auth.EmailTaken` و`Auth.PhoneTaken` متربوطة بحقل الإيميل والموبايل. وأي خطأ تاني بيظهر فوق الفورم. ده كله في Helper واحد `applyServerErrors` بتستخدمه كل الفورمز.
+
+> Forms use React Hook Form with Zod schemas that copy the backend FluentValidation rules exactly, so most mistakes are caught before sending. Server errors land under the right field: 400 validation errors by field name, and known conflict codes like Auth.EmailTaken map to their field; anything else shows at the top. One applyServerErrors helper does this for every form.
+
+---
+
+## 96. Two Bugs Only a Real Browser Found
+
+**الأول: Strict Mode والـ Store.** في الـ Development، React بيشغّل الـ `useState` Initializer مرتين ويرمي نتيجة منهم. كنا بنسلّم الـ Store لـ Axios من جوه الـ Initializer، فـ Axios أحياناً كان ماسك الـ Store المرمي، والطلبات بتروح من غير توكن (401). الحل: نسلّم الـ Store اللي `useState` رجّعه فعلاً.
+
+**التاني: Hydration Mismatch.** Next.js بيعمل Hydration للصفحة على أجزاء، فالـ Session Check ممكن يخلص قبل ما الـ Header يتعمله Hydration، فيظهر "Log in" مكان الـ Placeholder اللي جه من السيرفر. الحل: Hook اسمه `useHydrated` بيرجّع `false` لحد ما الـ Hydration يخلص، فأول Render بيطابق السيرفر.
+
+الاتنين اتكشفوا بـ Script بيشغّل Edge ويعمل لوجين حقيقي من الفورم، مش بـ curl.
+
+> Two bugs only showed up in a real browser. First, React Strict Mode runs the useState initializer twice and discards one result; the API client was injected from inside it and sometimes held the discarded store, so requests had no token. Fixed by injecting the store useState actually returned. Second, selective hydration let the session check finish before the header hydrated, causing a mismatch; a useHydrated hook makes the first render match the server.
+
+---
+
+## 97. Dashboards Built Only From Real Data
+
+كل صفحة رئيسية بتعرض داتا حقيقية من الـ API:
+
+- **الأدمن**: الأعضاء النشطين، إيراد الشهر، الـ Check-ins، الحصص الجاية، ونسبة الأعضاء النشطين. بتتحدث لوحدها كل دقيقة، وفيه زرار Refresh.
+- **المدرب**: تخصصه، الحصة الجاية، وحصصه الجاية بنسبة الحجز في كل واحدة.
+- **العضو**: كارت الاشتراك (الأيام الباقية، المدة اللي عدّت، التجميد، التجديد الجاي)، بياناته، وتاريخ اشتراكاته. ولو مفيش اشتراك، فيه زرار يوديه للخطط في الصفحة الرئيسية.
+
+والـ Sidebar مفيهوش غير الصفحات الموجودة فعلاً، وكل مرحلة بتضيف صفحاتها.
+
+> Each role's home page shows only real API data: admin KPIs that auto-refresh every minute, the trainer's upcoming classes with live booking fill, and the member's membership card with days left, freeze and renewal info. The sidebar only lists pages that exist; each phase adds its own.

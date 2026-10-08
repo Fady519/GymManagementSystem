@@ -50,18 +50,59 @@ export function formatDateTime(utc: string | Date): string {
 
 /** Formats a class start for schedules, in Cairo time, e.g. "Thu 8 Oct · 19:00". */
 export function formatClassTime(utc: string | Date): string {
-  const date = new Date(utc);
-  const day = new Intl.DateTimeFormat("en-GB", {
+  return `${formatDay(utc)} · ${formatTime(utc)}`;
+}
+
+/** Formats a short day, in Cairo, e.g. "Thu 8 Oct". */
+export function formatDay(utc: string | Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: GYM_TIME_ZONE,
     weekday: "short",
     day: "numeric",
     month: "short",
-  }).format(date);
-  const time = new Intl.DateTimeFormat("en-GB", {
+  }).format(new Date(utc));
+}
+
+/** Formats only the time, in Cairo, e.g. "18:00". */
+export function formatTime(utc: string | Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: GYM_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(date);
-  return `${day} · ${time}`;
+  }).format(new Date(utc));
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Whole days from now until a date (rounded up), never below 0. */
+export function daysUntil(utc: string | Date, now: Date = new Date()): number {
+  return Math.max(0, Math.ceil((new Date(utc).getTime() - now.getTime()) / DAY_MS));
+}
+
+/** "Good morning" / "Good afternoon" / "Good evening", by the time in Cairo. Browser only (uses the clock). */
+export function greeting(now: Date = new Date()): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: GYM_TIME_ZONE,
+      hour: "2-digit",
+      hour12: false,
+    }).format(now),
+  );
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+/** "Fady Kaiser" -> "Fady" */
+export function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0];
+}
+
+/** "Fady Kaiser" -> "FK", "Fady" -> "FA" (for avatars). */
+export function initialsOf(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  const letters =
+    parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2);
+  return letters.toUpperCase();
 }
