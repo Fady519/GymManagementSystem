@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { AuthNavButtons } from "@/features/auth/components/auth-nav-buttons";
 import { ProgramsList } from "@/features/categories/components/programs-list";
 import { HeroStats } from "@/features/home/components/hero-stats";
 import { PlansGrid } from "@/features/plans/components/plans-grid";
@@ -16,8 +17,8 @@ const navLinks = [
 
 /**
  * Home page. Every number, plan, program and class on it comes from the API,
- * and every link on it works (they scroll to their section).
- * Login, sign-up and booking buttons are added when those pages exist (F1 and F5).
+ * and every link on it works (they scroll to their section, or open login / sign-up).
+ * Booking buttons are added when the member booking pages exist (F5).
  */
 export default function HomePage() {
   return (
@@ -32,7 +33,10 @@ export default function HomePage() {
               </Button>
             ))}
           </nav>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <AuthNavButtons />
+          </div>
         </div>
       </header>
 
