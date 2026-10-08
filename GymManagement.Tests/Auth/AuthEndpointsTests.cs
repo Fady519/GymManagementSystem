@@ -330,5 +330,43 @@ namespace GymManagement.Tests.Auth
             var blocked = await client.PostAsJsonAsync("/api/auth/login", request);
             await AssertProblemAsync(blocked, HttpStatusCode.TooManyRequests, "RateLimit.Exceeded");
         }
+
+        [Fact]
+        public async Task Refresh_DoesNotUseTheLoginLimit()
+        {
+            // Login limit used up (2 of 2) must not block refresh: page reloads call refresh a lot.
+            await using var limitedApp = factory.WithWebHostBuilder(builder =>
+                builder.ConfigureAppConfiguration((_, config) =>
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["RateLimiting:AuthPermitLimit"] = "2",
+                        ["RateLimiting:RefreshPermitLimit"] = "100",
+                    })));
+
+            var client = limitedApp.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
+            var request = new LoginRequest("nobody@test.com", "Wrong@12345");
+            for (var i = 0; i < 2; i++)
+                await client.PostAsJsonAsync("/api/auth/login", request);
+            Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/auth/login", request)).StatusCode);
+
+            // No cookie -> 401 (not 429): refresh has its own bucket.
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsync("/api/auth/refresh", null)).StatusCode);
+        }
+
+        [Fact]
+        public async Task Refresh_TooManyRequests_Returns429()
+        {
+            await using var limitedApp = factory.WithWebHostBuilder(builder =>
+                builder.ConfigureAppConfiguration((_, config) =>
+                    config.AddInMemoryCollection(new Dictionary<string, string?> { ["RateLimiting:RefreshPermitLimit"] = "3" })));
+
+            var client = limitedApp.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
+
+            for (var i = 0; i < 3; i++)
+                Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsync("/api/auth/refresh", null)).StatusCode);
+
+            var blocked = await client.PostAsync("/api/auth/refresh", null);
+            await AssertProblemAsync(blocked, HttpStatusCode.TooManyRequests, "RateLimit.Exceeded");
+        }
     }
 }

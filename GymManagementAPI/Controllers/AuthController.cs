@@ -53,7 +53,7 @@ namespace GymManagementAPI.Controllers
         /// <summary>Gets a new access token using the refresh cookie. The cookie is replaced (rotation).</summary>
         [HttpPost("refresh")]
         [AllowAnonymous]
-        [EnableRateLimiting(AppPolicies.AuthRateLimit)]
+        [EnableRateLimiting(AppPolicies.RefreshRateLimit)]
         [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
         public async Task<ActionResult<AuthResponse>> Refresh(CancellationToken ct)

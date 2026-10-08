@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import Link from "next/link";
 import { AlarmClock, IdCard, Plus, RefreshCcw, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +23,7 @@ import { useDialogState } from "@/hooks/use-dialog-state";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
 import { daysUntil, formatDate, formatDays, formatDuration, formatMoney } from "@/lib/format";
 import type { MembershipResponse, MembershipState } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 const col = createColumns<MembershipResponse>();
 const DEFAULT_PAGE_SIZE = 10;

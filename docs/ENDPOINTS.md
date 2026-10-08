@@ -3,7 +3,7 @@
 Generated from the running API by `EndpointSecurityTests`. Do not edit by hand.
 The tests fail if an endpoint is anonymous or open to every role by mistake.
 
-Total: 92 endpoints.
+Total: 97 endpoints.
 
 | Method | Route | Access | Roles | Rate limit |
 |---|---|---|---|---|
@@ -19,7 +19,7 @@ Total: 92 endpoints.
 | POST | `/api/auth/login` | Anonymous |  | auth |
 | POST | `/api/auth/logout` | Anonymous |  |  |
 | GET | `/api/auth/me` | Any logged-in user |  |  |
-| POST | `/api/auth/refresh` | Anonymous |  | auth |
+| POST | `/api/auth/refresh` | Anonymous |  | refresh |
 | POST | `/api/auth/register` | Anonymous |  | auth |
 | POST | `/api/auth/reset-password` | Anonymous |  | auth |
 | POST | `/api/bookings` | BookingAccess | SuperAdmin, Admin, Member |  |
@@ -75,6 +75,9 @@ Total: 92 endpoints.
 | GET | `/api/plans/{id:int}` | Anonymous |  |  |
 | PUT | `/api/plans/{id:int}` | AdminAccess | SuperAdmin, Admin |  |
 | PATCH | `/api/plans/{id:int}/status` | AdminAccess | SuperAdmin, Admin |  |
+| GET | `/api/public/gym` | Anonymous |  |  |
+| GET | `/api/public/stats` | Anonymous |  |  |
+| GET | `/api/public/trainers` | Anonymous |  |  |
 | GET | `/api/sessions` | Anonymous |  |  |
 | POST | `/api/sessions` | AdminAccess | SuperAdmin, Admin |  |
 | DELETE | `/api/sessions/{id:int}` | AdminAccess | SuperAdmin, Admin |  |
@@ -83,6 +86,8 @@ Total: 92 endpoints.
 | GET | `/api/sessions/{id:int}/available-members` | AdminAccess | SuperAdmin, Admin |  |
 | GET | `/api/sessions/{id:int}/bookings` | TrainerAccess | SuperAdmin, Admin, Trainer |  |
 | POST | `/api/sessions/{id:int}/cancel` | AdminAccess | SuperAdmin, Admin |  |
+| GET | `/api/settings/gym` | AdminAccess | SuperAdmin, Admin |  |
+| PUT | `/api/settings/gym` | AdminAccess | SuperAdmin, Admin |  |
 | POST | `/api/trainer/bookings/{id:int}/attend` | TrainerOnly | Trainer |  |
 | GET | `/api/trainer/me` | TrainerOnly | Trainer |  |
 | GET | `/api/trainer/sessions` | TrainerOnly | Trainer |  |

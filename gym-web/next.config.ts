@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// Tells next-intl where the per-request language config lives.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 // Where the ASP.NET Core API runs. Only the Next.js server uses it (for the rewrites below),
 // so the browser always talks to one origin and no CORS setup is needed.
@@ -25,4 +29,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

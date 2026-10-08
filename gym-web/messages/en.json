@@ -1,0 +1,634 @@
+{
+  "Metadata": {
+    "siteName": "Power Fitness",
+    "title": "Power Fitness | Gym in Nasr City, Cairo",
+    "description": "Flexible memberships, expert coaches and a full weekly class schedule. Book classes online and check in with your QR code."
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "switchTo": "العربية",
+    "switchToLabel": "Switch to Arabic"
+  },
+  "Common": {
+    "loadingAccount": "Loading your account…",
+    "redirecting": "Redirecting…",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "viewAll": "View all",
+    "logoLabel": "Power Fitness home",
+    "brand": "Power Fitness",
+    "spotsLeft": "{count, plural, =0 {Full} one {# spot left} other {# spots left}}",
+    "notSet": "Not set"
+  },
+  "Nav": {
+    "main": "Main navigation",
+    "openMenu": "Open menu",
+    "dashboard": "Dashboard",
+    "checkInDesk": "Check-in desk",
+    "members": "Members",
+    "classes": "Classes",
+    "memberships": "Memberships",
+    "payments": "Payments",
+    "attendanceLog": "Attendance log",
+    "trainers": "Trainers",
+    "plans": "Plans",
+    "categories": "Categories",
+    "gymSettings": "Gym settings",
+    "mySchedule": "My schedule",
+    "classHistory": "Class history",
+    "overview": "Overview",
+    "myQr": "Check-in code",
+    "bookClass": "Book a class",
+    "myBookings": "My bookings",
+    "myPayments": "Payments",
+    "profile": "My profile",
+    "account": "Account settings"
+  },
+  "Areas": {
+    "admin": "Gym management",
+    "trainer": "Trainer portal",
+    "member": "Member area"
+  },
+  "Roles": {
+    "superAdmin": "Super admin",
+    "admin": "Admin",
+    "trainer": "Trainer",
+    "member": "Member"
+  },
+  "UserMenu": {
+    "open": "Open account menu",
+    "accountSettings": "Account settings",
+    "visitWebsite": "Visit website",
+    "logOut": "Log out",
+    "loggingOut": "Logging out…"
+  },
+  "Theme": {
+    "change": "Change theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "AuthNav": {
+    "logIn": "Log in",
+    "joinNow": "Join now",
+    "home": {
+      "admin": "Dashboard",
+      "trainer": "My schedule",
+      "member": "My membership"
+    },
+    "backToWebsite": "Back to website"
+  },
+  "Format": {
+    "days": "{count, plural, =0 {0 days} one {# day} other {# days}}",
+    "months": "{count, plural, one {# month} other {# months}}",
+    "years": "{count, plural, one {# year} other {# years}}",
+    "minutes": "{count} min",
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    }
+  },
+  "Home": {
+    "unavailable": "This section is temporarily unavailable. Please refresh the page in a moment.",
+    "nav": {
+      "memberships": "Memberships",
+      "programs": "Programs",
+      "schedule": "Schedule",
+      "coaches": "Coaches",
+      "contact": "Contact"
+    },
+    "hero": {
+      "eyebrow": "Strength · Conditioning · Group classes",
+      "titleStart": "Stronger every week.",
+      "titleHighlight": "Starting today.",
+      "subtitle": "Flexible memberships, certified coaches and a full weekly class schedule. Book your spot from your phone, check in with your QR code and track every visit.",
+      "ctaPrimary": "Explore memberships",
+      "ctaSecondary": "See this week's classes",
+      "imageAlt": "A Power Fitness coach welcoming new members"
+    },
+    "openNow": {
+      "open": "Open now · until {time}",
+      "opensToday": "Closed now · opens today at {time}",
+      "opensTomorrow": "Closed now · opens tomorrow at {time}",
+      "opensOn": "Closed now · opens {day} at {time}"
+    },
+    "stats": {
+      "activeMembers": "Active members",
+      "coaches": "Certified coaches",
+      "classesThisWeek": "Classes this week",
+      "fromPrice": "Memberships from",
+      "perMonth": "/month"
+    },
+    "plans": {
+      "title": "Memberships",
+      "subtitle": "Clear pricing with no hidden fees. Longer plans cost less per month, and every membership can be frozen while you travel.",
+      "bestValue": "Best value",
+      "length": "{duration} membership",
+      "perMonth": "{price} per month",
+      "save": "Save {percent}%",
+      "perkBooking": "Book group classes online",
+      "perkQr": "Fast QR check-in at the door",
+      "perkFreeze": "Freeze your membership when you travel",
+      "cta": "Get started",
+      "empty": "New memberships are on their way. Visit the front desk for today's offers."
+    },
+    "programs": {
+      "title": "Programs",
+      "subtitle": "From your very first workout to your next personal best, every program is led by a coach who specializes in it.",
+      "coaches": "{count, plural, =0 {Coach joining soon} one {# coach} other {# coaches}}",
+      "ledBy": "Led by {names}",
+      "empty": "Our programs are being updated. Check back soon."
+    },
+    "schedule": {
+      "title": "Class schedule",
+      "subtitle": "Live availability for the coming days. Members reserve their spot online in seconds.",
+      "with": "with {name}",
+      "book": "Book",
+      "full": "Fully booked",
+      "dayCount": "{count, plural, one {# class} other {# classes}}",
+      "empty": "Next week's schedule is being prepared. Check back soon."
+    },
+    "coaches": {
+      "title": "Meet the coaches",
+      "subtitle": "Experienced, certified and focused on you. Every class is planned and led by one of our team.",
+      "upcoming": "{count, plural, =0 {No classes scheduled} one {# upcoming class} other {# upcoming classes}}",
+      "empty": "Our coaching team will be introduced here soon."
+    },
+    "how": {
+      "title": "Getting started takes minutes",
+      "step1Title": "Create your account",
+      "step1Body": "Sign up online in under a minute. All you need is your name, email and phone number.",
+      "step2Title": "Activate your membership",
+      "step2Body": "Choose a plan at the front desk and pay in person. Your membership starts the same day.",
+      "step3Title": "Book and check in",
+      "step3Body": "Reserve classes from your phone and scan your personal QR code at the door. No cards, no queues."
+    },
+    "contact": {
+      "title": "Visit us",
+      "subtitle": "Drop by for a tour of the gym, or get in touch and our team will answer your questions.",
+      "address": "Address",
+      "openMap": "Open in Google Maps",
+      "phone": "Phone",
+      "whatsApp": "WhatsApp",
+      "chat": "Chat with us",
+      "email": "Email",
+      "hours": "Opening hours",
+      "weekdays": "Saturday – Thursday",
+      "friday": "Friday",
+      "closed": "Closed",
+      "today": "Today",
+      "follow": "Follow us"
+    },
+    "cta": {
+      "title": "Your first workout is one step away.",
+      "body": "Create your free account today, then activate your membership at the front desk whenever you're ready.",
+      "primary": "Create your account",
+      "secondary": "Message us on WhatsApp"
+    },
+    "footer": {
+      "tagline": "A neighborhood gym for real progress: expert coaching, group classes and a community that keeps you coming back.",
+      "explore": "Explore",
+      "members": "Members",
+      "logIn": "Member login",
+      "join": "Join Power Fitness",
+      "rights": "© <year></year> {name}. All rights reserved."
+    }
+  },
+  "GymSettings": {
+    "title": "Gym settings",
+    "description": "Your contact details and opening hours, exactly as visitors see them on the website.",
+    "viewWebsite": "View website",
+    "lastUpdated": "Last updated {date}",
+    "neverUpdated": "These are the default details. Update them to match your gym.",
+    "loadError": "We couldn't load the gym settings",
+    "details": "Gym details",
+    "detailsHint": "Shown in the website's contact section and footer.",
+    "location": "Location",
+    "locationHint": "Enter the address in both languages. Visitors see the one that matches the language they browse in.",
+    "hours": "Opening hours",
+    "hoursHint": "Saturday to Thursday share the same hours. Friday can have its own hours or be a day off.",
+    "social": "Social media",
+    "socialHint": "Optional. Leave a link empty to hide its icon on the website.",
+    "fields": {
+      "gymName": "Gym name",
+      "phone": "Phone number",
+      "whatsApp": "WhatsApp number",
+      "whatsAppHint": "Optional. Adds “Chat with us” buttons to the website.",
+      "email": "Public email",
+      "addressEn": "Address in English",
+      "addressAr": "Address in Arabic",
+      "mapUrl": "Google Maps link",
+      "mapUrlHint": "Optional. Open your gym in Google Maps, tap Share and paste the link here.",
+      "facebookUrl": "Facebook page",
+      "instagramUrl": "Instagram profile",
+      "weekdays": "Saturday – Thursday",
+      "friday": "Friday",
+      "fridayOpen": "Open on Fridays",
+      "fridayClosed": "Closed on Fridays",
+      "opens": "Opens at",
+      "closes": "Closes at"
+    },
+    "errors": {
+      "required": "This field is required.",
+      "max": "Use at most {max} characters.",
+      "phone": "Enter a valid phone number: 7–20 characters, using digits, spaces, + or -.",
+      "email": "Enter a valid email address.",
+      "https": "Enter a full link that starts with https://",
+      "time": "Choose a time.",
+      "closeAfterOpen": "Closing time must be later than opening time."
+    },
+    "unsaved": "You have unsaved changes.",
+    "discard": "Discard",
+    "saved": "Gym settings saved",
+    "savedLive": "The website already shows your changes.",
+    "savedSoon": "Your changes will appear on the website within a minute."
+  },
+  "MemberPortal": {
+    "states": {
+      "membership": {
+        "Upcoming": "Starts soon",
+        "Active": "Active",
+        "Frozen": "Frozen",
+        "Expired": "Expired",
+        "Cancelled": "Cancelled"
+      },
+      "booking": {
+        "Booked": "Booked",
+        "Attended": "Attended",
+        "Cancelled": "Cancelled",
+        "Missed": "Missed",
+        "ClassCancelled": "Class cancelled"
+      }
+    },
+    "overview": {
+      "title": "My membership",
+      "subtitle": "Everything about your membership, in one place.",
+      "loadError": "We couldn't load your membership",
+      "quickActions": "Quick actions",
+      "qr": "Check-in code",
+      "qrHint": "Show it at the front desk",
+      "book": "Book a class",
+      "bookHint": "Reserve your spot in seconds",
+      "bookings": "My bookings",
+      "bookingsHint": "Upcoming classes and history",
+      "profile": "My profile",
+      "profileHint": "Contact and health details",
+      "nextClass": "Your next class",
+      "nextClassNone": "You have no upcoming classes booked.",
+      "browseClasses": "Browse classes",
+      "allBookings": "All bookings",
+      "history": "Membership history",
+      "historyEmpty": "Your memberships will be listed here.",
+      "historyCount": "{count, plural, one {# membership so far} other {# memberships so far}}",
+      "paid": "Paid {amount}",
+      "greeting": "{greeting}, {name}"
+    },
+    "card": {
+      "label": "Your membership",
+      "daysLeft": "Days left",
+      "startsIn": "Starts in",
+      "started": "Started",
+      "startsOn": "Starts on",
+      "validUntil": "Valid until",
+      "progress": "Membership time used",
+      "frozenUntil": "Frozen until {date}. Your end date moves forward by the frozen days.",
+      "renewed": "Renewed: {plan} starts on {date}.",
+      "endingSoon": "Your membership ends soon. Renew at the front desk to keep booking classes.",
+      "noneTitle": "You don't have an active membership",
+      "noneBody": "Compare our plans, then visit the front desk to get started. Your membership appears here as soon as it's activated.",
+      "compare": "Compare memberships"
+    },
+    "qr": {
+      "title": "Check-in code",
+      "subtitle": "Show this code to the scanner at the front desk to check in.",
+      "codeLabel": "Your personal code",
+      "copy": "Copy code",
+      "copied": "Code copied",
+      "tipBrightness": "Turn up your screen brightness for a faster scan.",
+      "tipPrivate": "Keep this code private. Anyone who has it can check in as you.",
+      "membershipNote": "Entry is allowed while your membership is active.",
+      "regenerate": "Generate a new code",
+      "regenerateTitle": "Generate a new check-in code?",
+      "regenerateBody": "Your current code stops working immediately. Do this if you think someone else has your code.",
+      "regenerateConfirm": "Generate new code",
+      "regenerated": "New check-in code ready",
+      "regeneratedBody": "Your previous code no longer works.",
+      "regenerateError": "We couldn't generate a new code",
+      "loadError": "We couldn't load your check-in code",
+      "qrLabel": "QR code for check-in"
+    },
+    "classes": {
+      "title": "Book a class",
+      "subtitle": "Upcoming classes with live availability. Booking closes when a class starts.",
+      "program": "Program",
+      "allPrograms": "All programs",
+      "day": "Day",
+      "allDays": "Next 7 days",
+      "book": "Book",
+      "booked": "You're booked",
+      "full": "Fully booked",
+      "with": "with {name}",
+      "needsMembership": "Not covered",
+      "needsMembershipHint": "Your membership doesn't cover this class date.",
+      "busy": "Overlaps another booking",
+      "noMembershipTitle": "You need an active membership to book classes",
+      "noMembershipBody": "Visit the front desk to start or renew your membership. Booking opens as soon as it's active.",
+      "fromWebsite": "Selected on the website",
+      "bookedToast": "You're booked!",
+      "bookedToastBody": "{name} · {date}. See you there.",
+      "bookError": "We couldn't book this class",
+      "empty": "No upcoming classes match your filters.",
+      "clearFilters": "Clear filters",
+      "loadError": "We couldn't load the class schedule",
+      "showMore": "Show more classes",
+      "lateBookingHint": "Starts in under {hours, plural, one {# hour} other {# hours}}, so this booking can't be cancelled online."
+    },
+    "bookings": {
+      "title": "My bookings",
+      "subtitle": "Your upcoming classes and your class history.",
+      "upcoming": "Upcoming",
+      "past": "All bookings",
+      "emptyUpcoming": "You have no upcoming bookings.",
+      "emptyPast": "Your bookings will appear here.",
+      "browse": "Book a class",
+      "cancel": "Cancel",
+      "cancelTitle": "Cancel this booking?",
+      "cancelBody": "{name} on {date}. Your spot will be released to other members.",
+      "keep": "Keep booking",
+      "cancelConfirm": "Cancel booking",
+      "cancelUntil": "Free cancellation until {time}",
+      "cancelClosed": "Cancellation closes {hours} hours before the class. Please contact the gym.",
+      "cancelledToast": "Booking cancelled",
+      "cancelledToastBody": "Your spot is now free for another member.",
+      "cancelError": "We couldn't cancel this booking",
+      "reason": "Reason: {reason}",
+      "bookedOn": "Booked on {date}",
+      "loadError": "We couldn't load your bookings",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page} of {total}",
+      "upcomingCount": "{count, plural, =0 {No upcoming classes} one {# upcoming class} other {# upcoming classes}}"
+    }
+  },
+  "MemberPayments": {
+    "title": "Payments",
+    "description": "A record of every payment for your memberships.",
+    "loadError": "We couldn't load your payments",
+    "totalPaid": "Total paid",
+    "totalPaidHint": "New memberships and renewals",
+    "totalPaidAfterRefunds": "After {amount} in refunds",
+    "count": "Payments",
+    "countSince": "Since {date}",
+    "lastPayment": "Last payment",
+    "history": "Payment history",
+    "historyHint": "{count, plural, one {# payment} other {# payments}}, newest first.",
+    "columns": {
+      "date": "Date",
+      "plan": "Plan",
+      "type": "Type",
+      "method": "Method",
+      "amount": "Amount"
+    },
+    "types": {
+      "Purchase": "New membership",
+      "Renewal": "Renewal",
+      "Refund": "Refund"
+    },
+    "methods": {
+      "Cash": "Cash",
+      "Card": "Card",
+      "InstaPay": "InstaPay",
+      "Online": "Online"
+    },
+    "note": "Note",
+    "emptyTitle": "No payments yet",
+    "emptyBody": "Your payments appear here as soon as you buy or renew a membership at the front desk.",
+    "emptyAction": "Browse memberships"
+  },
+  "MemberProfile": {
+    "title": "My profile",
+    "description": "Keep your contact details and health information up to date.",
+    "loadError": "We couldn't load your profile",
+    "memberSince": "Member since {date}",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard",
+    "personal": {
+      "title": "Personal details",
+      "hint": "The details on your membership record.",
+      "name": "Full name",
+      "email": "Email",
+      "dateOfBirth": "Date of birth",
+      "gender": "Gender",
+      "frontDesk": "To change these details, please visit the front desk with your ID."
+    },
+    "genders": {
+      "Male": "Male",
+      "Female": "Female"
+    },
+    "contact": {
+      "title": "Contact details",
+      "hint": "We use your phone number to reach you about your membership and classes.",
+      "phone": "Mobile number",
+      "phoneHint": "Egyptian mobile number, 11 digits.",
+      "address": "Address",
+      "addressHint": "Optional. Fill in all three fields, or leave them all empty.",
+      "buildingNumber": "Building no.",
+      "street": "Street",
+      "city": "City",
+      "saved": "Contact details saved"
+    },
+    "health": {
+      "title": "Health record",
+      "hint": "Helps your trainers plan safe workouts. Only gym staff can see it.",
+      "empty": "You haven't added a health record yet. It only takes a minute.",
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "bloodType": "Blood type",
+      "bloodTypePlaceholder": "Select",
+      "note": "Notes for trainers",
+      "noteHint": "Injuries, conditions or anything a coach should know. Optional.",
+      "notePlaceholder": "e.g. Old knee injury: avoid deep squats.",
+      "saved": "Health record saved",
+      "bmi": "BMI {value}",
+      "bmiHint": "Based on your height and weight. A general guide, not a medical diagnosis.",
+      "bmiEmpty": "Enter your height and weight to see your BMI.",
+      "bmiCategories": {
+        "under": "Underweight",
+        "normal": "Healthy weight",
+        "over": "Overweight",
+        "obese": "Obesity"
+      }
+    },
+    "photo": {
+      "title": "Profile photo",
+      "hint": "Reception uses it to recognize you at check-in.",
+      "rules": "JPG, PNG or WEBP, up to 2 MB. Drag a file here or choose one.",
+      "choose": "Choose photo",
+      "change": "Change photo",
+      "upload": "Upload photo",
+      "uploading": "Uploading…",
+      "remove": "Remove",
+      "previewNote": "Preview only: it's saved when you upload it.",
+      "previewAlt": "Preview of your new photo",
+      "sizeKb": "{value} KB",
+      "sizeMb": "{value} MB",
+      "uploaded": "Photo updated",
+      "uploadedBody": "Reception will see your new photo at your next check-in.",
+      "uploadError": "We couldn't upload your photo",
+      "removeTitle": "Remove your photo?",
+      "removeBody": "Reception will see your initials instead until you add a new photo.",
+      "removeConfirm": "Remove photo",
+      "removed": "Photo removed",
+      "removeError": "We couldn't remove your photo"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "phone": "Enter an Egyptian mobile number, e.g. 01012345678.",
+      "phoneTaken": "Another member already uses this phone number.",
+      "buildingNumber": "Enter a building number from 1 to 9999.",
+      "street": "Enter the street (2–50 characters).",
+      "city": "Enter the city (2–30 characters).",
+      "heightRequired": "Enter your height.",
+      "heightFormat": "Enter the height as a number, e.g. 175.",
+      "heightRange": "Height must be between 50 and 250 cm.",
+      "weightRequired": "Enter your weight.",
+      "weightFormat": "Enter the weight as a number, e.g. 72.5.",
+      "weightRange": "Weight must be between 20 and 300 kg.",
+      "bloodType": "Select your blood type.",
+      "noteMax": "The note can be at most 500 characters.",
+      "photoType": "Choose a JPG, PNG or WEBP image.",
+      "photoSize": "The photo is larger than 2 MB. Choose a smaller one.",
+      "photoRead": "We couldn't read that file. Try another one."
+    }
+  },
+  "TrainerPortal": {
+    "title": "My schedule",
+    "states": {
+      "Upcoming": "Upcoming",
+      "Ongoing": "Live now",
+      "Completed": "Completed",
+      "Cancelled": "Cancelled"
+    },
+    "bookingStatus": {
+      "Booked": "Booked",
+      "Attended": "Attended",
+      "Cancelled": "Cancelled",
+      "Missed": "No-show"
+    },
+    "bookedOf": "{booked} of {capacity} booked",
+    "full": "Full",
+    "capacityLabel": "Spots booked",
+    "cancelReason": "Reason: {reason}",
+    "overview": {
+      "welcome": "Welcome back",
+      "greeting": "{greeting}, {name}",
+      "coaching": "You coach <b>{category}</b>. Here is your week at a glance.",
+      "intro": "Here is your week at a glance.",
+      "viewHistory": "Class history",
+      "loadError": "We couldn't load your schedule",
+      "kpi": {
+        "today": "Classes today",
+        "todayNone": "Nothing scheduled today",
+        "todayLeft": "{count, plural, =0 {All done for today} one {# remaining} other {# remaining}}",
+        "week": "Next 7 days",
+        "weekHint": "Including today",
+        "booked": "Spots booked",
+        "bookedNone": "No upcoming classes this week",
+        "bookedHint": "{percent}% full across {count, plural, one {# upcoming class} other {# upcoming classes}}",
+        "attendance": "Attendance rate",
+        "attendanceHint": "{count, plural, one {Your last completed class} other {Your last # completed classes}}",
+        "attendanceNone": "No bookings in your recent classes",
+        "attendanceError": "Couldn't be calculated right now"
+      },
+      "now": {
+        "title": "Happening now",
+        "booked": "{count, plural, =0 {No members booked} one {# member booked} other {# members booked}}",
+        "endsAt": "Attendance is open until {time}.",
+        "cta": "Take attendance"
+      },
+      "today": {
+        "title": "Today's classes",
+        "emptyTitle": "No classes today",
+        "empty": "Enjoy the break. Your upcoming classes are listed under “Later this week”."
+      },
+      "upcoming": {
+        "title": "Later this week",
+        "description": "Your classes over the next six days, with live bookings.",
+        "emptyTitle": "Nothing else scheduled this week",
+        "empty": "When the gym schedules a class for you, it will appear here with its bookings.",
+        "tomorrow": "Tomorrow",
+        "dayCount": "{count, plural, one {# class} other {# classes}}"
+      }
+    },
+    "roster": {
+      "title": "Class roster",
+      "back": "Back to my schedule",
+      "backToSchedule": "Go to my schedule",
+      "notFoundTitle": "Class not found",
+      "notFound": "This class doesn't exist or isn't assigned to you.",
+      "loadError": "We couldn't load this class",
+      "rosterError": "We couldn't load the roster",
+      "date": "Date",
+      "time": "Time",
+      "capacity": "Capacity",
+      "cancelReason": "Reason: {reason}",
+      "hint": {
+        "upcoming": "Attendance opens when the class starts at {start} on {day}.",
+        "ongoing": "The class is in progress. Mark members as they arrive; attendance closes at {end}.",
+        "completed": "Attendance closed when the class ended at {end} on {day}.",
+        "cancelled": "This class was cancelled, so no attendance is taken."
+      },
+      "members": "Members",
+      "membersDescription": "{count, plural, =0 {No bookings yet} one {# booking} other {# bookings}}",
+      "counts": {
+        "booked": "Booked",
+        "attended": "Attended",
+        "cancelled": "Cancelled"
+      },
+      "search": "Search by name or phone",
+      "searchLabel": "Search members",
+      "emptyTitle": "No bookings yet",
+      "empty": "Members who book this class will appear here.",
+      "noMatchTitle": "No matching members",
+      "noMatch": "No members match “{query}”.",
+      "bookedAt": "Booked {date}",
+      "callMember": "Call {name}",
+      "markAttended": "Mark attended",
+      "marking": "Saving…",
+      "marked": "{name} marked as attended",
+      "markFailed": "Couldn't mark attendance",
+      "errors": {
+        "attendanceNotOpen": "Attendance can only be marked while the class is running.",
+        "notActive": "This booking is already cancelled or marked as attended.",
+        "notYours": "Only this class's trainer can take attendance.",
+        "notFound": "This booking no longer exists. Please refresh the page."
+      }
+    },
+    "history": {
+      "title": "Class history",
+      "description": "Your completed and cancelled classes, newest first.",
+      "tabs": {
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "loadError": "We couldn't load your class history",
+      "emptyCompletedTitle": "No completed classes yet",
+      "emptyCompleted": "Classes you have taught will appear here with their attendance.",
+      "emptyCancelledTitle": "No cancelled classes",
+      "emptyCancelled": "None of your classes has been cancelled.",
+      "pagination": "Pages",
+      "pageOf": "Page {page} of {pages}",
+      "total": "{count, plural, one {# class} other {# classes}}",
+      "previous": "Previous",
+      "next": "Next",
+      "cancelReason": "Reason: {reason}",
+      "noReason": "No reason was given.",
+      "noBookings": "No bookings",
+      "attended": "{attended} of {booked} attended"
+    }
+  }
+}

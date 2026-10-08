@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Loader2, MailCheck, Send } from "lucide-react";
@@ -12,6 +11,7 @@ import { forgotPassword } from "@/features/auth/api";
 import { AuthHeading, FormError } from "@/features/auth/components/auth-heading";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/features/auth/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
+import { Link } from "@/i18n/navigation";
 
 /**
  * Step 1 of resetting a password: the API emails a link to /reset-password.

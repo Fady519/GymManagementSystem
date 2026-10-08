@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   CalendarOff,
@@ -56,6 +55,7 @@ import {
 import { formatDay, formatTime } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import type { SessionResponse, SessionState } from "@/types";
+import { useRouter } from "@/i18n/navigation";
 
 const col = createColumns<SessionResponse>();
 const DEFAULT_PAGE_SIZE = 10;

@@ -30,12 +30,12 @@ export function areaOf(roles: readonly string[]): Area {
   return "member";
 }
 
-/** A role name for people, e.g. ["SuperAdmin"] -> "Super admin". */
-export function roleLabel(roles: readonly string[]): string {
-  if (roles.includes("SuperAdmin")) return "Super admin";
-  if (roles.includes("Admin")) return "Admin";
-  if (roles.includes("Trainer")) return "Trainer";
-  return "Member";
+/** The "Roles" message key for a user, e.g. ["SuperAdmin"] -> "superAdmin" (shown as "Super admin"). */
+export function roleKey(roles: readonly string[]): "superAdmin" | "admin" | "trainer" | "member" {
+  if (roles.includes("SuperAdmin")) return "superAdmin";
+  if (roles.includes("Admin")) return "admin";
+  if (roles.includes("Trainer")) return "trainer";
+  return "member";
 }
 
 /** Which area a path belongs to, or null for shared/public paths like /account or /. */

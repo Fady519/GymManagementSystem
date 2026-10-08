@@ -3,6 +3,7 @@
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Loader2, ShieldAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,7 +20,7 @@ import { useAuth, useStartSession } from "@/features/auth/hooks";
 import { changePasswordSchema, type ChangePasswordValues } from "@/features/auth/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
 import { initialsOf } from "@/lib/format";
-import { roleLabel } from "@/lib/roles";
+import { roleKey } from "@/lib/roles";
 
 const EMPTY: ChangePasswordValues = { currentPassword: "", newPassword: "", confirmPassword: "" };
 
@@ -116,6 +117,7 @@ function ChangePasswordCard() {
 
 /** Account settings, shared by every role: who you are, and changing your password. */
 export function AccountSettings() {
+  const tRoles = useTranslations("Roles");
   const { user } = useAuth();
   if (!user) return null;
 
@@ -145,7 +147,7 @@ export function AccountSettings() {
             <p className="truncate text-lg font-semibold">{user.fullName}</p>
             <p className="truncate text-sm text-muted-foreground">{user.email}</p>
           </div>
-          <Badge variant="secondary">{roleLabel(user.roles)}</Badge>
+          <Badge variant="secondary">{tRoles(roleKey(user.roles))}</Badge>
         </CardContent>
       </Card>
 

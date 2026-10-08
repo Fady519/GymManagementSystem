@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   CalendarDays,
   HeartPulse,
@@ -45,6 +44,7 @@ import {
 import { ageOn } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import type { MemberResponse, MembershipResponse, PaymentResponse } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 /** One "label: value" line with an icon, used on the overview cards. */
 function InfoRow({

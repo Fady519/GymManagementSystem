@@ -159,6 +159,113 @@ namespace GymManagementDAL.Data.Migrations
                     b.ToTable("CheckIns");
                 });
 
+            modelBuilder.Entity("GymManagementDAL.Entities.GymSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AddressAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AddressEn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("FacebookUrl")
+                        .HasMaxLength(300)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<TimeOnly?>("FridayClosesAt")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly?>("FridayOpensAt")
+                        .HasColumnType("time");
+
+                    b.Property<string>("GymName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("InstagramUrl")
+                        .HasMaxLength(300)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("MapUrl")
+                        .HasMaxLength(500)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<TimeOnly>("WeekdayClosesAt")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("WeekdayOpensAt")
+                        .HasColumnType("time");
+
+                    b.Property<string>("WhatsApp")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GymSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GymSettings_Email", "Email LIKE '_%@_%._%'");
+
+                            t.HasCheckConstraint("CK_GymSettings_FridayHours", "(FridayOpensAt IS NULL AND FridayClosesAt IS NULL) OR (FridayClosesAt > FridayOpensAt)");
+
+                            t.HasCheckConstraint("CK_GymSettings_SingleRow", "Id = 1");
+
+                            t.HasCheckConstraint("CK_GymSettings_WeekdayHours", "WeekdayClosesAt > WeekdayOpensAt");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AddressAr = "12 شارع عباس العقاد، مدينة نصر، القاهرة",
+                            AddressEn = "12 Abbas El Akkad St, Nasr City, Cairo",
+                            CreatedAt = new DateTime(2026, 10, 8, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Email = "hello@powerfitness.eg",
+                            FridayClosesAt = new TimeOnly(22, 0, 0),
+                            FridayOpensAt = new TimeOnly(14, 0, 0),
+                            GymName = "Power Fitness",
+                            MapUrl = "https://maps.google.com/?q=Abbas+El+Akkad+Nasr+City+Cairo",
+                            Phone = "+20 100 555 0199",
+                            WeekdayClosesAt = new TimeOnly(23, 0, 0),
+                            WeekdayOpensAt = new TimeOnly(6, 0, 0),
+                            WhatsApp = "+20 100 555 0199"
+                        });
+                });
+
             modelBuilder.Entity("GymManagementDAL.Entities.HealthRecord", b =>
                 {
                     b.Property<int>("Id")

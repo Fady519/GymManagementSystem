@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { MembershipState } from "@/types";
@@ -10,7 +11,7 @@ const STATE_CLASSES: Record<MembershipState, string> = {
   Cancelled: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
-/** A colored badge for a membership state, the same everywhere it appears. */
+/** A colored badge for a membership state, the same everywhere it appears (label in the site language). */
 export function MembershipStateBadge({
   state,
   className,
@@ -18,9 +19,10 @@ export function MembershipStateBadge({
   state: MembershipState;
   className?: string;
 }) {
+  const t = useTranslations("MemberPortal.states.membership");
   return (
     <Badge variant="outline" className={cn(STATE_CLASSES[state], className)}>
-      {state}
+      {t(state)}
     </Badge>
   );
 }

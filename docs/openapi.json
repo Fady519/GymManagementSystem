@@ -5658,6 +5658,105 @@
         ]
       }
     },
+    "/api/public/gym": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "The gym's name, contact details, bilingual address, links and opening hours.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/stats": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "The numbers on the landing page: active members, trainers, programs, classes in the next 7 days and the \"from\" monthly price.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/trainers": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Trainer cards (name, speciality, upcoming classes), busiest trainers first.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicTrainerResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicTrainerResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PublicTrainerResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/sessions": {
       "get": {
         "tags": [
@@ -6320,6 +6419,143 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Your role is not allowed to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/settings/gym": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Gets the gym's details for the \"Gym settings\" page.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired access token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Your role is not allowed to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Replaces the gym's details. Texts are trimmed and empty optional texts are saved as null.\r\nLinks must be https; closing time must be after opening time; send both Friday times or neither (closed).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGymSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGymSettingsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGymSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -8261,6 +8497,66 @@
         ],
         "type": "string"
       },
+      "GymSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "gymName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "whatsApp": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressEn": {
+            "type": "string"
+          },
+          "addressAr": {
+            "type": "string"
+          },
+          "mapUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "facebookUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "instagramUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "weekdayOpensAt": {
+            "type": "string",
+            "format": "time"
+          },
+          "weekdayClosesAt": {
+            "type": "string",
+            "format": "time"
+          },
+          "fridayOpensAt": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "fridayClosesAt": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "HealthRecordDto": {
         "type": "object",
         "properties": {
@@ -8931,6 +9227,57 @@
         },
         "additionalProperties": { }
       },
+      "PublicStatsResponse": {
+        "type": "object",
+        "properties": {
+          "activeMembers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trainers": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "programs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "classesThisWeek": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fromMonthlyPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicTrainerResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "upcomingClasses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "RegisterRequest": {
         "type": "object",
         "properties": {
@@ -9394,6 +9741,61 @@
         },
         "additionalProperties": false
       },
+      "UpdateGymSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "gymName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "whatsApp": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "addressEn": {
+            "type": "string"
+          },
+          "addressAr": {
+            "type": "string"
+          },
+          "mapUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "facebookUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "instagramUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "weekdayOpensAt": {
+            "type": "string",
+            "format": "time"
+          },
+          "weekdayClosesAt": {
+            "type": "string",
+            "format": "time"
+          },
+          "fridayOpensAt": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          },
+          "fridayClosesAt": {
+            "type": "string",
+            "format": "time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "UpdateMemberRequest": {
         "type": "object",
         "properties": {
@@ -9607,7 +10009,13 @@
       "name": "Plans"
     },
     {
+      "name": "Public"
+    },
+    {
       "name": "Sessions"
+    },
+    {
+      "name": "Settings"
     },
     {
       "name": "TrainerPortal"

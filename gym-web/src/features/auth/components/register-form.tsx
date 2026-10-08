@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, UserPlus } from "lucide-react";
@@ -16,6 +15,7 @@ import { useStartSession } from "@/features/auth/hooks";
 import { registerSchema, type RegisterValues } from "@/features/auth/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
 import { cn } from "@/lib/utils";
+import { Link } from "@/i18n/navigation";
 
 const FIELDS = ["name", "email", "phone", "dateOfBirth", "gender", "password"] as const;
 

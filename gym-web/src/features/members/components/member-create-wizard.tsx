@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormProvider, useForm, useWatch, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -40,6 +38,7 @@ import {
   toAddressDto,
   toHealthDto,
 } from "@/lib/validation";
+import { Link, useRouter } from "@/i18n/navigation";
 
 type Step = {
   title: string;

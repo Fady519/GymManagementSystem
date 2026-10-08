@@ -98,28 +98,42 @@ namespace GymManagementAPI.Extensions
                 .AddPolicy(AppPolicies.MemberAccess, p => p.RequireRole(AppRoles.Member))
                 .AddPolicy(AppPolicies.BookingAccess, p => p.RequireRole(AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Member));
 
-            // ---- Rate limiting: max N login/register/refresh calls per minute per IP ----
+            // ---- Rate limiting: max N auth calls per minute per IP ----
             services.AddRateLimiter(options =>
             {
                 // 429 with no body; UseStatusCodePages turns it into ProblemDetails (code "RateLimit.Exceeded").
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+                // Login / register / password links: small limit, they are the targets of password guessing.
                 options.AddPolicy(AppPolicies.AuthRateLimit, httpContext =>
-                {
-                    var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
-                    var permitLimit = config.GetValue("RateLimiting:AuthPermitLimit", 10);
-                    var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    PerIpPerMinute(httpContext, "auth", "RateLimiting:AuthPermitLimit", defaultLimit: 10));
 
-                    return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = permitLimit,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0,
-                    });
-                });
+                // Refresh: its own bucket with a higher limit. The web app calls it on every full page load,
+                // so sharing the login bucket would sign people out after a few reloads.
+                options.AddPolicy(AppPolicies.RefreshRateLimit, httpContext =>
+                    PerIpPerMinute(httpContext, "refresh", "RateLimiting:RefreshPermitLimit", defaultLimit: 60));
             });
 
             return services;
+        }
+
+        /// <summary>
+        /// A fixed window of 1 minute per client IP. The limit is read from config on each request,
+        /// so tests can lower or raise it (e.g. "RateLimiting:AuthPermitLimit").
+        /// </summary>
+        private static RateLimitPartition<string> PerIpPerMinute(
+            HttpContext httpContext, string policy, string configKey, int defaultLimit)
+        {
+            var config = httpContext.RequestServices.GetRequiredService<IConfiguration>();
+            var permitLimit = config.GetValue(configKey, defaultLimit);
+            var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            return RateLimitPartition.GetFixedWindowLimiter($"{policy}:{ip}", _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            });
         }
     }
 }
