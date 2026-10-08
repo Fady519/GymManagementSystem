@@ -3228,6 +3228,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/members/{id}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The member's bookings, newest session first (upcoming=true: only active bookings of
+         *     sessions that haven't started, soonest first). Same list the member sees in their portal.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    Upcoming?: boolean;
+                    Page?: number;
+                    PageSize?: number;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["MyBookingItemPagedResult"];
+                        "application/json": components["schemas"]["MyBookingItemPagedResult"];
+                        "text/json": components["schemas"]["MyBookingItemPagedResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Missing, invalid or expired access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Your role is not allowed to do this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/members/{id}/account": {
         parameters: {
             query?: never;
@@ -4001,6 +4084,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payments/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Totals for the same filters as the list: how many payments, income, refunds and net.
+         *     Covers every matching payment, not only one page (page and pageSize are ignored).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    From?: string;
+                    To?: string;
+                    Method?: components["schemas"]["PaymentMethod"];
+                    Type?: components["schemas"]["PaymentType"];
+                    MemberId?: number;
+                    Page?: number;
+                    PageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PaymentSummaryResponse"];
+                        "application/json": components["schemas"]["PaymentSummaryResponse"];
+                        "text/json": components["schemas"]["PaymentSummaryResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Missing, invalid or expired access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Your role is not allowed to do this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/plans": {
         parameters: {
             query?: never;
@@ -4669,7 +4828,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cancels an upcoming session and all its bookings (nothing is deleted). */
+        /**
+         * Cancels an upcoming session and all its bookings (nothing is deleted).
+         *     The reason is saved on the session and emailed to every booked member.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -4679,7 +4841,13 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CancelSessionRequest"];
+                    "text/json": components["schemas"]["CancelSessionRequest"];
+                    "application/*+json": components["schemas"]["CancelSessionRequest"];
+                };
+            };
             responses: {
                 /** @description No Content */
                 204: {
@@ -4687,6 +4855,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
                 };
                 /** @description Missing, invalid or expired access token. */
                 401: {
@@ -6007,6 +6184,9 @@ export interface components {
             refundMethod: components["schemas"]["PaymentMethod"];
             reason: string | null;
         };
+        CancelSessionRequest: {
+            reason: string;
+        };
         CategoryResponse: {
             /** Format: int32 */
             id: number;
@@ -6291,6 +6471,7 @@ export interface components {
             /** Format: date-time */
             sessionEndDate: string;
             sessionStatus: components["schemas"]["SessionStatus"];
+            sessionCancelReason: string | null;
             status: components["schemas"]["BookingStatus"];
             /** Format: date-time */
             createdAt: string;
@@ -6340,6 +6521,16 @@ export interface components {
             readonly totalPages: number;
             readonly hasNextPage: boolean;
             readonly hasPreviousPage: boolean;
+        };
+        PaymentSummaryResponse: {
+            /** Format: int32 */
+            paymentCount: number;
+            /** Format: double */
+            totalIncome: number;
+            /** Format: double */
+            totalRefunds: number;
+            /** Format: double */
+            totalNet: number;
         };
         /** @enum {string} */
         PaymentType: "Purchase" | "Renewal" | "Refund";
@@ -6476,6 +6667,7 @@ export interface components {
             /** Format: date-time */
             endDate: string;
             state: components["schemas"]["SessionState"];
+            cancelReason: string | null;
             /** Format: int32 */
             categoryId: number;
             categoryName: string;

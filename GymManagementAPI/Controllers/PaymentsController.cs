@@ -18,5 +18,15 @@ namespace GymManagementAPI.Controllers
         [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
         public async Task<ActionResult<PagedResult<PaymentResponse>>> GetAll([FromQuery] PaymentQuery query, CancellationToken ct)
             => Ok(await paymentService.GetAllAsync(query, ct));
+
+        /// <summary>
+        /// Totals for the same filters as the list: how many payments, income, refunds and net.
+        /// Covers every matching payment, not only one page (page and pageSize are ignored).
+        /// </summary>
+        [HttpGet("summary")]
+        [ProducesResponseType<PaymentSummaryResponse>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+        public async Task<ActionResult<PaymentSummaryResponse>> GetSummary([FromQuery] PaymentQuery query, CancellationToken ct)
+            => Ok(await paymentService.GetSummaryAsync(query, ct));
     }
 }

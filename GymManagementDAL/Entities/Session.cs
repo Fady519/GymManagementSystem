@@ -15,6 +15,9 @@ namespace GymManagementDAL.Entities
 
         public SessionStatus Status { get; set; } = SessionStatus.Scheduled;
 
+        /// <summary>Why the admin cancelled the session (sent to the booked members). Null while it is scheduled.</summary>
+        public string? CancelReason { get; set; }
+
         /// <summary>
         /// Concurrency token: SQL Server changes it on every update. If two people try to
         /// book the last seat at the same moment, the second save fails instead of overbooking.

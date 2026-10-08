@@ -67,5 +67,28 @@ export type SaveCategoryRequest = Schemas["SaveCategoryRequest"];
 
 // Payments
 export type PaymentResponse = Schemas["PaymentResponse"];
+export type PaymentResponsePagedResult = Schemas["PaymentResponsePagedResult"];
+export type PaymentSummaryResponse = Schemas["PaymentSummaryResponse"];
 export type PaymentMethod = Schemas["PaymentMethod"];
 export type PaymentType = Schemas["PaymentType"];
+
+// Sessions and bookings
+export type SessionState = Schemas["SessionState"];
+export type SaveSessionRequest = Schemas["SaveSessionRequest"];
+export type SessionBookingItem = Schemas["SessionBookingItem"];
+export type AvailableMemberItem = Schemas["AvailableMemberItem"];
+export type BookingResponse = Schemas["BookingResponse"];
+export type BookingStatus = Schemas["BookingStatus"];
+export type MyBookingItem = Schemas["MyBookingItem"];
+export type MyBookingItemPagedResult = Schemas["MyBookingItemPagedResult"];
+
+// Memberships
+export type MembershipDetailsResponse = Schemas["MembershipDetailsResponse"];
+export type MembershipFreezeResponse = Schemas["MembershipFreezeResponse"];
+export type CreateMembershipRequest = Schemas["CreateMembershipRequest"];
+export type RenewMembershipRequest = Schemas["RenewMembershipRequest"];
+export type CancelMembershipRequest = WithNullable<
+  Schemas["CancelMembershipRequest"],
+  "refundMethod"
+>;
+export type FreezeMembershipRequest = Schemas["FreezeMembershipRequest"];

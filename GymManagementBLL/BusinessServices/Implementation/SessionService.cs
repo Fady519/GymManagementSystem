@@ -52,7 +52,13 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (query.CategoryId is not null)
                 sessions = sessions.Where(s => s.CategoryId == query.CategoryId);
 
-            return await ToResponses(sessions.OrderBy(s => s.StartDate).ThenBy(s => s.Id), now)
+            // Past lists (Completed, Cancelled) are read newest first; the rest soonest first.
+            var newestFirst = query.State is SessionState.Completed or SessionState.Cancelled;
+            var ordered = newestFirst
+                ? sessions.OrderByDescending(s => s.StartDate).ThenByDescending(s => s.Id)
+                : sessions.OrderBy(s => s.StartDate).ThenBy(s => s.Id);
+
+            return await ToResponses(ordered, now)
                 .ToPagedResultAsync(query.Page, query.PageSize, ct);
         }
 
@@ -114,7 +120,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
             return await GetByIdAsync(id, ct);
         }
 
-        public async Task<Result> CancelAsync(int id, CancellationToken ct = default)
+        public async Task<Result> CancelAsync(int id, CancelSessionRequest request, CancellationToken ct = default)
         {
             var session = await _unitOfWork.GetRepository<Session>().Query(asTracking: true)
                 .Include(s => s.Category)
@@ -125,7 +131,9 @@ namespace GymManagementBLL.BusinessServices.Implementation
             if (!IsUpcoming(session))
                 return SessionErrors.NotUpcoming;
 
+            var reason = request.Reason.Trim();
             session.Status = SessionStatus.Cancelled;
+            session.CancelReason = reason;
 
             // Cancel the bookings too (rows are kept for history).
             var bookings = await _unitOfWork.GetRepository<Booking>().Query(asTracking: true)
@@ -147,7 +155,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
             // Emails only AFTER the save: we never tell members about a cancel that didn't happen.
             // A failed email doesn't undo the cancel (the sender logs it).
             if (recipients.Count > 0)
-                await _emails.SendSessionCancelledAsync(recipients, session.Category.Name + " - " + session.Description, session.StartDate, ct);
+                await _emails.SendSessionCancelledAsync(recipients, session.Category.Name + " - " + session.Description, session.StartDate, reason, ct);
 
             return Result.Success();
         }
@@ -255,6 +263,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
                     : s.StartDate > now ? SessionState.Upcoming
                     : s.EndDate > now ? SessionState.Ongoing
                     : SessionState.Completed,
+                s.CancelReason,
                 s.CategoryId,
                 s.Category.Name,
                 s.TrainerId,

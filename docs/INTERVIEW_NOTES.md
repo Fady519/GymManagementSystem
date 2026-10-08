@@ -1203,3 +1203,105 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 - **زرار في مكان غلط**: هيدر الكارت معمول بـ CSS Grid، فكلاسات الـ Flex مكانتش بتعمل حاجة. الحل: الـ Slot الجاهز `CardAction`.
 
 > The Edge test script caught three bugs type checks missed: a Remove button inside the wizard form had no type, so it would have submitted the form and saved the member; the production build failed on /dashboard/members/[id] because the shell reads usePathname and a dynamic route needs a Suspense boundary; and a card header button sat in the wrong place because the header is a CSS grid, fixed with the CardAction slot.
+
+---
+
+# F3: Daily Operations (Classes, Bookings, Memberships, Payments)
+
+## 109. Time Zones: The User Types Cairo Time, the API Stores UTC
+
+الأدمن بيكتب "الساعة 6:15 الصبح" وهو قاصد توقيت القاهرة، لكن الـ API بيخزن كل المواعيد بـ **UTC** وبيرفض أي وقت من غير علامة `Z`. التحويل بيحصل في ملف واحد `lib/cairo-time.ts`: الدالة `cairoToUtc("2026-10-11", "06:15")` بترجع `2026-10-11T03:15:00Z`.
+
+النقطة المهمة: مصر فيها **توقيت صيفي** (+3 في الصيف و+2 في الشتا)، فمينفعش نطرح ساعتين ثابتين. الدالة بتسأل `Intl.DateTimeFormat` عن الفرق في اليوم ده بالذات، فبتشتغل صح في أي يوم في السنة ومن أي جهاز، حتى لو المستخدم قاعد في دولة تانية. وجربناها فعلًا: 06:15 القاهرة اتخزنت 03:15 في الداتا بيز.
+
+> Admins type Cairo wall-clock time; the API stores UTC and rejects times without a Z. One helper converts using Intl to find the Cairo offset for that exact day, so Egypt's daylight saving time (+3 in summer, +2 in winter) is handled and the result does not depend on the browser's own time zone.
+
+---
+
+## 110. Optimistic Updates With Rollback
+
+لما الأدمن يضغط **Book**، العداد بيتحرك فورًا (من 0/3 لـ 1/3) والعضو بيظهر في القائمة بعلامة "Booking…" قبل ما السيرفر يرد. ده اسمه **Optimistic Update**.
+
+الخطوات في `onMutate`: نوقف أي طلبات شغالة لنفس الكلاس (`cancelQueries`)، ناخد **Snapshot** من الداتا الحالية، ونعدّل الكاش بإيدينا. لو السيرفر رفض (مثلًا الكلاس اتملى من جهاز تاني)، `onError` بيرجّع الـ Snapshot والعداد يرجع زي ما كان، ويظهر Toast بالسبب. وفي `onSettled` بنعمل `invalidate` عشان ناخد الحقيقة من السيرفر في الحالتين.
+
+> Booking updates the seat counter and the list instantly. onMutate cancels in-flight queries, snapshots the cache and writes the expected result; onError restores the snapshot and shows the server's reason; onSettled refetches so the cache always ends in the server's truth.
+
+---
+
+## 111. Mapping Server Error Codes to Form Fields
+
+الـ API بيرجّع كود ثابت لكل قاعدة، زي `Session.TrainerBusy` أو `Session.CapacityBelowBookings`. الفورم عنده جدول صغير بيربط كل كود بالحقل المناسب، فالرسالة بتظهر **تحت الحقل نفسه** مش في Toast عام: "The trainer already has another session at this time" بتظهر تحت وقت البداية.
+
+ده بيخلي كل قاعدة بيرفضها السيرفر واضحة للمستخدم، وفي نفس الوقت الفاليديشن بتاع Zod في المتصفح بيمسك الأخطاء البسيطة (حقل فاضي، النهاية قبل البداية) من غير ما نبعت طلب أصلًا.
+
+> The API returns a stable code per rule. Each form maps codes to fields (TrainerBusy to the start time, CapacityBelowBookings to capacity), so the message appears under the right input. Zod still catches simple mistakes in the browser before any request is sent.
+
+---
+
+## 112. A Weekly Calendar Without a Library
+
+بدل مكتبة تقيلة، عملنا Calendar بسيط بـ CSS Grid: 7 أعمدة للأيام، وكل ساعة ارتفاعها 60px، فمكان الكلاس = (دقيقة البداية - أول ساعة) والطول = مدة الكلاس.
+
+الحاجة الذكية هي **الكلاسات المتداخلة** (مدربين مختلفين في نفس الوقت): بنقسمها **Lanes** زي Google Calendar، كل كلاس بياخد أول عمود فاضي، والمجموعة بتتقسم على عدد الأعمدة اللي احتاجتها. وفيه خط أحمر للوقت الحالي، والضغط على خانة فاضية بيفتح فورم الكلاس بالتاريخ والساعة جاهزين. وعلى الموبايل الـ 7 أعمدة مش هتكفي، فبيتحول لقائمة لكل يوم.
+
+> A hand-made week grid: 7 day columns, 60px per hour, position from start minute, height from duration. Overlapping classes are split into lanes like Google Calendar. A red line marks now, clicking an empty future slot opens the form prefilled, and phones get a per-day agenda instead.
+
+---
+
+## 113. State Is Calculated, Not Stored
+
+الكلاس في الداتا بيز ليه `Status` واحد بس: `Scheduled` أو `Cancelled`. لكن الشاشة بتعرض أربع حالات: Upcoming و Live now و Completed و Cancelled. الحالة دي **بتتحسب** من الوقت: لو البداية لسه جاية يبقى Upcoming، لو إحنا بين البداية والنهاية يبقى Live، لو النهاية عدّت يبقى Completed.
+
+ليه؟ لأن لو خزنّا "Completed" هنحتاج Job يغيّر الحالة كل دقيقة، ولو الـ Job وقف الداتا هتبقى غلط. الحساب من الوقت دايمًا صح. نفس الفكرة في الاشتراكات (Active / Frozen / Upcoming / Expired)، وفي الحجوزات: حجز لسه `Booked` بعد ما الكلاس خلص بيظهر **Missed**.
+
+> The database stores only Scheduled or Cancelled; Upcoming, Live and Completed are derived from the clock in the query. Storing them would need a background job that can fall behind. Memberships work the same way, and a booking still "Booked" after its class ended is shown as Missed.
+
+---
+
+## 114. Freeze and Unfreeze: Showing the Result Before Saving
+
+تجميد الاشتراك بيأجل تاريخ النهاية بعدد الأيام، وبيلغي الحجوزات اللي جوه فترة التجميد. عشان الأدمن ميتفاجئش، الـ Dialog بيعرض **Before → After** قبل ما يضغط: الحالة Active → Frozen، والنهاية 7 Nov → 21 Nov.
+
+فك التجميد بدري بيرجّع الأيام اللي متستخدمتش بس، والقاعدة إن **أي يوم بدأ بيتحسب مستخدم** (`Days - ceil(elapsed)`). جربنا تجميد 14 يوم وفكه بعد دقايق: رجع 13 يوم، والشاشة قالت قبل التنفيذ "it will end on 8 Nov" وده نفس اللي السيرفر عمله بالظبط، لأن الحسبة في المتصفح نسخة من حسبة السيرفر.
+
+> Freezing pushes the end date by N days and cancels bookings inside the freeze. The dialog previews before and after values. Unfreezing early returns only unused whole days (a started day counts as used); the preview uses the same rule as the server, so what the admin sees is what gets saved.
+
+---
+
+## 115. Renewals Queue Up Instead of Overlapping
+
+لو العضو اشتراكه لسه شغال وجدد، التجديد **مبيبدأش النهارده** (كده هيضيع عليه الأيام الباقية)، لكن بيتحط في الطابور ويبدأ لحظة ما الحالي يخلص. لو الاشتراك خلص خلاص، التجديد بيبدأ فورًا.
+
+وده بيعمل قاعدة تانية: مينفعش تلغي الاشتراك الحالي وفيه تجديد مستنيه، لأن التجديد هيبقى معلق في الهوا. السيرفر بيرجّع `HasQueuedRenewal` والشاشة بتقول "Cancel the renewal first". والاسترداد مينفعش يزيد عن المبلغ المدفوع (`RefundTooHigh`)، والفورم بيمنعه قبل ما يتبعت كمان.
+
+> A renewal on a running membership starts when the current one ends, so no paid day is lost; an expired one restarts today. Cancelling a membership that has a queued renewal is blocked (HasQueuedRenewal), and a refund can never exceed the price paid (RefundTooHigh), checked in the form and on the server.
+
+---
+
+## 116. Totals From the Server, Not From the Current Page
+
+صفحة المدفوعات فيها 4 كروت: الداخل، المسترد، الصافي، والعدد. لو حسبناهم من الجدول هنحسب **الصفحة الحالية بس** (20 صف)، والرقم هيبقى غلط. عشان كده عملنا Endpoint منفصل `GET /api/payments/summary` بياخد **نفس الفلاتر** بتاعة القائمة ويرجّع المجموع بـ `SUM` في SQL.
+
+الكروت والجدول بيقروا نفس الفلاتر من الـ URL، فلما تغيّر الفترة لـ Today أو النوع لـ Refund الاتنين بيتغيروا مع بعض، والـ Reload بيحافظ عليهم.
+
+> Summary cards must not be computed from the visible page (only 20 rows). A separate summary endpoint takes the same filters as the list and aggregates with SUM in SQL. Cards and table read the same URL filters, so they always agree.
+
+---
+
+## 117. Cache Invalidation Across Features
+
+بيع اشتراك مش بيأثر على صفحة الاشتراكات بس: بيضيف دفعة في **المدفوعات**، وبيغيّر حالة العضو في **الأعضاء**، وبيغيّر أرقام **الداشبورد**، وبيخلي العضو يقدر يحجز كلاسات. فبعد أي عملية على اشتراك، الدالة `applyChange` بتحط رد السيرفر في الكاش فورًا، وبعدين بتعمل `invalidate` للمفاتيح دي كلها.
+
+وفي حالة المسح عملنا العكس: بعد مسح كلاس، بنحدّث كل القوائم **ما عدا** الكلاس الممسوح نفسه، لأن لو طلبناه تاني هيرجع 404 والصفحة لسه بتعمل Redirect.
+
+> One membership action touches payments, members, the dashboard and bookings, so applyChange writes the server's response into the cache and invalidates every related key. After deleting a class we refresh every list except the deleted class itself, which would only return 404 while the page redirects.
+
+---
+
+## 118. Testing the Whole Flow in a Real Browser
+
+بعد كل صفحة شغّلنا سكريبت بيفتح **Edge Headless** ويتحكم فيه بـ **Chrome DevTools Protocol**: بيعمل Login، يجدول كلاس، يحجز 3 أعضاء لحد ما يتملى، يلغي حجز، يجمّد ويفك ويجدد ويلغي اشتراك، ويفلتر المدفوعات. وبعد كل خطوة بيقرا الداتا بيز بـ `sqlcmd` ويتأكد إن اللي ظهر في الشاشة هو اللي اتخزن فعلًا.
+
+وفي الآخر بيطبع أي طلب API رجع بخطأ وأي Error في الـ Console. ده مسك مشاكل حقيقية، زي طلبات 404 بعد مسح كلاس، وقائمة Completed اللي كانت بتبدأ بأقدم كلاس بدل أحدث واحد.
+
+> A script drives headless Edge over the DevTools Protocol through the real flows (schedule, book until full, cancel, freeze, renew, refund, filter payments), checks the database with sqlcmd after each step, and reports failed API calls and console errors. It caught real issues such as 404s after a delete and the Completed list sorted oldest first.

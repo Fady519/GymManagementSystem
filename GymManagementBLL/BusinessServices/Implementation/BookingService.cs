@@ -124,8 +124,20 @@ namespace GymManagementBLL.BusinessServices.Implementation
             return await bookings
                 .Select(b => new MyBookingItem(
                     b.Id, b.SessionId, b.Session.Category.Name, b.Session.Description, b.Session.Trainer.Name,
-                    b.Session.StartDate, b.Session.EndDate, b.Session.Status, b.Status, b.CreatedAt))
+                    b.Session.StartDate, b.Session.EndDate, b.Session.Status, b.Session.CancelReason, b.Status, b.CreatedAt))
                 .ToPagedResultAsync(query.Page, query.PageSize, ct);
+        }
+
+        public async Task<Result<PagedResult<MyBookingItem>>> GetForMemberAsync(int memberId, MyBookingsQuery query, CancellationToken ct = default)
+        {
+            // Same rule as the member's payments: a deleted member's history can still be read.
+            var memberExists = await _unitOfWork.GetRepository<Member>().Query().IgnoreQueryFilters()
+                .AnyAsync(m => m.Id == memberId, ct);
+
+            if (!memberExists)
+                return MemberErrors.NotFound(memberId);
+
+            return await GetMemberBookingsAsync(memberId, query, ct);
         }
 
         #region Helper Methods

@@ -213,7 +213,7 @@ namespace GymManagement.Tests.Bookings
         public async Task CancelledSession_Returns409()
         {
             var session = await NewSessionAsync();
-            await _admin.PostAsync($"/api/sessions/{session.Id}/cancel", null);
+            await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel", new CancelSessionRequest("Trainer is ill"), Json);
 
             await AssertProblemAsync(await BookAsync(_admin, session.Id, await NewMemberAsync()), HttpStatusCode.Conflict, "Booking.SessionNotBookable");
         }
@@ -315,6 +315,63 @@ namespace GymManagement.Tests.Bookings
             var member = await factory.CreateClientForRoleAsync(AppRoles.Member);
 
             await AssertProblemAsync(await member.PostAsync("/api/bookings/1/attend", null), HttpStatusCode.Forbidden, "Auth.Forbidden");
+        }
+
+        #endregion
+
+        #region GET /api/members/{id}/bookings (admin)
+
+        [Fact]
+        public async Task MemberBookings_ListsTheMembersBookings_WithTheCancelReason()
+        {
+            var memberId = await NewMemberAsync();
+            var kept = await NewSessionAsync(start: DateTime.UtcNow.AddDays(2));
+            var cancelled = await NewSessionAsync(start: DateTime.UtcNow.AddDays(3));
+            await AddBookingInDbAsync(kept.Id, memberId);
+            await AddBookingInDbAsync(cancelled.Id, memberId);
+            Assert.Equal(HttpStatusCode.NoContent, (await _admin.PostAsJsonAsync($"/api/sessions/{cancelled.Id}/cancel",
+                new CancelSessionRequest("Trainer is ill"), Json)).StatusCode);
+
+            var page = (await _admin.GetFromJsonAsync<GymManagementBLL.Common.PagedResult<MyBookingItem>>(
+                $"/api/members/{memberId}/bookings", Json))!;
+
+            Assert.Equal(2, page.TotalCount);
+            var cancelledItem = Assert.Single(page.Items, b => b.SessionId == cancelled.Id);
+            Assert.Equal(SessionStatus.Cancelled, cancelledItem.SessionStatus);
+            Assert.Equal("Trainer is ill", cancelledItem.SessionCancelReason);
+            Assert.Null(Assert.Single(page.Items, b => b.SessionId == kept.Id).SessionCancelReason);
+        }
+
+        [Fact]
+        public async Task MemberBookings_UpcomingOnly_HidesPastSessions()
+        {
+            var memberId = await NewMemberAsync();
+            var past = await NewSessionAsync(start: DateTime.UtcNow.AddDays(-3));
+            var future = await NewSessionAsync(start: DateTime.UtcNow.AddDays(2));
+            await AddBookingInDbAsync(past.Id, memberId);
+            await AddBookingInDbAsync(future.Id, memberId);
+
+            var upcoming = (await _admin.GetFromJsonAsync<GymManagementBLL.Common.PagedResult<MyBookingItem>>(
+                $"/api/members/{memberId}/bookings?upcoming=true", Json))!;
+            var all = (await _admin.GetFromJsonAsync<GymManagementBLL.Common.PagedResult<MyBookingItem>>(
+                $"/api/members/{memberId}/bookings", Json))!;
+
+            Assert.Equal([future.Id], upcoming.Items.Select(b => b.SessionId));
+            Assert.Equal(2, all.TotalCount);
+        }
+
+        [Fact]
+        public async Task MemberBookings_UnknownMember_Returns404()
+            => await AssertProblemAsync(await _admin.GetAsync("/api/members/999999/bookings"), HttpStatusCode.NotFound, "Member.NotFound");
+
+        [Theory]
+        [InlineData(AppRoles.Trainer)]
+        [InlineData(AppRoles.Member)]
+        public async Task MemberBookings_AsNonAdmin_Returns403(string role)
+        {
+            var client = await factory.CreateClientForRoleAsync(role);
+
+            await AssertProblemAsync(await client.GetAsync("/api/members/1/bookings"), HttpStatusCode.Forbidden, "Auth.Forbidden");
         }
 
         #endregion

@@ -16,6 +16,6 @@ namespace GymManagementBLL.BusinessServices.Interfaces
 
         /// <returns>How many emails were sent.</returns>
         Task<int> SendSessionCancelledAsync(IReadOnlyList<EmailRecipient> recipients, string session, DateTime startUtc,
-            CancellationToken ct = default);
+            string reason, CancellationToken ct = default);
     }
 }

@@ -3,7 +3,7 @@
 Generated from the running API by `EndpointSecurityTests`. Do not edit by hand.
 The tests fail if an endpoint is anonymous or open to every role by mistake.
 
-Total: 90 endpoints.
+Total: 92 endpoints.
 
 | Method | Route | Access | Roles | Rate limit |
 |---|---|---|---|---|
@@ -54,6 +54,7 @@ Total: 90 endpoints.
 | GET | `/api/members/{id:int}` | AdminAccess | SuperAdmin, Admin |  |
 | PUT | `/api/members/{id:int}` | AdminAccess | SuperAdmin, Admin |  |
 | POST | `/api/members/{id:int}/account` | AdminAccess | SuperAdmin, Admin |  |
+| GET | `/api/members/{id:int}/bookings` | AdminAccess | SuperAdmin, Admin |  |
 | PUT | `/api/members/{id:int}/health-record` | AdminAccess | SuperAdmin, Admin |  |
 | GET | `/api/members/{id:int}/payments` | AdminAccess | SuperAdmin, Admin |  |
 | DELETE | `/api/members/{id:int}/photo` | AdminAccess | SuperAdmin, Admin |  |
@@ -67,6 +68,7 @@ Total: 90 endpoints.
 | POST | `/api/memberships/{id:int}/renew` | AdminAccess | SuperAdmin, Admin |  |
 | POST | `/api/memberships/{id:int}/unfreeze` | AdminAccess | SuperAdmin, Admin |  |
 | GET | `/api/payments` | AdminAccess | SuperAdmin, Admin |  |
+| GET | `/api/payments/summary` | AdminAccess | SuperAdmin, Admin |  |
 | GET | `/api/plans` | Anonymous |  |  |
 | POST | `/api/plans` | AdminAccess | SuperAdmin, Admin |  |
 | DELETE | `/api/plans/{id:int}` | AdminAccess | SuperAdmin, Admin |  |

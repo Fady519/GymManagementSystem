@@ -11,6 +11,7 @@ import {
   deleteMember,
   deleteMemberPhoto,
   getMember,
+  getMemberBookings,
   getMemberMemberships,
   getMemberPayments,
   getMembers,
@@ -18,6 +19,7 @@ import {
   sendMemberInvite,
   updateMember,
   uploadMemberPhoto,
+  type MemberBookingsParams,
   type MemberListParams,
 } from "@/features/members/api";
 import type {
@@ -34,6 +36,7 @@ export const memberKeys = {
   detail: (id: number) => [...memberKeys.all, "detail", id] as const,
   payments: (id: number) => [...memberKeys.detail(id), "payments"] as const,
   memberships: (id: number) => [...memberKeys.detail(id), "memberships"] as const,
+  bookings: (id: number) => [...memberKeys.detail(id), "bookings"] as const,
 };
 
 export function useMembers(params: MemberListParams) {
@@ -62,6 +65,14 @@ export function useMemberMemberships(id: number) {
   return useQuery({
     queryKey: memberKeys.memberships(id),
     queryFn: () => getMemberMemberships(id),
+  });
+}
+
+export function useMemberBookings(id: number, params: MemberBookingsParams) {
+  return useQuery({
+    queryKey: [...memberKeys.bookings(id), params],
+    queryFn: () => getMemberBookings(id, params),
+    placeholderData: keepPreviousData,
   });
 }
 

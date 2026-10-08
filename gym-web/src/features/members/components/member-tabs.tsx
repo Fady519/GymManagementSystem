@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   HeartPulse,
@@ -17,12 +18,30 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable, createColumns } from "@/components/data-table/data-table";
+import { RowActions } from "@/components/data-table/row-actions";
 import { EmptyState } from "@/components/shared/empty-state";
 import { QueryError } from "@/components/shared/query-error";
-import { useMemberMemberships, useMemberPayments } from "@/features/members/queries";
+import {
+  useMemberBookings,
+  useMemberMemberships,
+  useMemberPayments,
+} from "@/features/members/queries";
 import { MembershipStateBadge } from "@/features/member-portal/components/membership-state-badge";
-import { formatDate, formatDateTime, formatDuration, formatMoney } from "@/lib/format";
+import { useMembershipActions } from "@/features/memberships/components/membership-actions";
+import { SellMembershipSheet } from "@/features/memberships/components/sell-membership-sheet";
+import { PAYMENT_TYPE_STYLE } from "@/features/payments/payment-meta";
+import { BookingStatusBadge } from "@/features/sessions/components/session-badges";
+import { useDialogState } from "@/hooks/use-dialog-state";
+import {
+  formatClassTime,
+  formatDate,
+  formatDateTime,
+  formatDays,
+  formatDuration,
+  formatMoney,
+} from "@/lib/format";
 import { ageOn } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import type { MemberResponse, MembershipResponse, PaymentResponse } from "@/types";
@@ -147,7 +166,7 @@ const membershipColumns = membershipCol.columns([
     meta: { className: "hidden md:table-cell" },
     cell: ({ getValue }) => (
       <span className="text-muted-foreground tabular-nums">
-        {getValue() > 0 ? `${getValue()} days` : "—"}
+        {getValue() > 0 ? formatDays(getValue()) : "—"}
       </span>
     ),
   }),
@@ -155,6 +174,29 @@ const membershipColumns = membershipCol.columns([
 
 export function MembershipsTab({ member }: { member: MemberResponse }) {
   const memberships = useMemberMemberships(member.id);
+  const actions = useMembershipActions();
+  const sell = useDialogState<null>();
+  const { rowActions, showDetails } = actions;
+  // A member with nothing running buys a new membership; otherwise they renew the current one.
+  const canBuy = member.membershipState === "None" || member.membershipState === "Expired";
+
+  const columns = useMemo(
+    () => [
+      ...membershipColumns,
+      membershipCol.display({
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        meta: { className: "w-12 text-end" },
+        cell: ({ row }) => (
+          <RowActions
+            label={`Actions for ${row.original.planName}`}
+            actions={rowActions(row.original)}
+          />
+        ),
+      }),
+    ],
+    [rowActions],
+  );
 
   if (memberships.isError) {
     return (
@@ -168,30 +210,186 @@ export function MembershipsTab({ member }: { member: MemberResponse }) {
   }
 
   return (
-    <DataTable
-      label={`${member.name}'s memberships`}
-      columns={membershipColumns}
-      data={memberships.data?.items}
-      getRowId={(m) => String(m.id)}
-      isPending={memberships.isPending}
-      isFetching={memberships.isFetching}
-      skeletonRows={3}
-      emptyState={
-        <EmptyState
-          icon={Ticket}
-          title="No memberships yet"
-          description={`${member.name} hasn't bought a plan yet. Their memberships, renewals and freezes will show up here.`}
-        />
-      }
-    />
+    <div className="space-y-4">
+      {canBuy && (memberships.data?.items.length ?? 0) > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={() => sell.show(null)}>
+            <Plus /> New membership
+          </Button>
+        </div>
+      )}
+      <DataTable
+        label={`${member.name}'s memberships`}
+        columns={columns}
+        data={memberships.data?.items}
+        getRowId={(m) => String(m.id)}
+        isPending={memberships.isPending}
+        isFetching={memberships.isFetching}
+        skeletonRows={3}
+        onRowClick={showDetails}
+        emptyState={
+          <EmptyState
+            icon={Ticket}
+            title="No memberships yet"
+            description={`${member.name} hasn't bought a plan yet. Sell one now and they can book classes right away.`}
+            action={
+              <Button onClick={() => sell.show(null)}>
+                <Plus /> Sell a membership
+              </Button>
+            }
+          />
+        }
+      />
+      <SellMembershipSheet open={sell.open} onOpenChange={sell.setOpen} presetMember={member} />
+      {actions.dialogs}
+    </div>
   );
 }
 
-const TYPE_STYLE: Record<PaymentResponse["type"], string> = {
-  Purchase: "border-primary/30 bg-primary/10 text-primary",
-  Renewal: "border-success/30 bg-success/10 text-success",
-  Refund: "border-destructive/30 bg-destructive/10 text-destructive",
-};
+const BOOKINGS_PAGE_SIZE = 10;
+
+export function BookingsTab({ member }: { member: MemberResponse }) {
+  const [upcoming, setUpcoming] = useState(true);
+  const [page, setPage] = useState(1);
+  const bookings = useMemberBookings(member.id, { upcoming, page, pageSize: BOOKINGS_PAGE_SIZE });
+  // Read the clock once (not on every render) to tell finished classes apart.
+  const [openedAt] = useState(() => Date.now());
+
+  const show = (next: boolean) => {
+    setUpcoming(next);
+    setPage(1);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Class bookings</CardTitle>
+        <CardAction>
+          <div
+            className="inline-flex rounded-lg border bg-muted/40 p-0.5"
+            role="group"
+            aria-label="Which bookings"
+          >
+            {[
+              { value: true, label: "Upcoming" },
+              { value: false, label: "All history" },
+            ].map((option) => (
+              <Button
+                key={option.label}
+                type="button"
+                size="sm"
+                variant={upcoming === option.value ? "secondary" : "ghost"}
+                aria-pressed={upcoming === option.value}
+                className={upcoming === option.value ? "bg-background shadow-xs" : ""}
+                onClick={() => show(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {bookings.isError ? (
+          <QueryError
+            title="We couldn't load the bookings"
+            error={bookings.error}
+            onRetry={() => void bookings.refetch()}
+            retrying={bookings.isFetching}
+          />
+        ) : bookings.isPending ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        ) : bookings.data.items.length === 0 ? (
+          <EmptyState
+            icon={CalendarDays}
+            className="py-8"
+            title={upcoming ? "No upcoming classes" : "No bookings yet"}
+            description={
+              upcoming
+                ? `${member.name} isn't booked into any class. Book them from a class page on the timetable.`
+                : `${member.name} hasn't booked a class yet.`
+            }
+            action={
+              <Button variant="outline" asChild>
+                <Link href="/dashboard/sessions">Open the timetable</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <div className={cn("space-y-3 transition-opacity", bookings.isFetching && "opacity-60")}>
+            <ul className="divide-y">
+              {bookings.data.items.map((booking) => {
+                const classCancelled = booking.sessionStatus === "Cancelled";
+                return (
+                  <li
+                    key={booking.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <Link
+                        href={`/dashboard/sessions/${booking.sessionId}`}
+                        className="flex items-center gap-2 text-sm font-medium hover:underline"
+                      >
+                        <Badge variant="secondary">{booking.categoryName}</Badge>
+                        <span className="truncate">{booking.sessionDescription}</span>
+                      </Link>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatClassTime(booking.sessionStartDate)} · Coach {booking.trainerName}
+                      </p>
+                      {classCancelled && (
+                        <p className="mt-1 text-xs text-destructive">
+                          Class cancelled
+                          {booking.sessionCancelReason ? `: ${booking.sessionCancelReason}` : ""}
+                        </p>
+                      )}
+                    </div>
+                    <BookingStatusBadge
+                      status={booking.status}
+                      classEnded={
+                        !classCancelled && new Date(booking.sessionEndDate).getTime() <= openedAt
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+            {bookings.data.totalPages > 1 && (
+              <div className="flex items-center justify-between border-t pt-3 text-sm text-muted-foreground">
+                <span>
+                  Page {bookings.data.page} of {bookings.data.totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!bookings.data.hasPreviousPage}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!bookings.data.hasNextPage}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 const paymentCol = createColumns<PaymentResponse>();
 const paymentColumns = paymentCol.columns([
@@ -203,7 +401,7 @@ const paymentColumns = paymentCol.columns([
   paymentCol.accessor("type", {
     header: "Type",
     cell: ({ getValue }) => (
-      <Badge variant="outline" className={TYPE_STYLE[getValue()]}>
+      <Badge variant="outline" className={PAYMENT_TYPE_STYLE[getValue()]}>
         {getValue()}
       </Badge>
     ),

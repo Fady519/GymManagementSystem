@@ -10,8 +10,11 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         Task<Result<SessionResponse>> CreateAsync(SaveSessionRequest request, CancellationToken ct = default);
         Task<Result<SessionResponse>> UpdateAsync(int id, SaveSessionRequest request, CancellationToken ct = default);
 
-        /// <summary>Marks the session Cancelled and cancels all its bookings (history is kept).</summary>
-        Task<Result> CancelAsync(int id, CancellationToken ct = default);
+        /// <summary>
+        /// Marks the session Cancelled with the admin's reason and cancels all its bookings (history is kept).
+        /// The booked members get an email with the reason.
+        /// </summary>
+        Task<Result> CancelAsync(int id, CancelSessionRequest request, CancellationToken ct = default);
 
         /// <summary>Only for upcoming sessions that never had a booking.</summary>
         Task<Result> DeleteAsync(int id, CancellationToken ct = default);

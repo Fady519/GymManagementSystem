@@ -10,6 +10,9 @@ namespace GymManagementBLL.BusinessServices.Interfaces
         /// <summary>Same filters and order as the list, all rows (for Excel/CSV), or Export.TooManyRows. Paging is ignored.</summary>
         Task<Result<IReadOnlyList<PaymentResponse>>> GetForExportAsync(PaymentQuery query, int maxRows, CancellationToken ct = default);
 
+        /// <summary>Count, income, refunds and net of every payment that matches the filters. Paging is ignored.</summary>
+        Task<PaymentSummaryResponse> GetSummaryAsync(PaymentQuery query, CancellationToken ct = default);
+
         /// <summary>All payments of one member, newest first.</summary>
         Task<Result<IReadOnlyList<PaymentResponse>>> GetByMemberAsync(int memberId, CancellationToken ct = default);
     }

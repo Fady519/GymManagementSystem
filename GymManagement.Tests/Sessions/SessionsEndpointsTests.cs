@@ -208,6 +208,18 @@ namespace GymManagement.Tests.Sessions
             Assert.Equal(SessionState.Ongoing, running.Items[0].State);
         }
 
+        [Fact]
+        public async Task GetAll_CompletedList_IsNewestFirst()
+        {
+            var trainer = await NewTrainerAsync();
+            var older = await AddSessionInDbAsync(trainer.Id, DateTime.UtcNow.AddDays(-5));
+            var newer = await AddSessionInDbAsync(trainer.Id, DateTime.UtcNow.AddDays(-1));
+
+            var completed = await _anonymous.GetFromJsonAsync<PagedResult<SessionResponse>>($"/api/sessions?trainerId={trainer.Id}&state=Completed", Json);
+
+            Assert.Equal([newer.Id, older.Id], completed!.Items.Select(s => s.Id));
+        }
+
         #endregion
 
         #region Update / Cancel / Delete
@@ -262,7 +274,7 @@ namespace GymManagement.Tests.Sessions
             var memberId = await NewMemberWithMembershipAsync();
             await factory.WithDbAsync(db => TestData.AddBookingAsync(db, session.Id, memberId));
 
-            var response = await _admin.PostAsync($"/api/sessions/{session.Id}/cancel", null);
+            var response = await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel", new CancelSessionRequest("Trainer is ill"), Json);
 
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
@@ -272,7 +284,62 @@ namespace GymManagement.Tests.Sessions
             var bookings = await _admin.GetFromJsonAsync<List<SessionBookingItem>>($"/api/sessions/{session.Id}/bookings", Json);
             Assert.Equal(BookingStatus.Cancelled, Assert.Single(bookings!).Status);
 
-            await AssertProblemAsync(await _admin.PostAsync($"/api/sessions/{session.Id}/cancel", null), HttpStatusCode.Conflict, "Session.NotUpcoming");
+            await AssertProblemAsync(await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel", new CancelSessionRequest("Trainer is ill"), Json), HttpStatusCode.Conflict, "Session.NotUpcoming");
+        }
+
+        [Fact]
+        public async Task Cancel_SavesTheTrimmedReason_AndEmailsItHtmlEncoded()
+        {
+            var trainer = await NewTrainerAsync();
+            var session = await AddSessionInDbAsync(trainer.Id, InTwoDays());
+            Member member = null!;
+            await factory.WithDbAsync(async db =>
+            {
+                member = await TestData.AddMemberAsync(db);
+                await TestData.AddMembershipToMemberAsync(db, member.Id, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(30));
+                await TestData.AddBookingAsync(db, session.Id, member.Id);
+            });
+
+            var response = await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel",
+                new CancelSessionRequest("  Coach is sick <b>today</b>  "), Json);
+
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+            var reloaded = await _anonymous.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}", Json);
+            Assert.Equal("Coach is sick <b>today</b>", reloaded!.CancelReason);
+
+            // The reason comes from a user, so the email must show it as text, never as HTML.
+            var email = factory.Emails.LastSentTo(member.Email);
+            Assert.Contains("Coach is sick &lt;b&gt;today&lt;/b&gt;", email.HtmlBody);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("ab")]
+        public async Task Cancel_WithoutAValidReason_Returns400_AndKeepsTheSession(string? reason)
+        {
+            var trainer = await NewTrainerAsync();
+            var session = await AddSessionInDbAsync(trainer.Id, InTwoDays());
+
+            var response = await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel", new CancelSessionRequest(reason!), Json);
+
+            await AssertProblemAsync(response, HttpStatusCode.BadRequest, "Validation.Failed");
+            var reloaded = await _anonymous.GetFromJsonAsync<SessionResponse>($"/api/sessions/{session.Id}", Json);
+            Assert.Equal(SessionState.Upcoming, reloaded!.State);
+            Assert.Null(reloaded.CancelReason);
+        }
+
+        [Fact]
+        public async Task Cancel_ReasonLongerThan200_Returns400()
+        {
+            var trainer = await NewTrainerAsync();
+            var session = await AddSessionInDbAsync(trainer.Id, InTwoDays());
+
+            var response = await _admin.PostAsJsonAsync($"/api/sessions/{session.Id}/cancel", new CancelSessionRequest(new string('x', 201)), Json);
+
+            await AssertProblemAsync(response, HttpStatusCode.BadRequest, "Validation.Failed");
         }
 
         [Fact]

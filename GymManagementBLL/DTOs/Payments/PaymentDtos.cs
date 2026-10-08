@@ -15,6 +15,12 @@ namespace GymManagementBLL.DTOs.Payments
         string? ReceivedBy,
         string? Notes);
 
+    /// <summary>
+    /// Totals of every payment that matches the filters (not just the current page).
+    /// Net = income - refunds.
+    /// </summary>
+    public sealed record PaymentSummaryResponse(int PaymentCount, decimal TotalIncome, decimal TotalRefunds, decimal TotalNet);
+
     /// <summary>Filters for the payments page. From/To are UTC; To is exclusive.</summary>
     public sealed class PaymentQuery
     {
