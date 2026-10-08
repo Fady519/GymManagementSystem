@@ -25,7 +25,47 @@ export type Gender = Schemas["Gender"];
 
 // Dashboards
 export type AnalyticsSummaryResponse = Schemas["AnalyticsSummaryResponse"];
-export type MemberResponse = Schemas["MemberResponse"];
 export type MembershipResponse = Schemas["MembershipResponse"];
+export type MembershipResponsePagedResult = Schemas["MembershipResponsePagedResult"];
 export type MembershipState = Schemas["MembershipState"];
-export type TrainerResponse = Schemas["TrainerResponse"];
+
+/**
+ * The generator drops "| null" on properties that point to another schema (address, healthRecord),
+ * even though the API sends null when they are empty. This puts it back so TypeScript makes us check.
+ */
+type WithNullable<T, K extends keyof T> = Omit<T, K> & { [P in K]: T[P] | null };
+
+// Shared parts
+export type AddressDto = Schemas["AddressDto"];
+export type HealthRecordDto = Schemas["HealthRecordDto"];
+
+// Members
+export type MemberResponse = WithNullable<Schemas["MemberResponse"], "address" | "healthRecord">;
+export type MemberListItem = Schemas["MemberListItem"];
+export type MemberListItemPagedResult = Schemas["MemberListItemPagedResult"];
+export type MemberMembershipState = Schemas["MemberMembershipState"];
+export type MemberSortBy = Schemas["MemberSortBy"];
+export type CreateMemberRequest = WithNullable<
+  Schemas["CreateMemberRequest"],
+  "address" | "healthRecord"
+>;
+export type UpdateMemberRequest = WithNullable<Schemas["UpdateMemberRequest"], "address">;
+export type MemberWithAccountResponse = { member: MemberResponse; inviteSent: boolean };
+
+// Trainers
+export type TrainerResponse = WithNullable<Schemas["TrainerResponse"], "address">;
+export type TrainerResponsePagedResult = Omit<Schemas["TrainerResponsePagedResult"], "items"> & {
+  items: TrainerResponse[];
+};
+export type SaveTrainerRequest = WithNullable<Schemas["SaveTrainerRequest"], "address">;
+export type TrainerWithAccountResponse = { trainer: TrainerResponse; inviteSent: boolean };
+
+// Plans and categories
+export type CreatePlanRequest = Schemas["CreatePlanRequest"];
+export type UpdatePlanRequest = Schemas["UpdatePlanRequest"];
+export type SaveCategoryRequest = Schemas["SaveCategoryRequest"];
+
+// Payments
+export type PaymentResponse = Schemas["PaymentResponse"];
+export type PaymentMethod = Schemas["PaymentMethod"];
+export type PaymentType = Schemas["PaymentType"];

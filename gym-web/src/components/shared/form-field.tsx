@@ -1,5 +1,18 @@
+import { CircleAlert } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+
+/** The error from the API that doesn't belong to one field (e.g. "Email or password is incorrect."). */
+export function FormError({ message }: { message: string | undefined }) {
+  if (!message) return null;
+  return (
+    <Alert variant="destructive">
+      <CircleAlert />
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
+  );
+}
 
 type FormFieldProps = {
   id: string;

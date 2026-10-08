@@ -1,24 +1,24 @@
 import { z } from "zod";
+import {
+  EMAIL_MAX,
+  MAX_AGE,
+  NAME_MAX,
+  NAME_MIN,
+  NAME_PATTERN,
+  PHONE_PATTERN,
+  ageOn,
+} from "@/lib/validation";
 
 /**
  * Form rules. They mirror the API validators (GymManagementBLL/Validators), so most mistakes are
  * caught before the request is sent. The API still checks everything: these are for a fast,
  * friendly form, not for security.
+ * The shared numbers and patterns (same as CommonRules.cs) live in lib/validation.ts.
  */
 
-// Same numbers as CommonRules.cs
-const NAME_MIN = 2;
-const NAME_MAX = 50;
-const EMAIL_MAX = 100;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 100;
 const MIN_AGE = 12;
-const MAX_AGE = 100;
-
-/** Letters of any language (\p{L}), spaces, dot, apostrophe and dash. */
-const NAME_PATTERN = /^[\p{L}\s.'-]+$/u;
-/** Egyptian mobile: 010 / 011 / 012 / 015 + 8 digits. */
-const PHONE_PATTERN = /^01[0125][0-9]{8}$/;
 
 const email = z
   .string()
@@ -42,16 +42,6 @@ const newPassword = z
   .regex(/[A-Z]/, "Password must contain an uppercase letter.")
   .regex(/[a-z]/, "Password must contain a lowercase letter.")
   .regex(/[0-9]/, "Password must contain a number.");
-
-/** Age in whole years on today's date, from a "yyyy-mm-dd" string. */
-function ageOn(today: Date, isoDate: string): number {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  let age = today.getFullYear() - year;
-  const birthdayPassed =
-    today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
-  if (!birthdayPassed) age--;
-  return age;
-}
 
 export const loginSchema = z.object({
   email,

@@ -1,6 +1,3 @@
-import { CircleAlert } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
 /** The title and subtitle at the top of every auth form. */
 export function AuthHeading({ title, description }: { title: string; description: string }) {
   return (
@@ -11,13 +8,5 @@ export function AuthHeading({ title, description }: { title: string; description
   );
 }
 
-/** The error from the API that doesn't belong to one field (e.g. "Email or password is incorrect."). */
-export function FormError({ message }: { message: string | undefined }) {
-  if (!message) return null;
-  return (
-    <Alert variant="destructive">
-      <CircleAlert />
-      <AlertDescription>{message}</AlertDescription>
-    </Alert>
-  );
-}
+/** Moved to the shared form helpers (admin forms use it too); re-exported so auth imports keep working. */
+export { FormError } from "@/components/shared/form-field";

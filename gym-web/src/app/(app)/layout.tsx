@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
+import { LoadingScreen } from "@/components/shared/loading-screen";
 
 // Private pages: keep them out of search engines.
 export const metadata: Metadata = {
@@ -13,5 +15,12 @@ export const instant = false;
 
 /** Every logged-in page (/dashboard, /trainer, /me, /account) shares this frame and its guard. */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  // AppShell reads the current path (usePathname). On pages with a dynamic part in the URL,
+  // such as /dashboard/members/[id], the path is unknown at build time, so Next.js needs a
+  // Suspense boundary here. The fallback is the same loading screen the shell shows anyway.
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <AppShell>{children}</AppShell>
+    </Suspense>
+  );
 }
