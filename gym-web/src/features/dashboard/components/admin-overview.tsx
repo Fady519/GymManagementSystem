@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Activity,
   CalendarClock,
@@ -182,14 +183,21 @@ export function AdminOverview() {
             : "Here's how the gym is doing."
         }
         actions={
-          <Button
-            variant="outline"
-            onClick={() => void summary.refetch()}
-            disabled={summary.isFetching}
-          >
-            <RefreshCw className={summary.isFetching ? "animate-spin" : undefined} />
-            Refresh
-          </Button>
+          <>
+            <Button asChild>
+              <Link href="/dashboard/members/new">
+                <UserPlus /> Add member
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void summary.refetch()}
+              disabled={summary.isFetching}
+            >
+              <RefreshCw className={summary.isFetching ? "animate-spin" : undefined} />
+              Refresh
+            </Button>
+          </>
         }
       />
 

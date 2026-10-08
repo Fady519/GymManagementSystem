@@ -1081,3 +1081,125 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 والـ Sidebar مفيهوش غير الصفحات الموجودة فعلاً، وكل مرحلة بتضيف صفحاتها.
 
 > Each role's home page shows only real API data: admin KPIs that auto-refresh every minute, the trainer's upcoming classes with live booking fill, and the member's membership card with days left, freeze and renewal info. The sidebar only lists pages that exist; each phase adds its own.
+---
+
+# F2: Admin Core (Tables, Plans, Members, Trainers, Categories)
+
+## 98. The URL Is the Source of Truth for Lists
+
+حالة أي جدول (البحث، الفلاتر، الترتيب، رقم الصفحة، عدد الصفوف) متخزنة في الـ **URL** مش في `useState`. مثال: `/dashboard/members?state=Active&gender=Female&sortBy=Name&dir=asc&page=2`.
+
+الفايدة: لو عملت Reload الصفحة بترجع زي ما هي، ولو بعت اللينك لزميلك هيشوف نفس النتيجة، وزرار Back في المتصفح بيرجع للفلتر اللي قبله. كل ده من Hook واحد `useListParams`: بيقرا القيم، وبيكتبها بـ `router.replace`، وبيمسح القيم الفاضية عشان اللينك يفضل نضيف، وأي تغيير غير الصفحة نفسها بيرجّع لصفحة 1.
+
+> List state (search, filters, sort, page, page size) lives in the URL, not in component state. Reloading keeps the view, links can be shared, and Back works. One useListParams hook reads and writes it with router.replace, drops empty values, and resets to page 1 whenever anything except the page changes.
+
+---
+
+## 99. A Headless Table With Server-Side Paging
+
+الجدول معمول بـ **TanStack Table v9**، وهي مكتبة **Headless**: بتدير الأعمدة والصفوف بس، والشكل كله بتاعنا (shadcn). عملنا Component واحد `DataTable` بتستخدمه كل الصفحات، وفيه الـ Skeleton والحالة الفاضية والترتيب والضغط على الصف.
+
+الترتيب والصفحات **على السيرفر**: الجدول مبيرتبش حاجة بنفسه، هو بيقول "المستخدم عايز يرتب بالاسم" والصفحة بتحط ده في الـ URL، والـ API يرجّع الصفحة المطلوبة بس مع العدد الكلي. فلو عندنا 10,000 عضو، المتصفح بيستلم 10 بس.
+
+> The table uses TanStack Table v9, a headless library: it manages columns and rows while the markup is ours. One reusable DataTable handles skeletons, empty states, sortable headers and row clicks. Sorting and paging happen on the server: the table only reports the user's choice, the page writes it to the URL, and the API returns one page plus the total count.
+
+---
+
+## 100. When to Filter on the Server and When in the Browser
+
+مش كل جدول محتاج فلترة على السيرفر. **الأعضاء** ممكن يبقوا آلاف، فالبحث والفلتر والصفحات على السيرفر. لكن **الخطط** والتصنيفات عددها صغير ومحدود (5 أو 10)، فبنجيبهم مرة واحدة ونفلتر في المتصفح. ده كمان بيدينا العدد جنب كل Tab (All 5، On sale 5، Hidden 0) من غير طلبات زيادة.
+
+القاعدة: لو الداتا ممكن تكبر من غير حد، الفلترة على السيرفر. لو صغيرة ومحدودة بطبيعتها، في المتصفح أبسط وأسرع.
+
+> Members can grow to thousands, so search, filters and paging run on the server. Plans and categories are small, bounded lists, so we load them once and filter in the browser, which also gives the tab counts for free. Rule of thumb: unbounded data is filtered on the server, small bounded data in the browser.
+
+---
+
+## 101. Debounced Search Without Losing Keystrokes
+
+البحث بيستنى **300ms** بعد آخر حرف قبل ما يحدّث الـ URL (Debounce)، عشان منبعتش طلب مع كل حرف.
+
+بس فيه مشكلة خفية: الـ URL بيتحدث متأخر شوية، فلو الـ Input بياخد قيمته من الـ URL ممكن يرجع لقيمة قديمة والمستخدم لسه بيكتب، والحروف تضيع. الحل: الـ Input بيحتفظ بآخر قيمة **بعتها** وآخر قيمة **شافها** في الـ URL، ومبيقبلش قيمة من الـ URL غير لو اتغيرت من برّه (زي زرار Clear filters أو زرار Back).
+
+> Search waits 300 ms after the last keystroke before updating the URL. The subtle bug: the URL catches up later, and syncing the input from it could overwrite what the user is still typing. The input remembers what it sent and what it last saw in the URL, and only accepts a URL value that changed from outside (Clear filters, Back button).
+
+---
+
+## 102. Updating the Cache vs Refetching
+
+بعد أي تعديل بنستخدم طريقتين في **TanStack Query**:
+
+- **Invalidate**: نقول للكاش "الداتا دي قديمة" فيجيبها تاني. بنستخدمه للقوايم، لأن عضو جديد ممكن يغيّر الترتيب والعدد والصفحات.
+- **setQueryData**: الـ API بيرجّع العضو بعد التعديل، فبنحطه في الكاش على طول. صفحة العضو بتتحدث فوراً من غير طلب زيادة.
+
+ولما نعدّل تصنيف، بنعمل Invalidate كمان لقايمة المدربين، لأن اسم التخصص بيظهر جنب كل مدرب. لازم تفكر: التعديل ده بيأثر على أنهي شاشات تانية؟
+
+> After a change we either invalidate (lists, because one new row can change order, counts and pages) or write the API response straight into the cache with setQueryData (the member's own page updates instantly with no extra request). Renaming a category also invalidates the trainers list, because each trainer shows their speciality name.
+
+---
+
+## 103. Shared Form Sections With FormProvider
+
+العنوان موجود في فورم العضو وفورم المدرب، والجنس كمان. بدل ما نكرر الكود، عملنا Components زي `AddressFieldset` و`GenderField` و`HealthFieldset` بتقرا الفورم من **`useFormContext`**، والفورم الكبير بيلفّهم بـ **`FormProvider`**.
+
+والقواعد كمان مشتركة في `lib/validation.ts` (الاسم، الموبايل المصري، الإيميل، السن). وفيه قاعدة خاصة للأجزاء الاختيارية زي العنوان: **يا كله يا مفيش**. لو كتبت رقم العمارة بس، هيقولك اكتب الشارع والمدينة، لكن لو سبته فاضي خالص عادي.
+
+> Address, gender and health sections are shared components that read the form through useFormContext, wrapped in a FormProvider. Validation rules live once in lib/validation.ts and mirror the backend. Optional sections like the address are all-or-nothing: empty is fine, but a partly filled address asks for the missing parts.
+
+---
+
+## 104. A Multi-Step Form Is Still One Form
+
+فورم إضافة عضو 4 خطوات (البيانات، العنوان، الصحة، الصورة)، بس هو **فورم واحد** فيه كل الحقول. زرار Continue بيعمل `trigger` لحقول الخطوة الحالية بس، فمش هتعدّي وفيه غلط، والحقول اللي في الخطوات الجاية مبتتراجعش لسه.
+
+تفاصيل مهمة:
+
+- زرار **Enter** في خطوة في النص معناه "التالي" مش "احفظ".
+- لو السيرفر رجّع "الإيميل مستخدم"، الفورم بيرجع لوحده للخطوة اللي فيها الإيميل ويعرض الخطأ تحته.
+- الكارت اللي على اليمين بيعرض ملخص حي للي اتكتب، عشان الريسبشن يراجع قبل الحفظ.
+
+> The four-step wizard is a single react-hook-form instance. Continue calls trigger() on the current step's fields only. Enter on a middle step means Next, not save. If the server rejects the email, the wizard jumps back to that step and shows the error under the field. A live summary card helps reception double-check before saving.
+
+---
+
+## 105. Uploading a Photo: Two Requests and Checks on Both Sides
+
+العضو بيتعمل بطلب JSON، وبعد ما ينجح بنرفع الصورة بطلب تاني نوعه **multipart/form-data**. فصلناهم لأن الـ JSON مبيشيلش ملفات، ولأن لو الصورة فشلت العضو يفضل موجود، وبنقول ده بوضوح ونكمّل لصفحته.
+
+الصورة بتتشيك **مرتين**: في المتصفح (النوع JPG أو PNG أو WEBP، والحجم لحد 2 ميجا) عشان المستخدم يعرف على طول، وفي السيرفر لأن أي حد ممكن يبعت طلب من غير الموقع. والـ Preview معمول بـ `FileReader` كـ Data URL، فمفيش Object URL محتاج نمسحه بعدين.
+
+ملحوظة: الـ Axios Client معندوش `Content-Type` ثابت، فلما نبعت `FormData` المتصفح بيحط الـ Boundary الصح بنفسه.
+
+> The member is created with JSON, then the photo is uploaded in a second multipart request; if only the photo fails, the member still exists and we say so clearly. The file is checked in the browser for quick feedback and again on the server for security. The preview is a FileReader data URL, so there is no object URL to revoke. The API client sets no default Content-Type, so the browser adds the correct multipart boundary.
+
+---
+
+## 106. Fixing Generated Types Instead of Fighting Them
+
+الـ Types بتتولد أوتوماتيك من الـ OpenAPI بتاع الباك. بس المولّد كان بيشيل `null` من حقول زي `address` و`healthRecord`، مع إن الباك ممكن يرجّعها `null` فعلاً. ولو صدّقنا الـ Type، الكود هيقع لما يعمل `member.address.city`.
+
+بدل ما نعدّل الملف المتولد (هيتمسح أول ما نولّده تاني)، عملنا Helper صغير `WithNullable` في `types/index.ts` بيرجّع `| null` للحقول دي بس. كده TypeScript بيجبرنا نتعامل مع الحالة الفاضية.
+
+> Types are generated from the backend's OpenAPI document, but the generator dropped null from optional objects like address and healthRecord. Instead of editing the generated file (it is overwritten on every run), a small WithNullable helper in types/index.ts adds | null back, so TypeScript forces us to handle the empty case.
+
+---
+
+## 107. Side Panel or Full Page?
+
+الفورمز الصغيرة (خطة، تصنيف، مدرب) بتفتح في **Side Panel** فوق الجدول، فالأدمن مبيخسرش مكانه في الجدول والفلاتر. لكن إضافة عضو ليها **صفحة كاملة** `/dashboard/members/new`، لأنها 4 خطوات وفيها صورة وملخص، ومحتاجة مساحة.
+
+والـ Panel بيتمسح محتواه لما يتقفل، فكل مرة بيفتح بفورم جديد نضيف من غير Reset يدوي. وزرار الحفظ في الـ Footer بره الفورم، ومربوط بيه بـ `form="plan-form"`.
+
+> Small forms (plan, category, trainer) open in a side sheet so the admin keeps their place in the table. Adding a member gets its own page because it has four steps, a photo and a summary. The sheet unmounts its content when closed, so every open starts with a fresh form, and the footer's submit button is linked to the form with the form attribute.
+
+---
+
+## 108. Bugs the Browser Test Caught in F2
+
+الـ Script اللي بيشغّل Edge لقى 3 مشاكل مكانتش هتبان في الـ Type Check:
+
+- **زرار من غير `type`**: زرار "Remove" بتاع الصورة كان جوه الفورم ومن غير `type="button"`، فالمتصفح بيعتبره **Submit**، وكان هيحفظ العضو بدل ما يشيل الصورة. الحل: `type="button"`.
+- **Build وقع في صفحة العضو**: الإطار الأساسي بيقرا المسار بـ `usePathname`، وفي صفحة فيها جزء متغير زي `[id]` الـ Next.js مبيعرفش المسار وقت الـ Build، فلازم يبقى جوه `Suspense`. لفّينا الإطار بـ `Suspense` بنفس شاشة التحميل.
+- **زرار في مكان غلط**: هيدر الكارت معمول بـ CSS Grid، فكلاسات الـ Flex مكانتش بتعمل حاجة. الحل: الـ Slot الجاهز `CardAction`.
+
+> The Edge test script caught three bugs type checks missed: a Remove button inside the wizard form had no type, so it would have submitted the form and saved the member; the production build failed on /dashboard/members/[id] because the shell reads usePathname and a dynamic route needs a Suspense boundary; and a card header button sat in the wrong place because the header is a CSS grid, fixed with the CardAction slot.

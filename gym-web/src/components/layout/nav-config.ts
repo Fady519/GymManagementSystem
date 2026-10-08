@@ -1,4 +1,14 @@
-import { CalendarDays, Home, LayoutDashboard, UserCog, type LucideIcon } from "lucide-react";
+import {
+  BadgePercent,
+  CalendarDays,
+  Dumbbell,
+  Home,
+  LayoutDashboard,
+  Tags,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { Area } from "@/lib/roles";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -8,7 +18,13 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
  * each phase adds its pages here (members, plans, bookings...) when they are built.
  */
 export const AREA_NAV: Record<Area, NavItem[]> = {
-  admin: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  admin: [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/dashboard/members", label: "Members", icon: Users },
+    { href: "/dashboard/trainers", label: "Trainers", icon: Dumbbell },
+    { href: "/dashboard/plans", label: "Plans", icon: BadgePercent },
+    { href: "/dashboard/categories", label: "Categories", icon: Tags },
+  ],
   trainer: [{ href: "/trainer", label: "My schedule", icon: CalendarDays }],
   member: [{ href: "/me", label: "Overview", icon: Home }],
 };
