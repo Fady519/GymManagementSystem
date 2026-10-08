@@ -31,6 +31,11 @@ namespace GymManagement.Tests.Security
             "GET /api/sessions",
             "GET /api/sessions/{id:int}",
 
+            // Public website: gym details, landing page numbers and trainer cards (no personal data).
+            "GET /api/public/gym",
+            "GET /api/public/stats",
+            "GET /api/public/trainers",
+
             // Getting in: all rate limited except logout, which only reads the refresh cookie
             // (so a user with an expired access token can still log out).
             "POST /api/auth/accept-invite",

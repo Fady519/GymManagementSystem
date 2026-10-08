@@ -52,6 +52,7 @@ namespace GymManagement.Tests.Infrastructure
 
                     // Many tests log in; the rate limit itself has its own test.
                     ["RateLimiting:AuthPermitLimit"] = "100000",
+                    ["RateLimiting:RefreshPermitLimit"] = "100000",
 
                     // Uploaded test photos go to a temp folder, not the project's uploads folder.
                     ["FileStorage:RootPath"] = UploadsPath,

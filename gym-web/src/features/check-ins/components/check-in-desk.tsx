@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   History,
@@ -36,6 +35,7 @@ import { formatTime } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { playCue } from "@/lib/sound";
 import { cn } from "@/lib/utils";
+import { Link } from "@/i18n/navigation";
 
 /** Member QR codes are 32 hexadecimal characters (see CheckInCodes on the API). */
 const CODE_PATTERN = /^[0-9a-f]{32}$/;

@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import type { UseQueryResult } from "@tanstack/react-query";
 import {
   AlarmClock,
@@ -36,6 +35,7 @@ import { useMembershipActions } from "@/features/memberships/components/membersh
 import { useExpiringSoon } from "@/features/memberships/queries";
 import { daysUntil, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Link } from "@/i18n/navigation";
 
 // ------------------------------------------------------------------------------------------
 // Lazy charts: Recharts is downloaded after the page is on screen (next/dynamic, browser only).

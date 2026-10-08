@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CalendarCheck, Check, Hourglass, IdCard, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { formatDate, formatDays, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CheckInResultResponse } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 /** What the desk shows after a scan: the API's answer, or "this code belongs to nobody". */
 export type CheckInOutcome =

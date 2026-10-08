@@ -24,7 +24,13 @@ namespace GymManagementAPI.Infrastructure
         /// <summary>SuperAdmin, Admin (book for any member) or Member (book for himself).</summary>
         public const string BookingAccess = nameof(BookingAccess);
 
-        /// <summary>Rate limiting policy for login / register / refresh (protects against password guessing).</summary>
+        /// <summary>Rate limiting policy for login / register / password links (protects against password guessing).</summary>
         public const string AuthRateLimit = "auth";
+
+        /// <summary>
+        /// Rate limiting policy for token refresh. Separate from <see cref="AuthRateLimit"/> because the
+        /// web app calls refresh on every full page load, so it needs a higher limit than login.
+        /// </summary>
+        public const string RefreshRateLimit = "refresh";
     }
 }

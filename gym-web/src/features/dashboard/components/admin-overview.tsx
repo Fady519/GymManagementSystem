@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
@@ -51,6 +50,7 @@ import { useListParams } from "@/hooks/use-list-params";
 import { firstName, formatMoney, formatTime, greeting } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AnalyticsSummaryResponse } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 /** One line in the breakdown cards: icon, label and number. */
 function BreakdownRow({

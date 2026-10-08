@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, LogIn } from "lucide-react";
@@ -13,6 +12,7 @@ import { AuthHeading, FormError } from "@/features/auth/components/auth-heading"
 import { useStartSession } from "@/features/auth/hooks";
 import { loginSchema, type LoginValues } from "@/features/auth/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
+import { Link } from "@/i18n/navigation";
 
 /**
  * Demo logins for the public portfolio deployment. They only appear when

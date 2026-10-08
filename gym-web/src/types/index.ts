@@ -114,3 +114,13 @@ export type CheckInResponsePagedResult = Omit<Schemas["CheckInResponsePagedResul
 
 // Exports
 export type ExportFormat = Schemas["ExportFormat"];
+
+// Gym settings and the public website (no login needed)
+export type GymSettingsResponse = Schemas["GymSettingsResponse"];
+export type UpdateGymSettingsRequest = Schemas["UpdateGymSettingsRequest"];
+export type PublicStatsResponse = Schemas["PublicStatsResponse"];
+export type PublicTrainerResponse = Schemas["PublicTrainerResponse"];
+
+// Member portal
+export type CheckInCodeResponse = Schemas["CheckInCodeResponse"];
+export type UpdateMyProfileRequest = WithNullable<Schemas["UpdateMyProfileRequest"], "address">;

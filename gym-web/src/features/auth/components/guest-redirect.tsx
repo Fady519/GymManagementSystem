@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/hooks";
 import { landingPath } from "@/lib/roles";
+import { useRouter } from "@/i18n/navigation";
 
 /**
  * Lives on the login/register/password pages. As soon as there is a session (the user just logged in,

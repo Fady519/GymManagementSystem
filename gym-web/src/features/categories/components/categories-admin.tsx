@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
 import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import { useDialogState } from "@/hooks/use-dialog-state";
 import { formatDate } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import type { CategoryResponse } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 const col = createColumns<CategoryResponse>();
 

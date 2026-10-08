@@ -60,6 +60,8 @@ namespace GymManagementAPI.Extensions
             services.AddScoped<IAppEmailService, AppEmailService>();
             services.AddScoped<ICheckInService, CheckInService>();
             services.AddScoped<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<IGymSettingsService, GymSettingsService>();
+            services.AddScoped<IPublicSiteService, PublicSiteService>();
             services.AddScoped<ExportService>();
 
             // The gym's time zone ("Gym" section): what "today" means for check-ins, reports and emails.

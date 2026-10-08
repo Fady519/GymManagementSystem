@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CalendarRange, Receipt, Snowflake, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { PAYMENT_TYPE_STYLE } from "@/features/payments/payment-meta";
 import { formatDate, formatDateTime, formatDays, formatDuration, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { MembershipResponse } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 /** Days a freeze really used when it ended early: a started day counts (same rule as the API). */
 function usedDays(start: string, endedAt: string): number {

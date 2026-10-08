@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import Link from "next/link";
 import { ClipboardList, LogIn, ScanLine, SearchX, ShieldX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +37,7 @@ import {
 } from "@/lib/cairo-time";
 import { formatDate, formatDateTime, formatTime } from "@/lib/format";
 import type { CheckInResponse, CheckInResult } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 const col = createColumns<CheckInResponse>();
 const DEFAULT_PAGE_SIZE = 20;

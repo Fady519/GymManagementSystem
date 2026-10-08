@@ -1,10 +1,13 @@
 import Image from "next/image";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 /** The Power Fitness logo + name. Links to the home page. */
 export function Logo() {
+  const t = useTranslations("Common");
+
   return (
-    <Link href="/" className="flex items-center gap-2" aria-label="Power Fitness home">
+    <Link href="/" className="flex items-center gap-2" aria-label={t("logoLabel")}>
       <Image
         src="/images/logo.jpg"
         alt=""
@@ -14,7 +17,7 @@ export function Logo() {
         priority
       />
       <span className="text-lg font-extrabold tracking-tight text-primary uppercase">
-        Power Fitness
+        {t("brand")}
       </span>
     </Link>
   );

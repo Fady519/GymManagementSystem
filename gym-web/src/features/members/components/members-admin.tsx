@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, SearchX, Trash2, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +34,7 @@ import { formatDate } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { GENDERS } from "@/lib/validation";
 import type { Gender, MemberListItem, MemberMembershipState, MemberSortBy } from "@/types";
+import { Link, useRouter } from "@/i18n/navigation";
 
 const col = createColumns<MemberListItem>();
 const DEFAULT_PAGE_SIZE = 10;

@@ -1377,3 +1377,99 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 واكتشفنا حاجة مهمة في الاختبار: الصورة الكاملة للصفحة (Full-page Screenshot) كانت بتطلع الرسوم فاضية، مع إن الرسوم شغالة في المتصفح. السبب إن طريقة التصوير بتغيّر مقاس الصفحة فجأة، وRecharts بيعيد الرسم. الحل إننا نكبّر الشاشة الأول ونستنى ثانيتين وبعدين نصوّر، والدرس إنك تتأكد إن المشكلة في الكود مش في أداة الاختبار.
 
 > The test compares every KPI with the summary endpoint and the revenue total with a SQL SUM over Cairo-local days. Full-page screenshots showed blank charts even though the browser rendered them: the capture resizes the page and Recharts redraws. Enlarging the viewport and waiting before capturing fixed it, a reminder to separate tool artifacts from real bugs.
+
+---
+
+# F5: Member Portal, Trainer Portal and Public Site
+
+## 126. The Landing Page Is a Cached Server Component
+
+الصفحة الرئيسية `app/[locale]/page.tsx` عبارة عن **Server Component** بيجيب كل الداتا من الـ API على السيرفر مرة واحدة بـ `Promise.all` (الإعدادات، الأرقام، الباقات، البرامج، المدربين، جدول الحصص). كل دالة في `features/public-site/api.ts` معلَّمة بـ `"use cache"` ومعاها `cacheTag("public-site")`، يعني الزائر بياخد HTML جاهز وسريع، ومفيش طلب للـ API مع كل زيارة.
+
+ولما الأدمن يعدّل إعدادات النادي، الـ Server Action اسمه `refreshPublicSite` بينادي `updateTag("public-site")`، فالصفحة بتتبني من جديد بالبيانات الجديدة على طول من غير ما نستنى أي وقت.
+
+> The landing page is a Server Component that fetches everything in parallel on the server. Each fetch uses "use cache" with a shared cache tag, so visitors get fast pre-rendered HTML. When an admin saves the gym settings, a server action calls updateTag to rebuild the page on demand, so the change is visible immediately.
+
+---
+
+## 127. The Server Action Checks the Admin Before Clearing the Cache
+
+أي Server Action ممكن أي حد يناديه من بره، لأنه في الآخر مجرد POST request. عشان كده `refreshPublicSite(token)` مش بيثق في الواجهة: قبل ما يمسح الكاش بيبعت الـ Token للـ API على `GET /api/settings/gym`، وده Endpoint للأدمن بس. لو الرد مش 200 مبيعملش حاجة، فمحدش غريب يقدر يرهق السيرفر بإعادة بناء الصفحة كل شوية.
+
+> Server actions are public POST endpoints, so the action never trusts the client. It forwards the token to an admin-only API endpoint first and only clears the cache if that call succeeds.
+
+---
+
+## 128. SEO: Metadata, hreflang and JSON-LD
+
+كل لغة ليها `title` و`description` خاصين بيها من `generateMetadata`، ومعاهم `canonical` وروابط `hreflang` (en و ar و x-default) عشان Google يعرف إن الصفحتين نسختين من نفس المحتوى بلغتين. وكمان فيه Open Graph عشان شكل اللينك لما يتشارك على واتساب وفيسبوك.
+
+وضفنا **JSON-LD** من نوع `HealthClub` فيه الاسم والعنوان والتليفون ومواعيد العمل، وكله جاي من جدول `GymSettings`. وفيه `sitemap.xml` و`robots.txt` بيمنعوا الأرشفة لأي صفحة خاصة زي `/dashboard` و`/me` و`/trainer` باللغتين.
+
+> Each locale gets its own metadata with canonical and hreflang alternates, plus Open Graph tags. A HealthClub JSON-LD block is built from the real gym settings. The sitemap lists public pages only, and robots.txt blocks every private area in both languages.
+
+---
+
+## 129. Two Languages With next-intl and RTL
+
+الإنجليزي هو الأساسي على `/`، والعربي على `/ar` مع `dir="rtl"`. كل النصوص متخزنة في `messages/en.json` و`messages/ar.json`، وفيه Script اسمه `check-messages` بيتأكد إن الملفين فيهم نفس المفاتيح بالظبط (505 مفتاح)، فمستحيل صفحة تظهر بنص ناقص.
+
+العربي ليه 6 صيغ للجمع (zero, one, two, few, many, other)، وده بيطلع جمل صح زي "حصة واحدة" و"حصتان" و"3 حصص". ولتنسيق الصفحة بنستخدم Classes منطقية زي `ms-` و`pe-` بدل `ml-` و`pr-`، فالتصميم بيتقلب لوحده في العربي. أما الأسهم فبتتلف بـ `rtl:rotate-180`، والتليفونات والأوقات بتاخد `dir="ltr"`.
+
+> English is the default at / and Arabic lives at /ar with RTL. A script checks that both message files have exactly the same keys. Arabic plurals use all six ICU forms. Layout uses logical Tailwind classes so it mirrors automatically; arrows rotate in RTL, and phone numbers and times stay LTR.
+
+---
+
+## 130. Never Read the Clock During Render
+
+لما كتبنا `new Date()` جوه Component، الـ Build وقف بخطأ، لأن السيرفر بيبني الصفحة في وقت والمتصفح بيفتحها في وقت تاني، فالنتيجة هتختلف (Hydration mismatch). الحل هو Hook اسمه `useNow()` مبني على `useSyncExternalStore`: على السيرفر بيرجع `null`، وفي المتصفح بيرجع الوقت الحالي وبيتحدث كل دقيقة.
+
+وبكده حاجات زي "مفتوح الآن" و"صباح الخير" و"ينتهي خلال 10 أيام" بتظهر صح وبتتغير لوحدها لو الصفحة فضلت مفتوحة.
+
+> Reading new Date() during render breaks prerendering and causes hydration mismatches. A useNow hook built on useSyncExternalStore returns null on the server and the current time in the browser, ticking every minute, so open now badges and greetings stay correct.
+
+---
+
+## 131. Booking Rules in the UI Mirror the Backend
+
+صفحة حجز الحصص بتعرض الحالة قبل ما العضو يدوس: "محجوزة"، "مكتملة"، "خارج مدة اشتراكك"، أو "عندك حصة في نفس الوقت". الدوال دي موجودة في `booking-rules.ts` وبتطبق نفس القواعد اللي في `BookingService`، زي الإلغاء المسموح لحد قبل الحصة بساعتين.
+
+لكن **الـ Backend هو صاحب القرار النهائي**. الواجهة بس بتوفّر على المستخدم ضغطة مالهاش لازمة، ولو حصل تعارض (مثلًا حد تاني خد آخر مكان) الـ API بيرجع الخطأ والواجهة بتعرضه مترجم.
+
+> The classes page shows booked, full, not covered and busy states before the member clicks, using helpers that mirror BookingService, including the 2-hour cancellation deadline. The API is still the source of truth; the UI only saves a pointless click, and race conditions come back as translated errors.
+
+---
+
+## 132. Attendance Only While the Class Is Running
+
+زرار "تسجيل الحضور" في بوابة المدرب بيشتغل بس وقت الحصة نفسها. قبل ما تبدأ بيبقى مقفول ومعاه رسالة توضح إمتى هيفتح، وبعد ما تخلص بيختفي والعضو اللي محضرش بيظهر "لم يحضر". والـ API بيطبق نفس القاعدة وبيرجع `Booking.AttendanceNotOpen` لو حد حاول من بره الواجهة.
+
+وكمان لو مدرب فتح صفحة حصة مدرب تاني، بنعرض "الحصة غير موجودة" بالظبط زي الحصة اللي مش موجودة فعلًا، فمحدش يقدر يعرف إيه الحصص الموجودة عند غيره.
+
+> Mark attended is enabled only while the class is running, with a hint before it starts and a no-show label after it ends; the API enforces the same rule. Another trainer's class looks exactly like a missing one, so the page leaks nothing.
+
+---
+
+## 133. Public Endpoints Expose Only Safe Fields
+
+الـ Endpoint العام `GET /api/public/trainers` بيرجع DTO مخصوص اسمه `PublicTrainerResponse` فيه الاسم والتخصص وعدد الحصص الجاية بس. مفيش إيميل ولا تليفون ولا تاريخ ميلاد ولا عنوان، وفيه Test بيتأكد إن الـ JSON مفيهوش الخصائص دي خالص. واستخدام DTO منفصل أأمن من إننا نرجع الـ Entity ونخبي منها حقول، لأن أي حقل جديد يتضاف للـ Entity بعدين مش هيظهر للعامة بالغلط.
+
+> The public trainers endpoint returns a dedicated DTO with name, specialty and upcoming class count only. A test asserts that email, phone and date of birth never appear. A separate whitelist DTO is safer than hiding fields, because new entity fields can never leak by accident.
+
+---
+
+## 134. A Separate Rate Limit for Token Refresh
+
+في الاختبار اكتشفنا إن المستخدم بيخرج من حسابه لوحده بعد كام Reload. السبب إن `refresh` كان بيشارك نفس حد المحاولات بتاع `login`، وهو 10 في الدقيقة لكل IP، والموقع بينادي `refresh` مع كل فتحة صفحة. الحل كان Policy منفصلة اسمها `refresh` بحد 60 في الدقيقة وقيمتها في الإعدادات، ومعاها Test يثبت إن استهلاك حد الدخول مش بيأثر على التجديد.
+
+وفيه ملاحظة مهمة: الطلبات بتعدي من Next.js الأول، فالـ API بيشوف كل المستخدمين على IP واحد. في الإنتاج الصح إن الـ Proxy يبعت الـ IP الحقيقي في `X-Forwarded-For`، أو إن تحديد المحاولات يتعمل عند الـ Edge زي Nginx أو Cloudflare.
+
+> Testing showed users being signed out after a few reloads, because refresh shared the 10-per-minute login limit. Refresh now has its own policy (60 per minute, configurable) with tests. Behind the Next.js proxy every client shares one IP, so in production the real IP should be forwarded or limits applied at the edge.
+
+---
+
+## 135. The QR Check-in Card
+
+صفحة رمز الدخول بتعرض QR على خلفية بيضا (عشان الماسح يقراه حتى في الوضع الداكن)، وتحته الكود نفسه كنص مع زرار نسخ، عشان لو الكاميرا في الاستقبال مش شغالة الموظف يكتبه بإيده. ولو العضو حس إن حد صوّر الكود، يقدر يعمل كود جديد بعد تأكيد، والكود القديم بيبطل يشتغل في نفس اللحظة.
+
+> The QR is drawn on white so scanners read it in dark mode, with the code text and a copy button underneath as a fallback when the camera fails. Members can regenerate the code after a confirmation, which invalidates the old one immediately.

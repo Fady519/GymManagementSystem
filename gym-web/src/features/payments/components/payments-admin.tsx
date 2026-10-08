@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, Hash, Receipt, SearchX, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,7 @@ import {
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod, PaymentResponse, PaymentType } from "@/types";
+import { Link } from "@/i18n/navigation";
 
 const col = createColumns<PaymentResponse>();
 const DEFAULT_PAGE_SIZE = 20;

@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ACCOUNT_NAV, AREA_NAV, isNavActive, type NavItem } from "@/components/layout/nav-config";
+import { Link, usePathname } from "@/i18n/navigation";
 import { AREA_HOME, type Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +11,12 @@ import { cn } from "@/lib/utils";
  * `onNavigate` lets the phone menu close itself when a link is clicked.
  */
 export function SidebarNav({ area, onNavigate }: { area: Area; onNavigate?: () => void }) {
+  const t = useTranslations("Nav");
+  // The path without the language prefix ("/dashboard", also when browsing /ar/dashboard).
   const pathname = usePathname();
 
   const renderLink = (item: NavItem) => {
-    const active = isNavActive(pathname, item.href, item.href === AREA_HOME[area]);
+    const active = isNavActive(pathname, item, item.href === AREA_HOME[area]);
     const Icon = item.icon;
     return (
       <li key={item.href}>
@@ -30,14 +32,14 @@ export function SidebarNav({ area, onNavigate }: { area: Area; onNavigate?: () =
           )}
         >
           <Icon className="size-4" />
-          {item.label}
+          {t(item.label)}
         </Link>
       </li>
     );
   };
 
   return (
-    <nav aria-label="Main" className="flex flex-1 flex-col gap-6">
+    <nav aria-label={t("main")} className="flex flex-1 flex-col gap-6">
       <ul className="grid gap-1">{AREA_NAV[area].map(renderLink)}</ul>
       <ul className="mt-auto grid gap-1">{renderLink(ACCOUNT_NAV)}</ul>
     </nav>

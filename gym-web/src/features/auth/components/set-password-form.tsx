@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Link2Off, Loader2 } from "lucide-react";
@@ -13,6 +12,7 @@ import { AuthHeading, FormError } from "@/features/auth/components/auth-heading"
 import { PasswordChecklist } from "@/features/auth/components/password-checklist";
 import { setPasswordSchema, type SetPasswordValues } from "@/features/auth/schemas";
 import { applyServerErrors } from "@/lib/form-errors";
+import { Link, useRouter } from "@/i18n/navigation";
 
 /**
  * Two pages share this form, because both are "choose a password using a link from an email":

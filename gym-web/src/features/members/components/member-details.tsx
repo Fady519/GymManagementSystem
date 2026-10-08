@@ -1,8 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
@@ -57,6 +56,7 @@ import { ApiError } from "@/lib/api-error";
 import { formatDate } from "@/lib/format";
 import { isAlreadyActivated, toastError, toastInvite } from "@/lib/notify";
 import type { MemberResponse } from "@/types";
+import { Link, useRouter } from "@/i18n/navigation";
 
 const TABS = ["overview", "memberships", "bookings", "payments", "health"] as const;
 type Tab = (typeof TABS)[number];

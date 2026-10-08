@@ -4518,6 +4518,120 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/public/gym": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The gym's name, contact details, bilingual address, links and opening hours. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GymSettingsResponse"];
+                        "application/json": components["schemas"]["GymSettingsResponse"];
+                        "text/json": components["schemas"]["GymSettingsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The numbers on the landing page: active members, trainers, programs, classes in the next 7 days and the "from" monthly price. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicStatsResponse"];
+                        "application/json": components["schemas"]["PublicStatsResponse"];
+                        "text/json": components["schemas"]["PublicStatsResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/trainers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Trainer cards (name, speciality, upcoming classes), busiest trainers first. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PublicTrainerResponse"][];
+                        "application/json": components["schemas"]["PublicTrainerResponse"][];
+                        "text/json": components["schemas"]["PublicTrainerResponse"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions": {
         parameters: {
             query?: never;
@@ -5038,6 +5152,120 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/settings/gym": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets the gym's details for the "Gym settings" page. */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GymSettingsResponse"];
+                        "application/json": components["schemas"]["GymSettingsResponse"];
+                        "text/json": components["schemas"]["GymSettingsResponse"];
+                    };
+                };
+                /** @description Missing, invalid or expired access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Your role is not allowed to do this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        /**
+         * Replaces the gym's details. Texts are trimmed and empty optional texts are saved as null.
+         *     Links must be https; closing time must be after opening time; send both Friday times or neither (closed).
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["UpdateGymSettingsRequest"];
+                    "text/json": components["schemas"]["UpdateGymSettingsRequest"];
+                    "application/*+json": components["schemas"]["UpdateGymSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["GymSettingsResponse"];
+                        "application/json": components["schemas"]["GymSettingsResponse"];
+                        "text/json": components["schemas"]["GymSettingsResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Missing, invalid or expired access token. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Your role is not allowed to do this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -6319,6 +6547,27 @@ export interface components {
         };
         /** @enum {string} */
         Gender: "Male" | "Female";
+        GymSettingsResponse: {
+            gymName: string;
+            phone: string;
+            whatsApp: string | null;
+            email: string;
+            addressEn: string;
+            addressAr: string;
+            mapUrl: string | null;
+            facebookUrl: string | null;
+            instagramUrl: string | null;
+            /** Format: time */
+            weekdayOpensAt: string;
+            /** Format: time */
+            weekdayClosesAt: string;
+            /** Format: time */
+            fridayOpensAt: string | null;
+            /** Format: time */
+            fridayClosesAt: string | null;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
         HealthRecordDto: {
             /** Format: double */
             height: number;
@@ -6568,6 +6817,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        PublicStatsResponse: {
+            /** Format: int32 */
+            activeMembers: number;
+            /** Format: int32 */
+            trainers: number;
+            /** Format: int32 */
+            programs: number;
+            /** Format: int32 */
+            classesThisWeek: number;
+            /** Format: double */
+            fromMonthlyPrice: number | null;
+        };
+        PublicTrainerResponse: {
+            /** Format: int32 */
+            id: number;
+            name: string;
+            categoryName: string;
+            /** Format: int32 */
+            upcomingClasses: number;
+            /** Format: date-time */
+            joinedAt: string;
+        };
         RegisterRequest: {
             name: string;
             email: string;
@@ -6744,6 +7015,25 @@ export interface components {
         TrainerWithAccountResponse: {
             trainer: components["schemas"]["TrainerResponse"];
             inviteSent: boolean;
+        };
+        UpdateGymSettingsRequest: {
+            gymName: string;
+            phone: string;
+            whatsApp: string | null;
+            email: string;
+            addressEn: string;
+            addressAr: string;
+            mapUrl: string | null;
+            facebookUrl: string | null;
+            instagramUrl: string | null;
+            /** Format: time */
+            weekdayOpensAt: string;
+            /** Format: time */
+            weekdayClosesAt: string;
+            /** Format: time */
+            fridayOpensAt: string | null;
+            /** Format: time */
+            fridayClosesAt: string | null;
         };
         UpdateMemberRequest: {
             name: string;
