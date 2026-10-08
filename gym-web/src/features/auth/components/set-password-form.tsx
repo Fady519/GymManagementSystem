@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound, Link2Off, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { FormField, fieldProps } from "@/components/shared/form-field";
 import { PasswordInput } from "@/components/shared/password-input";
@@ -18,30 +20,18 @@ import { Link, useRouter } from "@/i18n/navigation";
  * Two pages share this form, because both are "choose a password using a link from an email":
  * - "reset":  /reset-password?email=...&token=...  (from "Forgot password")
  * - "invite": /set-password?email=...&token=...    (the gym created the account and invited the person)
+ * The texts of each mode live under Auth.reset and Auth.invite.
  */
 type Mode = "reset" | "invite";
 
-const COPY: Record<Mode, { title: string; description: string; button: string; busy: string }> = {
-  reset: {
-    title: "Choose a new password",
-    description: "Pick a strong password you haven't used here before.",
-    button: "Update password",
-    busy: "Updating…",
-  },
-  invite: {
-    title: "Activate your account",
-    description: "Welcome to Power Fitness! Create a password to start using your account.",
-    button: "Activate account",
-    busy: "Activating…",
-  },
-};
-
 export function SetPasswordForm({ mode }: { mode: Mode }) {
+  const t = useTranslations("Auth");
+  const tValidation = useTranslations("Validation");
   const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") ?? "";
   const token = params.get("token") ?? "";
-  const copy = COPY[mode];
+  const schema = useMemo(() => setPasswordSchema(tValidation), [tValidation]);
 
   const {
     register,
@@ -50,7 +40,7 @@ export function SetPasswordForm({ mode }: { mode: Mode }) {
     control,
     formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm<SetPasswordValues>({
-    resolver: zodResolver(setPasswordSchema),
+    resolver: zodResolver(schema),
     defaultValues: { password: "", confirmPassword: "" },
   });
   const password = useWatch({ control, name: "password" });
@@ -62,15 +52,13 @@ export function SetPasswordForm({ mode }: { mode: Mode }) {
         <div className="mx-auto mb-6 flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <Link2Off className="size-7" />
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight">This link is incomplete</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">{t("incomplete.title")}</h1>
         <p className="mt-3 text-muted-foreground">
-          {mode === "reset"
-            ? "Open the link from your email again, or request a new one."
-            : "Open the invitation link from your email again, or ask the gym to send a new one."}
+          {mode === "reset" ? t("incomplete.reset") : t("incomplete.invite")}
         </p>
         <Button size="lg" className="mt-8 h-11 w-full" asChild>
           <Link href={mode === "reset" ? "/forgot-password" : "/login"}>
-            {mode === "reset" ? "Request a new link" : "Go to log in"}
+            {mode === "reset" ? t("incomplete.requestNew") : t("incomplete.goToLogin")}
           </Link>
         </Button>
       </div>
@@ -96,19 +84,21 @@ export function SetPasswordForm({ mode }: { mode: Mode }) {
 
   return (
     <>
-      <AuthHeading title={copy.title} description={copy.description} />
+      <AuthHeading title={t(`${mode}.title`)} description={t(`${mode}.description`)} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
 
         <div className="rounded-lg border bg-muted/40 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Account: </span>
-          <span className="font-medium">{email}</span>
+          <span className="text-muted-foreground">{t("accountLabel")} </span>
+          <bdi dir="ltr" className="font-medium">
+            {email}
+          </bdi>
         </div>
 
         <FormField
           id="password"
-          label="New password"
+          label={t("fields.newPassword")}
           error={errors.password?.message}
           description={<PasswordChecklist value={password} />}
         >
@@ -122,7 +112,7 @@ export function SetPasswordForm({ mode }: { mode: Mode }) {
 
         <FormField
           id="confirmPassword"
-          label="Confirm new password"
+          label={t("fields.confirmNewPassword")}
           error={errors.confirmPassword?.message}
         >
           <PasswordInput
@@ -134,7 +124,7 @@ export function SetPasswordForm({ mode }: { mode: Mode }) {
 
         <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <KeyRound />}
-          {busy ? copy.busy : copy.button}
+          {busy ? t(`${mode}.submitting`) : t(`${mode}.submit`)}
         </Button>
       </form>
     </>

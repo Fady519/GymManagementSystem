@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,12 +20,17 @@ export type RowAction = {
   destructive?: boolean;
 };
 
-/** The "⋯" menu at the end of a table row. */
-export function RowActions({ label, actions }: { label: string; actions: RowAction[] }) {
+/**
+ * The "⋯" menu at the end of a table row.
+ * `label` is read by screen readers; pass one that names the row (e.g. "Actions for Sara Ali"),
+ * otherwise a plain "Actions" in the site language is used.
+ */
+export function RowActions({ label, actions }: { label?: string; actions: RowAction[] }) {
+  const t = useTranslations("DataTable");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={label}>
+        <Button variant="ghost" size="icon" aria-label={label ?? t("rowActions")}>
           <MoreHorizontal />
         </Button>
       </DropdownMenuTrigger>

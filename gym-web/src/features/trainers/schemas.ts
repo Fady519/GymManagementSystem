@@ -1,26 +1,31 @@
+import type { useTranslations } from "next-intl";
 import { z } from "zod";
-import {
-  addressFields,
-  checkOptionalSection,
-  dateOfBirth,
-  egyptianPhone,
-  emailAddress,
-  gender,
-  personName,
-} from "@/lib/validation";
+import { addressFields, validationRules, type ValidationText } from "@/lib/validation";
 
-/** Same rules as SaveTrainerRequestValidator (trainers must be at least 18). */
-export const trainerSchema = z
-  .object({
-    name: personName,
-    email: emailAddress,
-    phone: egyptianPhone,
-    dateOfBirth: dateOfBirth(18),
-    gender,
-    // The <Select> gives the id as a string; it's turned into a number when sending.
-    categoryId: z.string().min(1, "Choose the trainer's speciality."),
-    address: addressFields,
-  })
-  .superRefine((values, ctx) => checkOptionalSection(ctx, "address", values.address));
+type ErrorText = ReturnType<typeof useTranslations<"Trainers.errors">>;
 
-export type TrainerValues = z.infer<typeof trainerSchema>;
+/** Trainers must be at least 18 (SaveTrainerRequestValidator). */
+export const TRAINER_MIN_AGE = 18;
+
+/**
+ * The trainer form rules, with messages in the current language. Pass the "Trainers.errors"
+ * and "Validation" translators. Same rules as SaveTrainerRequestValidator.
+ */
+export function trainerSchema(t: ErrorText, tValidation: ValidationText) {
+  const rules = validationRules(tValidation);
+  return z
+    .object({
+      name: rules.personName,
+      email: rules.emailAddress,
+      phone: rules.egyptianPhone,
+      dateOfBirth: rules.dateOfBirth(TRAINER_MIN_AGE),
+      gender: rules.gender,
+      // The <Select> gives the id as a string; it's turned into a number when sending.
+      categoryId: z.string().min(1, t("category")),
+      // Optional: leave every box empty to skip it, or fill all three.
+      address: addressFields,
+    })
+    .superRefine((values, ctx) => rules.checkOptionalSection(ctx, "address", values.address));
+}
+
+export type TrainerValues = z.infer<ReturnType<typeof trainerSchema>>;

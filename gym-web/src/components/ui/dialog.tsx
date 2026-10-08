@@ -6,6 +6,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 function Dialog({
   ...props
@@ -55,6 +56,8 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  // Screen readers announce the close button in the visitor's language.
+  const tCommon = useTranslations("Common")
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -76,7 +79,7 @@ function DialogContent({
             >
               <XIcon
               />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{tCommon("close")}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -103,6 +106,7 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const tCommon = useTranslations("Common")
   return (
     <div
       data-slot="dialog-footer"
@@ -115,7 +119,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{tCommon("close")}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

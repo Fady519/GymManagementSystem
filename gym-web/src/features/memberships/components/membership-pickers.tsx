@@ -2,16 +2,19 @@
 
 import { useState } from "react";
 import { Check, Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { MemberStateBadge } from "@/features/members/components/member-state-badge";
+import { isolate } from "@/lib/bidi";
 import { useMembers } from "@/features/members/queries";
 import { PAYMENT_METHODS } from "@/features/payments/payment-meta";
 import { usePlans } from "@/features/plans/queries";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { formatDuration, formatMoney, monthlyPrice } from "@/lib/format";
+import { useFormat } from "@/hooks/use-format";
+import { monthlyPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { MemberListItem, PaymentMethod, PlanResponse } from "@/types";
 
@@ -27,6 +30,7 @@ export function PaymentMethodPicker({
   onChange: (value: PaymentMethod) => void;
   invalid?: boolean;
 }) {
+  const tEnums = useTranslations("Enums.PaymentMethod");
   return (
     <div
       id={id}
@@ -50,7 +54,7 @@ export function PaymentMethodPicker({
             )}
           >
             <method.icon className="size-4" />
-            {method.label}
+            {tEnums(method.value)}
           </button>
         );
       })}
@@ -73,6 +77,8 @@ export function PlanPicker({
   /** Marks the member's current plan (when renewing). */
   currentPlanId?: number;
 }) {
+  const t = useTranslations("Memberships.pickers");
+  const f = useFormat();
   const plans = usePlans(true);
 
   if (plans.isPending) {
@@ -87,9 +93,7 @@ export function PlanPicker({
   if (plans.isError || plans.data.length === 0) {
     return (
       <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-        {plans.isError
-          ? "We couldn't load the plans. Close and try again."
-          : "No plan is on sale. Activate a plan first."}
+        {plans.isError ? t("plansError") : t("noPlans")}
       </p>
     );
   }
@@ -113,21 +117,22 @@ export function PlanPicker({
           >
             <div className="min-w-0">
               <p className="flex items-center gap-2 text-sm font-semibold">
-                {plan.name}
+                {/* The plan name is shown exactly as the admin typed it. */}
+                <bdi>{plan.name}</bdi>
                 {plan.id === currentPlanId && (
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    Current plan
+                    {t("currentPlan")}
                   </span>
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatDuration(plan.durationDays)}
+                {f.duration(plan.durationDays)}
                 {plan.durationDays > 30 &&
-                  ` · ≈ ${formatMoney(monthlyPrice(plan.price, plan.durationDays))}/month`}
+                  ` · ${t("perMonth", { price: f.money(monthlyPrice(plan.price, plan.durationDays)) })}`}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-bold tabular-nums">{formatMoney(plan.price)}</span>
+              <span className="text-base font-bold tabular-nums">{f.money(plan.price)}</span>
               <span
                 className={cn(
                   "flex size-5 items-center justify-center rounded-full border",
@@ -162,6 +167,8 @@ export function MemberPicker({
   onChange: (member: PickedMember | null) => void;
   invalid?: boolean;
 }) {
+  const t = useTranslations("Memberships.pickers");
+  const f = useFormat();
   const [search, setSearch] = useState("");
   const debounced = useDebouncedValue(search.trim(), 300);
   const members = useMembers({
@@ -180,12 +187,16 @@ export function MemberPicker({
         <div className="flex min-w-0 items-center gap-3">
           <MemberAvatar name={value.name} photoUrl={value.photoUrl} />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{value.name}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">{value.phone}</p>
+            <p className="truncate text-sm font-semibold">
+              <bdi>{value.name}</bdi>
+            </p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              <span dir="ltr">{value.phone}</span>
+            </p>
           </div>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
-          <X /> Change
+          <X /> {t("change")}
         </Button>
       </div>
     );
@@ -200,7 +211,7 @@ export function MemberPicker({
           id={id}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or phone"
+          placeholder={t("searchPlaceholder")}
           className="ps-9"
           aria-invalid={invalid || undefined}
           autoComplete="off"
@@ -217,7 +228,7 @@ export function MemberPicker({
           Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="m-2 h-10" />)
         ) : items.length === 0 ? (
           <p className="p-3 text-center text-sm text-muted-foreground">
-            {debounced ? `No member matches “${debounced}”.` : "No members yet."}
+            {debounced ? t("noMatch", { search: isolate(debounced) }) : t("noMembers")}
           </p>
         ) : (
           items.map((member) => {
@@ -230,7 +241,7 @@ export function MemberPicker({
                 disabled={running}
                 onClick={() => onChange(member)}
                 className="flex w-full items-center justify-between gap-3 px-3 py-2 text-start transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
-                title={running ? "Already has a running membership. Renew it instead." : undefined}
+                title={running ? t("alreadyRunning") : undefined}
               >
                 <div className="flex min-w-0 items-center gap-2.5">
                   <MemberAvatar
@@ -239,8 +250,12 @@ export function MemberPicker({
                     className="size-8 text-xs"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{member.name}</p>
-                    <p className="text-xs text-muted-foreground tabular-nums">{member.phone}</p>
+                    <p className="truncate text-sm font-medium">
+                      <bdi>{member.name}</bdi>
+                    </p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      <span dir="ltr">{member.phone}</span>
+                    </p>
                   </div>
                 </div>
                 <MemberStateBadge state={member.membershipState} />
@@ -251,7 +266,10 @@ export function MemberPicker({
       </div>
       {members.data && members.data.totalCount > items.length && (
         <p className="text-xs text-muted-foreground">
-          Showing {items.length} of {members.data.totalCount}. Type to narrow down.
+          {t("showing", {
+            shown: f.number(items.length),
+            total: f.number(members.data.totalCount),
+          })}
         </p>
       )}
     </div>

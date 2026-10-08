@@ -61,11 +61,8 @@ namespace GymManagementBLL.Validators.Settings
                 .WithMessage($"Email must be at most {CommonRules.EmailMax} characters.")
                 .EmailAddress();
 
-            RuleFor(x => x.AddressEn).NotEmpty()
-                .Must(v => GymSettingsRules.FitsIn(v, GymSettingsRules.AddressMax))
-                .WithMessage($"Address must be at most {GymSettingsRules.AddressMax} characters.");
-
-            RuleFor(x => x.AddressAr).NotEmpty()
+            // One address, saved exactly as typed (no separate English/Arabic copies).
+            RuleFor(x => x.Address).NotEmpty()
                 .Must(v => GymSettingsRules.FitsIn(v, GymSettingsRules.AddressMax))
                 .WithMessage($"Address must be at most {GymSettingsRules.AddressMax} characters.");
 

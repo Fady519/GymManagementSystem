@@ -1,6 +1,8 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { directionOf } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,8 +17,9 @@ import {
 type FormSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
+  /** Title and description may contain elements, e.g. a name wrapped in <bdi>. */
+  title: React.ReactNode;
+  description: React.ReactNode;
   /** The id of the <form> inside, so the Save button in the footer can submit it. */
   formId: string;
   submitLabel: string;
@@ -38,9 +41,12 @@ export function FormSheet({
   submitting,
   children,
 }: FormSheetProps) {
+  const t = useTranslations("Common");
+  // Form panels slide in from the end side: right in English, left in Arabic (mirrored layout).
+  const side = directionOf(useLocale()) === "rtl" ? "left" : "right";
   return (
     <Sheet open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
-      <SheetContent className="w-full gap-0 sm:max-w-lg">
+      <SheetContent side={side} className="w-full gap-0 sm:max-w-lg">
         <SheetHeader className="border-b">
           <SheetTitle className="text-lg">{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
@@ -51,7 +57,7 @@ export function FormSheet({
         <SheetFooter className="flex-row justify-end border-t">
           <SheetClose asChild>
             <Button variant="outline" disabled={submitting}>
-              Cancel
+              {t("cancel")}
             </Button>
           </SheetClose>
           {/* form={formId} lets this button submit a form it isn't inside of. */}

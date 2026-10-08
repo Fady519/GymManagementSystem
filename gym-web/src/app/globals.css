@@ -140,6 +140,16 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /*
+   * Free-text fields (names, addresses, notes) use dir="auto" so they follow what the user types.
+   * But an EMPTY dir="auto" field counts as left-to-right, which puts the caret and the Arabic
+   * placeholder on the wrong side. "plaintext" keeps the page direction while empty and still
+   * lays out typed English left-to-right and Arabic right-to-left.
+   */
+  :is(input, textarea)[dir="auto"] {
+    direction: inherit;
+    unicode-bidi: plaintext;
+  }
   html {
     @apply font-sans;
   }

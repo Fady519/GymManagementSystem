@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, LogIn } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField, fieldProps } from "@/components/shared/form-field";
@@ -17,16 +19,22 @@ import { Link } from "@/i18n/navigation";
 /**
  * Demo logins for the public portfolio deployment. They only appear when
  * NEXT_PUBLIC_DEMO_PASSWORD is set (see .env.example), so a real gym never shows them.
+ * `role` is the key of the button text in Enums.Role.
  */
 const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD;
 const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@demo.gym" },
-  { label: "Trainer", email: "trainer@demo.gym" },
-  { label: "Member", email: "member@demo.gym" },
-];
+  { role: "Admin", email: "admin@demo.gym" },
+  { role: "Trainer", email: "trainer@demo.gym" },
+  { role: "Member", email: "member@demo.gym" },
+] as const;
 
 export function LoginForm() {
+  const t = useTranslations("Auth");
+  const tValidation = useTranslations("Validation");
+  const tRole = useTranslations("Enums.Role");
   const startSession = useStartSession();
+  // Built from the current language's messages, rebuilt only when the language changes.
+  const schema = useMemo(() => loginSchema(tValidation), [tValidation]);
   const {
     register,
     handleSubmit,
@@ -34,7 +42,7 @@ export function LoginForm() {
     setValue,
     formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
 
@@ -43,6 +51,7 @@ export function LoginForm() {
       // GuestRedirect (in the auth layout) moves the user on once the session is saved.
       startSession(await login(values));
     } catch (error) {
+      // e.g. Auth.InvalidCredentials -> "Email or password is incorrect." in the visitor's language.
       applyServerErrors(error, setError, ["email", "password"]);
     }
   };
@@ -59,34 +68,32 @@ export function LoginForm() {
 
   return (
     <>
-      <AuthHeading
-        title="Welcome back"
-        description="Log in to book classes, follow your membership and manage your day at the gym."
-      />
+      <AuthHeading title={t("login.title")} description={t("login.description")} />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
         <FormError message={errors.root?.server?.message} />
 
-        <FormField id="email" label="Email" error={errors.email?.message}>
+        <FormField id="email" label={t("fields.email")} error={errors.email?.message}>
           <Input
             {...fieldProps("email", errors.email?.message)}
             type="email"
+            dir="ltr"
             autoComplete="email"
-            placeholder="you@example.com"
+            placeholder={t("fields.emailPlaceholder")}
             {...register("email")}
           />
         </FormField>
 
         <FormField
           id="password"
-          label="Password"
+          label={t("fields.password")}
           error={errors.password?.message}
           labelAction={
             <Link
               href="/forgot-password"
               className="text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
-              Forgot password?
+              {t("login.forgot")}
             </Link>
           }
         >
@@ -98,17 +105,15 @@ export function LoginForm() {
         </FormField>
 
         <Button type="submit" size="lg" className="mt-1 h-11 w-full" disabled={busy}>
-          {busy ? <Loader2 className="animate-spin" /> : <LogIn />}
-          {busy ? "Logging in…" : "Log in"}
+          {busy ? <Loader2 className="animate-spin" /> : <LogIn className="rtl:rotate-180" />}
+          {busy ? t("login.submitting") : t("login.submit")}
         </Button>
       </form>
 
       {DEMO_PASSWORD && (
         <div className="mt-8 rounded-xl border border-dashed p-4">
-          <p className="text-sm font-medium">Exploring the demo?</p>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Log in instantly with a sample account.
-          </p>
+          <p className="text-sm font-medium">{t("login.demoTitle")}</p>
+          <p className="mb-3 text-sm text-muted-foreground">{t("login.demoHint")}</p>
           <div className="grid grid-cols-3 gap-2">
             {DEMO_ACCOUNTS.map((account) => (
               <Button
@@ -118,7 +123,7 @@ export function LoginForm() {
                 disabled={busy}
                 onClick={() => loginAsDemo(account.email)}
               >
-                {account.label}
+                {tRole(account.role)}
               </Button>
             ))}
           </div>
@@ -126,12 +131,12 @@ export function LoginForm() {
       )}
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        New to Power Fitness?{" "}
+        {t("login.noAccount")}{" "}
         <Link
           href="/register"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
-          Create your account
+          {t("login.createAccount")}
         </Link>
       </p>
     </>

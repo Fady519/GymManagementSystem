@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 type ConfirmDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
+  /** May contain elements, e.g. a name wrapped in <bdi>. */
+  title: React.ReactNode;
   description: React.ReactNode;
   confirmLabel: string;
   /** Text of the button that closes the dialog (default: "Cancel" in the site language). */

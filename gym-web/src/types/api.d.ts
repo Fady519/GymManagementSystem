@@ -6552,8 +6552,7 @@ export interface components {
             phone: string;
             whatsApp: string | null;
             email: string;
-            addressEn: string;
-            addressAr: string;
+            address: string;
             mapUrl: string | null;
             facebookUrl: string | null;
             instagramUrl: string | null;
@@ -7021,8 +7020,7 @@ export interface components {
             phone: string;
             whatsApp: string | null;
             email: string;
-            addressEn: string;
-            addressAr: string;
+            address: string;
             mapUrl: string | null;
             facebookUrl: string | null;
             instagramUrl: string | null;

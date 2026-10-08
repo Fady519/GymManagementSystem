@@ -18,6 +18,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -61,16 +62,21 @@ import {
 } from "@/features/sessions/queries";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { ApiError } from "@/lib/api-error";
-import { formatDateTime, formatDay, formatTime } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { cn } from "@/lib/utils";
+import { isolate } from "@/lib/bidi";
 import type { SessionBookingItem, SessionResponse } from "@/types";
 import { Link, useRouter } from "@/i18n/navigation";
 
+/** For rich messages: <bdi>name</bdi> keeps a stored name's own direction inside a translated sentence. */
+const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+
 function DetailsSkeleton() {
+  const t = useTranslations("Sessions.details");
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading class">
+    <div className="space-y-6" aria-busy="true" aria-label={t("loading")}>
       <Skeleton className="h-8 w-32" />
       <Skeleton className="h-40 w-full rounded-xl" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -83,6 +89,8 @@ function DetailsSkeleton() {
 
 /** The search-and-book panel. Booking updates the seat counter at once (optimistic). */
 function BookMemberPanel({ session }: { session: SessionResponse }) {
+  const t = useTranslations("Sessions.book");
+  const f = useFormat();
   const [search, setSearch] = useState("");
   const debounced = useDebouncedValue(search.trim(), 300);
   const available = useAvailableMembers(session.id, debounced);
@@ -92,27 +100,27 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
   const onBook = (member: { id: number; name: string; phone: string }) =>
     book.mutate(member, {
       onSuccess: () =>
-        toast.success(`${member.name} is booked`, {
-          description: `${session.categoryName}, ${formatDay(session.startDate)} at ${formatTime(session.startDate)}.`,
+        toast.success(t("done", { name: isolate(member.name) }), {
+          description: t("doneDescription", {
+            category: isolate(session.categoryName),
+            day: f.day(session.startDate),
+            time: f.time(session.startDate),
+          }),
         }),
-      onError: (error) => toastError(`Couldn't book ${member.name}`, error),
+      onError: (error) => toastError(t("failed", { name: isolate(member.name) }), error),
     });
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <UserPlus className="size-4 text-primary" /> Book a member
+          <UserPlus className="size-4 text-primary" /> {t("title")}
         </CardTitle>
-        <CardDescription>
-          Only members with a valid membership on this day who are free at this time are listed.
-        </CardDescription>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {full ? (
-          <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-            The class is full. Cancel a booking or raise the number of spots to add someone.
-          </p>
+          <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{t("full")}</p>
         ) : (
           <>
             <div className="relative">
@@ -120,15 +128,15 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name or phone"
+                placeholder={t("search")}
                 className="ps-9"
-                aria-label="Search members to book"
+                aria-label={t("searchLabel")}
                 maxLength={50}
               />
             </div>
             {available.isError ? (
               <QueryError
-                title="We couldn't load the members"
+                title={t("loadError")}
                 error={available.error}
                 onRetry={() => void available.refetch()}
                 retrying={available.isFetching}
@@ -141,9 +149,7 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
               </div>
             ) : available.data.length === 0 ? (
               <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-                {debounced
-                  ? `Nobody who can book this class matches “${debounced}”.`
-                  : "Every member who can attend is already booked."}
+                {debounced ? t.rich("noMatch", { query: debounced, bdi }) : t("allBooked")}
               </p>
             ) : (
               <ul
@@ -157,8 +163,12 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
                     <div className="flex min-w-0 items-center gap-2.5">
                       <MemberAvatar name={member.name} photoUrl={null} className="size-8 text-xs" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{member.name}</p>
-                        <p className="text-xs text-muted-foreground tabular-nums">{member.phone}</p>
+                        <p className="truncate text-sm font-medium">
+                          <bdi>{member.name}</bdi>
+                        </p>
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                          <span dir="ltr">{member.phone}</span>
+                        </p>
                       </div>
                     </div>
                     <Button
@@ -168,16 +178,14 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
                       onClick={() => onBook(member)}
                       disabled={book.isPending}
                     >
-                      Book
+                      {t("action")}
                     </Button>
                   </li>
                 ))}
               </ul>
             )}
             {available.data && available.data.length >= 50 && (
-              <p className="text-xs text-muted-foreground">
-                Showing the first 50. Search to narrow down.
-              </p>
+              <p className="text-xs text-muted-foreground">{t("firstResults", { count: 50 })}</p>
             )}
           </>
         )}
@@ -187,6 +195,9 @@ function BookMemberPanel({ session }: { session: SessionResponse }) {
 }
 
 function BookingsCard({ session }: { session: SessionResponse }) {
+  const t = useTranslations("Sessions.bookings");
+  const tCommon = useTranslations("Common");
+  const f = useFormat();
   const bookings = useSessionBookings(session.id);
   const cancelBooking = useCancelBooking(session.id);
   const attend = useAttendBooking(session.id);
@@ -206,8 +217,9 @@ function BookingsCard({ session }: { session: SessionResponse }) {
 
   const markAttended = (booking: SessionBookingItem) =>
     attend.mutate(booking, {
-      onSuccess: () => toast.success(`${booking.memberName} checked in`),
-      onError: (error) => toastError(`Couldn't mark ${booking.memberName} as attended`, error),
+      onSuccess: () => toast.success(t("checkedIn", { name: isolate(booking.memberName) })),
+      onError: (error) =>
+        toastError(t("checkInFailed", { name: isolate(booking.memberName) }), error),
     });
 
   return (
@@ -216,17 +228,17 @@ function BookingsCard({ session }: { session: SessionResponse }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Users className="size-4 text-primary" />
           {session.state === "Ongoing" || session.state === "Completed"
-            ? "Attendance"
-            : "Booked members"}
+            ? t("titleAttendance")
+            : t("titleBooked")}
         </CardTitle>
         <CardDescription>
           {session.state === "Ongoing"
-            ? `${attended} of ${active.length} checked in. Mark members as they arrive.`
+            ? t("ongoing", { attended: f.number(attended), total: f.number(active.length) })
             : session.state === "Completed"
-              ? `${attended} of ${active.length} attended.`
+              ? t("completed", { attended: f.number(attended), total: f.number(active.length) })
               : session.state === "Cancelled"
-                ? "Every booking was cancelled with the class."
-                : `${active.length} booked. Bookings can be cancelled until the class starts.`}
+                ? t("cancelled")
+                : t("upcoming", { count: active.length })}
         </CardDescription>
         {cancelledCount > 0 && session.state !== "Cancelled" && (
           <CardAction>
@@ -236,7 +248,9 @@ function BookingsCard({ session }: { session: SessionResponse }) {
               size="sm"
               onClick={() => setShowCancelled((v) => !v)}
             >
-              {showCancelled ? "Hide cancelled" : `Show cancelled (${cancelledCount})`}
+              {showCancelled
+                ? t("hideCancelled")
+                : t("showCancelled", { count: f.number(cancelledCount) })}
             </Button>
           </CardAction>
         )}
@@ -244,7 +258,7 @@ function BookingsCard({ session }: { session: SessionResponse }) {
       <CardContent>
         {bookings.isError ? (
           <QueryError
-            title="We couldn't load the bookings"
+            title={t("loadError")}
             error={bookings.error}
             onRetry={() => void bookings.refetch()}
             retrying={bookings.isFetching}
@@ -259,12 +273,8 @@ function BookingsCard({ session }: { session: SessionResponse }) {
           <EmptyState
             icon={Users}
             className="py-8"
-            title={session.state === "Cancelled" ? "No bookings" : "Nobody booked yet"}
-            description={
-              session.state === "Upcoming"
-                ? "Book members from the panel, or share the timetable so they book online."
-                : "This class had no bookings."
-            }
+            title={session.state === "Cancelled" ? t("emptyCancelledTitle") : t("emptyTitle")}
+            description={session.state === "Upcoming" ? t("emptyUpcoming") : t("emptyPast")}
           />
         ) : (
           <ul className="divide-y">
@@ -289,18 +299,20 @@ function BookingsCard({ session }: { session: SessionResponse }) {
                         href={`/dashboard/members/${booking.memberId}`}
                         className="block truncate text-sm font-medium hover:underline"
                       >
-                        {booking.memberName}
+                        <bdi>{booking.memberName}</bdi>
                       </Link>
                       <p className="text-xs text-muted-foreground tabular-nums">
-                        {booking.memberPhone} · booked{" "}
-                        {pending ? "just now" : formatDateTime(booking.bookedAt)}
+                        <span dir="ltr">{booking.memberPhone}</span> ·{" "}
+                        {pending
+                          ? t("bookedJustNow")
+                          : t("bookedAt", { date: f.dateTime(booking.bookedAt) })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {pending ? (
                       <Badge variant="outline" className="gap-1">
-                        <Loader2 className="animate-spin" /> Booking…
+                        <Loader2 className="animate-spin" /> {t("booking")}
                       </Badge>
                     ) : (
                       <BookingStatusBadge
@@ -315,7 +327,7 @@ function BookingsCard({ session }: { session: SessionResponse }) {
                         onClick={() => markAttended(booking)}
                         disabled={attend.isPending}
                       >
-                        <Check /> Check in
+                        <Check /> {t("checkIn")}
                       </Button>
                     )}
                     {!pending && booking.status === "Booked" && canCancel && (
@@ -326,7 +338,7 @@ function BookingsCard({ session }: { session: SessionResponse }) {
                         className="text-muted-foreground hover:text-destructive"
                         onClick={() => confirmCancel.show(booking)}
                       >
-                        Cancel
+                        {tCommon("cancel")}
                       </Button>
                     )}
                   </div>
@@ -340,9 +352,9 @@ function BookingsCard({ session }: { session: SessionResponse }) {
       <ConfirmDialog
         open={confirmCancel.open}
         onOpenChange={confirmCancel.setOpen}
-        title={`Cancel ${toCancel?.memberName ?? "this"}'s booking?`}
-        description="Their spot opens up for someone else right away. They can book again if spots are left."
-        confirmLabel="Cancel booking"
+        title={t("cancelTitle", { name: isolate(toCancel?.memberName ?? "") })}
+        description={t("cancelDescription")}
+        confirmLabel={t("cancelConfirm")}
         destructive
         pending={false}
         onConfirm={() => {
@@ -350,9 +362,9 @@ function BookingsCard({ session }: { session: SessionResponse }) {
           // Optimistic: close at once, the seat counter already moved. A failure rolls it back.
           confirmCancel.setOpen(false);
           cancelBooking.mutate(toCancel, {
-            onSuccess: () => toast.success(`${toCancel.memberName}'s booking was cancelled`),
+            onSuccess: () => toast.success(t("cancelDone", { name: isolate(toCancel.memberName) })),
             onError: (error) =>
-              toastError(`Couldn't cancel ${toCancel.memberName}'s booking`, error),
+              toastError(t("cancelFailed", { name: isolate(toCancel.memberName) }), error),
           });
         }}
       />
@@ -361,6 +373,10 @@ function BookingsCard({ session }: { session: SessionResponse }) {
 }
 
 function SessionView({ session }: { session: SessionResponse }) {
+  const t = useTranslations("Sessions.details");
+  const tSessions = useTranslations("Sessions");
+  const tLength = useTranslations("Sessions.length");
+  const f = useFormat();
   const router = useRouter();
   const edit = useDialogState<SessionResponse>();
   const cancelDialog = useDialogState<SessionResponse>();
@@ -375,7 +391,7 @@ function SessionView({ session }: { session: SessionResponse }) {
     <div className="space-y-6">
       <Button variant="ghost" size="sm" className="-ms-2" asChild>
         <Link href="/dashboard/sessions">
-          <ArrowLeft /> All classes
+          <ArrowLeft className="rtl:rotate-180" /> {t("back")}
         </Link>
       </Button>
 
@@ -383,20 +399,28 @@ function SessionView({ session }: { session: SessionResponse }) {
         <CardContent className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{session.categoryName}</Badge>
+              <Badge variant="secondary">
+                <bdi>{session.categoryName}</bdi>
+              </Badge>
               <SessionStateBadge state={session.state} />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight break-words">{session.description}</h1>
+            <h1 className="text-2xl font-bold tracking-tight break-words">
+              <bdi>{session.description}</bdi>
+            </h1>
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <CalendarClock className="size-4" /> {formatDay(session.startDate)}
+                <CalendarClock className="size-4" /> {f.day(session.startDate)}
               </span>
               <span className="flex items-center gap-1.5 tabular-nums">
-                <Clock className="size-4" /> {formatTime(session.startDate)} –{" "}
-                {formatTime(session.endDate)} ({formatMinutes(minutes)})
+                <Clock className="size-4" />
+                <span dir="ltr">
+                  {f.time(session.startDate)} – {f.time(session.endDate)}
+                </span>
+                <span>({formatMinutes(minutes, tLength)})</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <UserRound className="size-4" /> Coach {session.trainerName}
+                <UserRound className="size-4" />
+                {t.rich("coach", { name: session.trainerName, bdi })}
               </span>
             </div>
           </div>
@@ -404,18 +428,18 @@ function SessionView({ session }: { session: SessionResponse }) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {session.state !== "Cancelled" && (
               <div className="w-full rounded-xl border bg-muted/30 p-4 sm:w-56">
-                <p className="mb-2 text-xs text-muted-foreground">Spots</p>
+                <p className="mb-2 text-xs text-muted-foreground">{t("spots")}</p>
                 <CapacityMeter booked={session.bookedCount} capacity={session.capacity} />
               </div>
             )}
             {upcoming && (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => edit.show(session)}>
-                  <Pencil /> Edit
+                  <Pencil /> {t("edit")}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" aria-label="More actions">
+                    <Button variant="outline" size="icon" aria-label={t("more")}>
                       <MoreHorizontal />
                     </Button>
                   </DropdownMenuTrigger>
@@ -424,14 +448,14 @@ function SessionView({ session }: { session: SessionResponse }) {
                       variant="destructive"
                       onSelect={() => cancelDialog.show(session)}
                     >
-                      <XCircle /> Cancel class
+                      <XCircle /> {tSessions("actions.cancel")}
                     </DropdownMenuItem>
                     {session.bookedCount === 0 && (
                       <DropdownMenuItem
                         variant="destructive"
                         onSelect={() => confirmDelete.show(session)}
                       >
-                        <Trash2 /> Delete class
+                        <Trash2 /> {tSessions("actions.delete")}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -445,9 +469,11 @@ function SessionView({ session }: { session: SessionResponse }) {
       {session.state === "Cancelled" && (
         <Alert variant="destructive">
           <CalendarX2 />
-          <AlertTitle>This class was cancelled</AlertTitle>
+          <AlertTitle>{t("cancelledTitle")}</AlertTitle>
           <AlertDescription>
-            {session.cancelReason ? `Reason: ${session.cancelReason}` : "No reason was recorded."}
+            {session.cancelReason
+              ? t.rich("cancelReason", { reason: session.cancelReason, bdi })
+              : t("noReason")}
           </AlertDescription>
         </Alert>
       )}
@@ -466,19 +492,19 @@ function SessionView({ session }: { session: SessionResponse }) {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title="Delete this class?"
-        description="It is removed from the timetable. Nobody booked it, so nobody is notified."
-        confirmLabel="Delete class"
+        title={tSessions("delete.title")}
+        description={tSessions("delete.description")}
+        confirmLabel={tSessions("actions.delete")}
         destructive
         pending={deleteSession.isPending}
         onConfirm={() =>
           deleteSession.mutate(session.id, {
             onSuccess: () => {
-              toast.success("Class deleted");
+              toast.success(tSessions("delete.done"));
               router.replace("/dashboard/sessions");
             },
             onError: (error) => {
-              toastError("Couldn't delete the class", error);
+              toastError(tSessions("delete.failed"), error);
               confirmDelete.setOpen(false);
             },
           })
@@ -490,6 +516,7 @@ function SessionView({ session }: { session: SessionResponse }) {
 
 /** /dashboard/sessions/[id]: one class, its bookings and attendance. */
 export function SessionDetails() {
+  const t = useTranslations("Sessions.details");
   const { id } = useParams<{ id: string }>();
   const sessionId = Number(id);
   const valid = Number.isInteger(sessionId) && sessionId > 0;
@@ -501,12 +528,12 @@ export function SessionDetails() {
       <Card>
         <EmptyState
           icon={CalendarX2}
-          title="Class not found"
-          description="This class doesn't exist or was deleted. Find it on the timetable instead."
+          title={t("notFoundTitle")}
+          description={t("notFound")}
           action={
             <Button asChild>
               <Link href="/dashboard/sessions">
-                <ArrowLeft /> Back to classes
+                <ArrowLeft className="rtl:rotate-180" /> {t("backToClasses")}
               </Link>
             </Button>
           }
@@ -518,7 +545,7 @@ export function SessionDetails() {
   if (session.isError) {
     return (
       <QueryError
-        title="We couldn't load this class"
+        title={t("loadError")}
         error={session.error}
         onRetry={() => void session.refetch()}
         retrying={session.isFetching}

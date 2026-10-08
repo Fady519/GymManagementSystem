@@ -13,6 +13,7 @@ import {
   formatTime,
   formatWeekday,
 } from "@/lib/format";
+import { isolateLtr } from "@/lib/bidi";
 
 /**
  * The formatters from lib/format, already set to the current language, plus the ones that need
@@ -31,6 +32,11 @@ export function useFormat() {
       locale,
       money: (amount: number) => formatMoney(amount, locale),
       number: (value: number) => formatNumber(value, locale),
+      /**
+       * "31%" kept as one left-to-right unit. Inside Arabic text a bare "%" would otherwise
+       * jump to the other side of the number ("%31").
+       */
+      percent: (value: number) => isolateLtr(`${formatNumber(value, locale)}%`),
       date: (utc: string | Date) => formatDate(utc, locale),
       dateTime: (utc: string | Date) => formatDateTime(utc, locale),
       day: (utc: string | Date) => formatDay(utc, locale),

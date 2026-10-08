@@ -15,6 +15,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -46,11 +47,19 @@ import {
   resolveRange,
 } from "@/features/dashboard/range";
 import { membershipKeys } from "@/features/memberships/queries";
+import { useFormat } from "@/hooks/use-format";
 import { useListParams } from "@/hooks/use-list-params";
-import { firstName, formatMoney, formatTime, greeting } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
+import { firstName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AnalyticsSummaryResponse } from "@/types";
 import { Link } from "@/i18n/navigation";
+
+/**
+ * Wraps a name in Unicode "isolate" marks: the plain-text version of <bdi>. The page title is a
+ * string, so this keeps an English name from jumbling the Arabic sentence around it (and vice versa).
+ */
+const isolate = (text: string) => `\u2068${text}\u2069`;
 
 /** One line in the breakdown cards: icon, label and number. */
 function BreakdownRow({
@@ -84,70 +93,73 @@ function BreakdownRow({
 
 /** The four headline numbers. They count up on load and glide when the data refreshes. */
 function KpiCards({ data }: { data: AnalyticsSummaryResponse }) {
+  const t = useTranslations("Dashboard.kpi");
+  const f = useFormat();
+  // The count-up passes in-between values (12.4, 12.8...), so round before formatting.
+  const count = (n: number) => f.number(Math.round(n));
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
         icon={Users}
-        label="Active members"
-        value={<AnimatedNumber value={data.activeMembers} />}
-        hint={`${data.totalMembers} members in total`}
+        label={t("activeMembers")}
+        value={<AnimatedNumber value={data.activeMembers} format={count} />}
+        hint={t("totalMembers", { count: data.totalMembers })}
       />
       <StatCard
         icon={Wallet}
-        label="Revenue this month"
-        value={<AnimatedNumber value={data.revenueThisMonth} format={formatMoney} />}
-        hint={`${formatMoney(data.revenueToday)} today`}
+        label={t("revenueMonth")}
+        value={<AnimatedNumber value={data.revenueThisMonth} format={f.money} />}
+        hint={t("revenueToday", { amount: f.money(data.revenueToday) })}
         tone="success"
       />
       <StatCard
         icon={QrCode}
-        label="Check-ins today"
-        value={<AnimatedNumber value={data.checkInsToday} />}
-        hint="Members through the door"
+        label={t("checkInsToday")}
+        value={<AnimatedNumber value={data.checkInsToday} format={count} />}
+        hint={t("checkInsHint")}
       />
       <StatCard
         icon={CalendarClock}
-        label="Upcoming classes"
-        value={<AnimatedNumber value={data.upcomingSessions} />}
-        hint={
-          data.ongoingSessions > 0
-            ? `${data.ongoingSessions} in progress right now`
-            : "None in progress right now"
-        }
+        label={t("upcomingClasses")}
+        value={<AnimatedNumber value={data.upcomingSessions} format={count} />}
+        hint={t("ongoing", { count: data.ongoingSessions })}
       />
     </div>
   );
 }
 
 function MembershipHealthCard({ data }: { data: AnalyticsSummaryResponse }) {
+  const t = useTranslations("Dashboard.health");
+  const f = useFormat();
   const activeShare =
     data.totalMembers > 0 ? Math.round((data.activeMembers / data.totalMembers) * 100) : 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Membership health</CardTitle>
-        <CardDescription>How many of your members can train today.</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-baseline justify-between text-sm">
-            <span className="text-muted-foreground">Active share</span>
-            <span className="text-2xl font-bold tabular-nums">{activeShare}%</span>
+            <span className="text-muted-foreground">{t("activeShare")}</span>
+            <span className="text-2xl font-bold tabular-nums">{f.percent(activeShare)}</span>
           </div>
-          <Progress value={activeShare} aria-label="Share of members with an active membership" />
+          <Progress value={activeShare} aria-label={t("progressLabel")} />
         </div>
         <ul className="divide-y">
           <BreakdownRow
             icon={UserPlus}
-            label="New members this month"
-            value={data.newMembersThisMonth}
+            label={t("newThisMonth")}
+            value={f.number(data.newMembersThisMonth)}
           />
-          <BreakdownRow icon={Snowflake} label="Frozen memberships" value={data.frozenMembers} />
+          <BreakdownRow icon={Snowflake} label={t("frozen")} value={f.number(data.frozenMembers)} />
           <BreakdownRow
             icon={Hourglass}
-            label="Expiring soon, not renewed yet"
-            value={data.expiringSoon}
+            label={t("expiringSoon")}
+            value={f.number(data.expiringSoon)}
             highlight={data.expiringSoon > 0}
           />
         </ul>
@@ -157,27 +169,34 @@ function MembershipHealthCard({ data }: { data: AnalyticsSummaryResponse }) {
 }
 
 function TodayCard({ data }: { data: AnalyticsSummaryResponse }) {
+  const t = useTranslations("Dashboard.today");
+  const f = useFormat();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Today at the gym</CardTitle>
-        <CardDescription>Live activity across the floor and the schedule.</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="divide-y">
+          <BreakdownRow icon={Wallet} label={t("revenue")} value={f.money(data.revenueToday)} />
+          <BreakdownRow icon={QrCode} label={t("checkIns")} value={f.number(data.checkInsToday)} />
           <BreakdownRow
-            icon={Wallet}
-            label="Revenue today"
-            value={formatMoney(data.revenueToday)}
+            icon={Activity}
+            label={t("inProgress")}
+            value={f.number(data.ongoingSessions)}
           />
-          <BreakdownRow icon={QrCode} label="Check-ins" value={data.checkInsToday} />
-          <BreakdownRow icon={Activity} label="Classes in progress" value={data.ongoingSessions} />
           <BreakdownRow
             icon={CalendarPlus}
-            label="Classes coming up"
-            value={data.upcomingSessions}
+            label={t("comingUp")}
+            value={f.number(data.upcomingSessions)}
           />
-          <BreakdownRow icon={Dumbbell} label="Trainers on the team" value={data.totalTrainers} />
+          <BreakdownRow
+            icon={Dumbbell}
+            label={t("trainers")}
+            value={f.number(data.totalTrainers)}
+          />
         </ul>
       </CardContent>
     </Card>
@@ -189,6 +208,9 @@ function TodayCard({ data }: { data: AnalyticsSummaryResponse }) {
  * (kept in the URL as ?range=), and the renewals that need a call this week.
  */
 export function AdminOverview() {
+  const t = useTranslations("Dashboard");
+  const f = useFormat();
+  const now = useNow();
   const { user } = useAuth();
   const summary = useAnalyticsSummary();
   const queryClient = useQueryClient();
@@ -198,7 +220,11 @@ export function AdminOverview() {
   const rawRange = params.string("range", DEFAULT_RANGE);
   const rangeKey = isDashboardRange(rawRange) ? rawRange : DEFAULT_RANGE;
   const range = resolveRange(rangeKey);
-  const rangeText = DASHBOARD_RANGES.find((r) => r.value === rangeKey)!.text;
+  const rangeText = t(`ranges.${rangeKey}.text`);
+
+  // The greeting needs the clock, which is only known in the browser (useNow is null before that).
+  const name = firstName(user?.fullName ?? "");
+  const hello = now ? f.greeting(now) : t("welcome");
 
   const refreshAll = () =>
     void Promise.all([
@@ -209,11 +235,9 @@ export function AdminOverview() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${greeting()}, ${firstName(user?.fullName ?? "")}`}
+        title={name ? t("greeting", { greeting: hello, name: isolate(name) }) : hello}
         description={
-          summary.data
-            ? `Here's how the gym is doing. Updated at ${formatTime(summary.data.generatedAt)}, refreshes every minute.`
-            : "Here's how the gym is doing."
+          summary.data ? t("updated", { time: f.time(summary.data.generatedAt) }) : t("intro")
         }
         actions={
           <>
@@ -223,25 +247,25 @@ export function AdminOverview() {
                 params.set({ range: value === DEFAULT_RANGE ? null : value })
               }
             >
-              <SelectTrigger className="w-40" aria-label="Chart period">
+              <SelectTrigger className="w-40" aria-label={t("actions.period")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="end">
-                {DASHBOARD_RANGES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
+                {DASHBOARD_RANGES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {t(`ranges.${value}.label`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button variant="outline" asChild>
               <Link href="/dashboard/check-in">
-                <ScanLine /> Check-in desk
+                <ScanLine /> {t("actions.checkInDesk")}
               </Link>
             </Button>
             <Button asChild>
               <Link href="/dashboard/members/new">
-                <UserPlus /> Add member
+                <UserPlus /> {t("actions.addMember")}
               </Link>
             </Button>
             <Button
@@ -249,8 +273,8 @@ export function AdminOverview() {
               size="icon"
               onClick={refreshAll}
               disabled={refreshing}
-              aria-label="Refresh the dashboard"
-              title="Refresh the dashboard"
+              aria-label={t("actions.refresh")}
+              title={t("actions.refresh")}
             >
               <RefreshCw className={refreshing ? "animate-spin" : undefined} />
             </Button>
@@ -266,7 +290,7 @@ export function AdminOverview() {
         </div>
       ) : summary.isError ? (
         <QueryError
-          title="We couldn't load the dashboard"
+          title={t("loadError")}
           error={summary.error}
           onRetry={() => void summary.refetch()}
           retrying={summary.isFetching}

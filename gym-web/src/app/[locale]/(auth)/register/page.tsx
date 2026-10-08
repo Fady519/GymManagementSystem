@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { RegisterForm } from "@/features/auth/components/register-form";
 
-export const metadata: Metadata = {
-  title: "Create your account",
-  description: "Join Power Fitness: create your member account in under a minute.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Auth.register");
+  return { title: t("metaTitle"), description: t("metaDescription") };
+}
 
 export default function RegisterPage() {
   return <RegisterForm />;

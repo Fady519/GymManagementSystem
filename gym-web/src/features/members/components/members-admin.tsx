@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { Eye, SearchX, Trash2, UserPlus, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,15 +23,12 @@ import { ExportButton } from "@/components/shared/export-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { QueryError } from "@/components/shared/query-error";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
-import {
-  MEMBER_STATES,
-  MemberStateBadge,
-  memberStateLabel,
-} from "@/features/members/components/member-state-badge";
+import { MEMBER_STATES, MemberStateBadge } from "@/features/members/components/member-state-badge";
+import { isolate } from "@/lib/bidi";
 import { useDeleteMember, useMembers } from "@/features/members/queries";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
-import { formatDate } from "@/lib/format";
 import { toastError } from "@/lib/notify";
 import { GENDERS } from "@/lib/validation";
 import type { Gender, MemberListItem, MemberMembershipState, MemberSortBy } from "@/types";
@@ -46,6 +44,9 @@ function oneOf<T extends string>(value: string, allowed: readonly T[]): T | null
 
 /** The admin members page: searched, filtered, sorted and paged by the API, with the state in the URL. */
 export function MembersAdmin() {
+  const t = useTranslations("Members.list");
+  const tEnums = useTranslations("Enums");
+  const f = useFormat();
   const router = useRouter();
   const params = useListParams();
   const search = params.string("search");
@@ -81,59 +82,68 @@ export function MembersAdmin() {
     () =>
       col.columns([
         col.accessor("name", {
-          header: "Member",
+          header: t("columns.member"),
           meta: { sortKey: "Name" },
           cell: ({ row }) => (
             <div className="flex min-w-52 items-center gap-3">
               <MemberAvatar name={row.original.name} photoUrl={row.original.photoUrl} />
               <div className="min-w-0">
+                {/* <bdi>: the name keeps its own direction, whatever the UI language. */}
                 <Link
                   href={`/dashboard/members/${row.original.id}`}
                   className="block truncate font-medium hover:underline"
                 >
-                  {row.original.name}
+                  <bdi>{row.original.name}</bdi>
                 </Link>
-                <p className="truncate text-xs text-muted-foreground">{row.original.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  <span dir="ltr">{row.original.email}</span>
+                </p>
               </div>
             </div>
           ),
         }),
         col.accessor("phone", {
-          header: "Phone",
+          header: t("columns.phone"),
           meta: { className: "hidden md:table-cell" },
-          cell: ({ getValue }) => <span className="tabular-nums">{getValue()}</span>,
+          cell: ({ getValue }) => (
+            <span dir="ltr" className="tabular-nums">
+              {getValue()}
+            </span>
+          ),
         }),
         col.accessor("gender", {
-          header: "Gender",
+          header: t("columns.gender"),
           meta: { className: "hidden xl:table-cell" },
-          cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
+          cell: ({ getValue }) => (
+            <span className="text-muted-foreground">{tEnums(`Gender.${getValue()}`)}</span>
+          ),
         }),
         col.accessor("membershipState", {
-          header: "Membership",
+          header: t("columns.membership"),
           cell: ({ getValue }) => <MemberStateBadge state={getValue()} />,
         }),
         col.accessor("createdAt", {
-          header: "Joined",
+          header: t("columns.joined"),
           meta: { sortKey: "CreatedAt", className: "hidden sm:table-cell" },
           cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{formatDate(getValue())}</span>
+            <span className="text-muted-foreground">{f.date(getValue())}</span>
           ),
         }),
         col.display({
           id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
+          header: () => <span className="sr-only">{t("columns.actions")}</span>,
           meta: { className: "w-12 text-end" },
           cell: ({ row }) => (
             <RowActions
-              label={`Actions for ${row.original.name}`}
+              label={t("rowActions", { name: isolate(row.original.name) })}
               actions={[
                 {
-                  label: "Open profile",
+                  label: t("openProfile"),
                   icon: Eye,
                   onSelect: () => router.push(`/dashboard/members/${row.original.id}`),
                 },
                 {
-                  label: "Delete member",
+                  label: t("delete"),
                   icon: Trash2,
                   destructive: true,
                   onSelect: () => showDelete(row.original),
@@ -143,7 +153,7 @@ export function MembersAdmin() {
           ),
         }),
       ]),
-    [router, showDelete],
+    [router, showDelete, t, tEnums, f],
   );
 
   const data = members.data;
@@ -154,25 +164,25 @@ export function MembersAdmin() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Members"
+        title={t("title")}
         description={
           data
             ? filtered
-              ? `${data.totalCount} ${data.totalCount === 1 ? "member matches" : "members match"} your filters.`
-              : `${data.totalCount} members registered at the gym.`
-            : "Everyone registered at the gym."
+              ? t("countFiltered", { count: data.totalCount })
+              : t("countAll", { count: data.totalCount })
+            : t("description")
         }
         actions={
           <>
             <ExportButton
               name="members"
-              itemLabel="members"
+              itemLabel={t("itemLabel")}
               filters={{ search, gender, membershipState: state, sortBy, descending }}
               disabled={data?.totalCount === 0}
             />
             <Button asChild>
               <Link href="/dashboard/members/new">
-                <UserPlus /> Add member
+                <UserPlus /> {t("add")}
               </Link>
             </Button>
           </>
@@ -184,10 +194,10 @@ export function MembersAdmin() {
         onValueChange={(value) => params.set({ state: value === "all" ? null : value })}
       >
         <TabsList className="h-auto! flex-wrap">
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="all">{t("all")}</TabsTrigger>
           {MEMBER_STATES.map((s) => (
             <TabsTrigger key={s} value={s}>
-              {memberStateLabel(s)}
+              {tEnums(`MemberMembershipState.${s}`)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -197,42 +207,42 @@ export function MembersAdmin() {
         <SearchInput
           value={search}
           onChange={(value) => params.set({ search: value })}
-          placeholder="Search by name, email or phone"
+          placeholder={t("searchPlaceholder")}
           className="sm:max-w-sm sm:flex-1"
         />
         <Select
           value={gender ?? "all"}
           onValueChange={(value) => params.set({ gender: value === "all" ? null : value })}
         >
-          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by gender">
+          <SelectTrigger className="w-full sm:w-40" aria-label={t("genderFilter")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All genders</SelectItem>
+            <SelectItem value="all">{t("allGenders")}</SelectItem>
             {GENDERS.map((g) => (
               <SelectItem key={g} value={g}>
-                {g}
+                {tEnums(`Gender.${g}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {filtered && (
           <Button variant="ghost" onClick={clearFilters}>
-            Clear filters
+            {t("clearFilters")}
           </Button>
         )}
       </div>
 
       {members.isError ? (
         <QueryError
-          title="We couldn't load the members"
+          title={t("loadError")}
           error={members.error}
           onRetry={() => void members.refetch()}
           retrying={members.isFetching}
         />
       ) : (
         <DataTable
-          label="Members"
+          label={t("title")}
           columns={columns}
           data={data?.items}
           getRowId={(m) => String(m.id)}
@@ -246,27 +256,25 @@ export function MembersAdmin() {
             filtered ? (
               <EmptyState
                 icon={SearchX}
-                title="No members match"
+                title={t("noMatchTitle")}
                 description={
-                  search
-                    ? `Nobody matches “${search}” with these filters. Check the spelling or try the phone number.`
-                    : "No member fits these filters right now."
+                  search ? t("noMatchSearch", { search: isolate(search) }) : t("noMatchFilters")
                 }
                 action={
                   <Button variant="outline" onClick={clearFilters}>
-                    Clear filters
+                    {t("clearFilters")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={Users}
-                title="No members yet"
-                description="Register your first member at reception. It takes about a minute."
+                title={t("emptyTitle")}
+                description={t("emptyBody")}
                 action={
                   <Button asChild>
                     <Link href="/dashboard/members/new">
-                      <UserPlus /> Add the first member
+                      <UserPlus /> {t("emptyAction")}
                     </Link>
                   </Button>
                 }
@@ -280,7 +288,7 @@ export function MembersAdmin() {
                 pageSize={data.pageSize}
                 totalCount={data.totalCount}
                 totalPages={data.totalPages}
-                itemLabel="members"
+                itemLabel={t("itemLabel")}
                 onPageChange={setPage}
                 onPageSizeChange={(size) =>
                   params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })
@@ -294,16 +302,17 @@ export function MembersAdmin() {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title={`Delete ${toDelete?.name ?? "member"}?`}
-        description="They disappear from the members list and can no longer book classes. Their payments and attendance stay in the reports. Members with an active membership or upcoming bookings can't be deleted."
-        confirmLabel="Delete member"
+        title={toDelete ? t("deleteTitle", { name: isolate(toDelete.name) }) : t("delete")}
+        description={t("deleteBody")}
+        confirmLabel={t("delete")}
         destructive
         pending={deleteMember.isPending}
         onConfirm={() => {
           if (!toDelete) return;
+          const name = isolate(toDelete.name);
           deleteMember.mutate(toDelete.id, {
-            onSuccess: () => toast.success(`${toDelete.name} was deleted`),
-            onError: (error) => toastError(`Couldn't delete ${toDelete.name}`, error),
+            onSuccess: () => toast.success(t("deleted", { name })),
+            onError: (error) => toastError(t("deleteError", { name }), error),
             onSettled: () => confirmDelete.setOpen(false),
           });
         }}

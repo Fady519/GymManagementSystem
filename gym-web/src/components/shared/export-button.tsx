@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,20 +13,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { isolateLtr } from "@/lib/bidi";
 import { downloadExport, type ExportName } from "@/lib/download";
 import { toastError } from "@/lib/notify";
 import type { ExportFormat } from "@/types";
 
 type ParamValue = string | number | boolean | null | undefined;
 
-const FORMATS: { value: ExportFormat; label: string; hint: string; icon: typeof FileText }[] = [
-  {
-    value: "Xlsx",
-    label: "Excel workbook",
-    hint: "Formatted, ready to filter",
-    icon: FileSpreadsheet,
-  },
-  { value: "Csv", label: "CSV file", hint: "For other tools and imports", icon: FileText },
+// `key` points at the label and hint in Shared.export ("xlsx" + "xlsxHint", ...).
+const FORMATS: { value: ExportFormat; key: "xlsx" | "csv"; icon: typeof FileText }[] = [
+  { value: "Xlsx", key: "xlsx", icon: FileSpreadsheet },
+  { value: "Csv", key: "csv", icon: FileText },
 ];
 
 /**
@@ -41,19 +39,24 @@ export function ExportButton({
   name: ExportName;
   /** The page's current filters, with the API's parameter names (e.g. { state: "Active" }). */
   filters: Record<string, ParamValue>;
-  /** Plural noun for the messages, e.g. "members". */
+  /**
+   * Plural noun for the messages, already translated and with "the" in Arabic,
+   * e.g. "members" / "الأعضاء" ("Includes all members that match…").
+   */
   itemLabel: string;
   disabled?: boolean;
 }) {
+  const t = useTranslations("Shared.export");
   const [busy, setBusy] = useState<ExportFormat | null>(null);
 
   const run = async (format: ExportFormat) => {
     setBusy(format);
     try {
       const fileName = await downloadExport(name, filters, format);
-      toast.success("Export ready", { description: `${fileName} was saved to your downloads.` });
+      // File names are Latin (e.g. members-2026-10-08.xlsx): keep them left-to-right in Arabic text.
+      toast.success(t("ready"), { description: t("saved", { file: isolateLtr(fileName) }) });
     } catch (error) {
-      toastError(`We couldn't export the ${itemLabel}`, error);
+      toastError(t("failed", { items: itemLabel }), error);
     } finally {
       setBusy(null);
     }
@@ -64,20 +67,20 @@ export function ExportButton({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" disabled={disabled || busy !== null}>
           {busy ? <Loader2 className="animate-spin" /> : <Download />}
-          {busy ? "Preparing…" : "Export"}
+          {busy ? t("preparing") : t("button")}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Includes all {itemLabel} that match the current filters, not just this page.
+          {t("includes", { items: itemLabel })}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {FORMATS.map((format) => (
           <DropdownMenuItem key={format.value} onSelect={() => void run(format.value)}>
             <format.icon />
             <div className="flex flex-col">
-              <span>{format.label}</span>
-              <span className="text-xs text-muted-foreground">{format.hint}</span>
+              <span>{t(format.key)}</span>
+              <span className="text-xs text-muted-foreground">{t(`${format.key}Hint`)}</span>
             </div>
           </DropdownMenuItem>
         ))}

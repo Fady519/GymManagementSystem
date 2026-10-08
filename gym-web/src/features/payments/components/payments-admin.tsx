@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { ArrowDownLeft, ArrowUpRight, Hash, Receipt, SearchX, Wallet } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,17 +27,16 @@ import {
   PAYMENT_TYPE_STYLE,
 } from "@/features/payments/payment-meta";
 import { usePaymentSummary, usePayments } from "@/features/payments/queries";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
 import {
   addDays,
   cairoToUtc,
   cairoToday,
-  formatPlainDate,
   isPlainDate,
   startOfMonth,
   startOfWeek,
 } from "@/lib/cairo-time";
-import { formatDateTime, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaymentMethod, PaymentResponse, PaymentType } from "@/types";
 import { Link } from "@/i18n/navigation";
@@ -44,15 +44,9 @@ import { Link } from "@/i18n/navigation";
 const col = createColumns<PaymentResponse>();
 const DEFAULT_PAGE_SIZE = 20;
 
-const RANGES = [
-  { value: "today", label: "Today" },
-  { value: "week", label: "This week" },
-  { value: "month", label: "This month" },
-  { value: "30d", label: "Last 30 days" },
-  { value: "all", label: "All time" },
-  { value: "custom", label: "Custom dates" },
-] as const;
-type Range = (typeof RANGES)[number]["value"];
+/** The period choices; their labels are under Payments.ranges.<value>. */
+const RANGES = ["today", "week", "month", "30d", "all", "custom"] as const;
+type Range = (typeof RANGES)[number];
 
 /** A date range in Cairo days -> the UTC [from, to) the API filters with. `to` is exclusive. */
 function rangeToDays(
@@ -83,20 +77,17 @@ function rangeToDays(
   }
 }
 
-const RANGE_TEXT: Record<Range, string> = {
-  today: "today",
-  week: "this week",
-  month: "this month",
-  "30d": "in the last 30 days",
-  all: "since the gym opened",
-  custom: "in the chosen dates",
-};
-
 /** /dashboard/payments: every purchase, renewal and refund, with totals that follow the filters. */
 export function PaymentsAdmin() {
+  const t = useTranslations("Payments");
+  const tCols = useTranslations("Members.columns");
+  const tEnums = useTranslations("Enums");
+  const f = useFormat();
   const params = useListParams();
   const rawRange = params.string("range", "month");
-  const range: Range = RANGES.some((r) => r.value === rawRange) ? (rawRange as Range) : "month";
+  const range: Range = (RANGES as readonly string[]).includes(rawRange)
+    ? (rawRange as Range)
+    : "month";
   const customFrom = params.string("from");
   const customTo = params.string("to");
   const rawMethod = params.string("method");
@@ -104,7 +95,7 @@ export function PaymentsAdmin() {
     ? (rawMethod as PaymentMethod)
     : null;
   const rawType = params.string("type");
-  const type = PAYMENT_TYPES.some((t) => t.value === rawType) ? (rawType as PaymentType) : null;
+  const type = PAYMENT_TYPES.some((p) => p.value === rawType) ? (rawType as PaymentType) : null;
   const page = params.number("page", 1);
   const pageSize = pageSizeFrom(params, DEFAULT_PAGE_SIZE);
 
@@ -128,78 +119,86 @@ export function PaymentsAdmin() {
     () =>
       col.columns([
         col.accessor("paidAt", {
-          header: "Date",
+          header: tCols("date"),
           cell: ({ getValue }) => (
-            <span className="whitespace-nowrap">{formatDateTime(getValue())}</span>
+            <span className="whitespace-nowrap">{f.dateTime(getValue())}</span>
           ),
         }),
         col.accessor("memberName", {
-          header: "Member",
+          header: tCols("member"),
           cell: ({ row }) => (
             <Link
               href={`/dashboard/members/${row.original.memberId}?tab=payments`}
               className="font-medium hover:underline"
             >
-              {row.original.memberName}
+              <bdi>{row.original.memberName}</bdi>
             </Link>
           ),
         }),
-        col.accessor("planName", { header: "Plan", meta: { className: "hidden md:table-cell" } }),
+        col.accessor("planName", {
+          header: tCols("plan"),
+          meta: { className: "hidden md:table-cell" },
+          cell: ({ getValue }) => <bdi>{getValue()}</bdi>,
+        }),
         col.accessor("type", {
-          header: "Type",
+          header: tCols("type"),
           meta: { className: "hidden sm:table-cell" },
           cell: ({ getValue }) => (
             <Badge variant="outline" className={PAYMENT_TYPE_STYLE[getValue()]}>
-              {getValue()}
+              {tEnums(`PaymentType.${getValue()}`)}
             </Badge>
           ),
         }),
-        col.accessor("method", { header: "Method", meta: { className: "hidden sm:table-cell" } }),
+        col.accessor("method", {
+          header: tCols("method"),
+          meta: { className: "hidden sm:table-cell" },
+          cell: ({ getValue }) => tEnums(`PaymentMethod.${getValue()}`),
+        }),
         col.accessor("amount", {
-          header: "Amount",
+          header: tCols("amount"),
           meta: { className: "text-end" },
           cell: ({ row }) => {
             const refund = row.original.type === "Refund";
             return (
               <span className={cn("font-semibold tabular-nums", refund && "text-destructive")}>
                 {refund ? "−" : ""}
-                {formatMoney(row.original.amount)}
+                {f.money(row.original.amount)}
               </span>
             );
           },
         }),
         col.accessor("receivedBy", {
-          header: "Received by",
+          header: tCols("receivedBy"),
           meta: { className: "hidden xl:table-cell" },
-          cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{getValue() ?? "—"}</span>
-          ),
+          cell: ({ getValue }) => <bdi className="text-muted-foreground">{getValue() ?? "—"}</bdi>,
         }),
       ]),
-    [],
+    [tCols, tEnums, f],
   );
 
   const totals = summary.data;
   const filtered = range !== "month" || Boolean(method || type);
   const reset = () => params.set({ range: null, from: null, to: null, method: null, type: null });
+  // "this month", "from 1 May 2026 to 7 May 2026"... used inside the sentences below.
   const periodText =
     range === "custom" && days.from && days.to && !badCustomRange
-      ? `from ${formatPlainDate(days.from)} to ${formatPlainDate(addDays(days.to, -1))}`
-      : RANGE_TEXT[range];
+      ? t("period.between", {
+          from: f.date(cairoToUtc(days.from)),
+          to: f.date(cairoToUtc(addDays(days.to, -1))),
+        })
+      : t(`period.${range}`);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payments"
+        title={t("title")}
         description={
-          totals
-            ? `${totals.paymentCount} ${totals.paymentCount === 1 ? "payment" : "payments"} ${periodText}.`
-            : "Every purchase, renewal and refund, with who received it."
+          totals ? t("count", { count: totals.paymentCount, period: periodText }) : t("description")
         }
         actions={
           <ExportButton
             name="payments"
-            itemLabel="payments"
+            itemLabel={t("itemLabel")}
             filters={filters}
             disabled={badCustomRange || totals?.paymentCount === 0}
           />
@@ -211,13 +210,13 @@ export function PaymentsAdmin() {
           value={range}
           onValueChange={(value) => params.set({ range: value === "month" ? null : value })}
         >
-          <SelectTrigger className="w-full lg:w-44" aria-label="Period">
+          <SelectTrigger className="w-full lg:w-44" aria-label={t("filters.period")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {RANGES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
-                {r.label}
+              <SelectItem key={r} value={r}>
+                {t(`ranges.${r}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -226,16 +225,16 @@ export function PaymentsAdmin() {
           <div className="flex items-center gap-2">
             <Input
               type="date"
-              aria-label="From"
+              aria-label={t("filters.from")}
               value={customFrom}
               max={customTo || undefined}
               onChange={(event) => params.set({ from: event.target.value || null })}
               className="w-40"
             />
-            <span className="text-sm text-muted-foreground">to</span>
+            <span className="text-sm text-muted-foreground">{t("filters.to")}</span>
             <Input
               type="date"
-              aria-label="To"
+              aria-label={t("filters.toLabel")}
               value={customTo}
               min={customFrom || undefined}
               onChange={(event) => params.set({ to: event.target.value || null })}
@@ -247,14 +246,14 @@ export function PaymentsAdmin() {
           value={method ?? "all"}
           onValueChange={(value) => params.set({ method: value === "all" ? null : value })}
         >
-          <SelectTrigger className="w-full lg:w-40" aria-label="Payment method">
+          <SelectTrigger className="w-full lg:w-40" aria-label={t("filters.method")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All methods</SelectItem>
+            <SelectItem value="all">{t("filters.allMethods")}</SelectItem>
             {PAYMENT_METHODS.map((m) => (
               <SelectItem key={m.value} value={m.value}>
-                {m.label}
+                {tEnums(`PaymentMethod.${m.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -263,27 +262,25 @@ export function PaymentsAdmin() {
           value={type ?? "all"}
           onValueChange={(value) => params.set({ type: value === "all" ? null : value })}
         >
-          <SelectTrigger className="w-full lg:w-44" aria-label="Payment type">
+          <SelectTrigger className="w-full lg:w-44" aria-label={t("filters.type")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {PAYMENT_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
+            <SelectItem value="all">{t("filters.allTypes")}</SelectItem>
+            {PAYMENT_TYPES.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {tEnums(`PaymentType.${p.value}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {filtered && (
           <Button variant="ghost" onClick={reset}>
-            Reset
+            {t("filters.reset")}
           </Button>
         )}
       </div>
-      {badCustomRange && (
-        <p className="text-sm text-destructive">The end date must be on or after the start date.</p>
-      )}
+      {badCustomRange && <p className="text-sm text-destructive">{t("filters.badRange")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {summary.isPending ? (
@@ -291,7 +288,7 @@ export function PaymentsAdmin() {
         ) : summary.isError ? (
           <div className="sm:col-span-2 xl:col-span-4">
             <QueryError
-              title="We couldn't load the totals"
+              title={t("totalsError")}
               error={summary.error}
               onRetry={() => void summary.refetch()}
               retrying={summary.isFetching}
@@ -302,30 +299,30 @@ export function PaymentsAdmin() {
             <StatCard
               icon={ArrowDownLeft}
               tone="success"
-              label="Money in"
-              value={formatMoney(totals!.totalIncome)}
-              hint="New memberships and renewals"
+              label={t("stats.in")}
+              value={f.money(totals!.totalIncome)}
+              hint={t("stats.inHint")}
             />
             <StatCard
               icon={ArrowUpRight}
               tone="destructive"
-              label="Refunded"
-              value={formatMoney(totals!.totalRefunds)}
-              hint="Paid back on cancellations"
+              label={t("stats.refunded")}
+              value={f.money(totals!.totalRefunds)}
+              hint={t("stats.refundedHint")}
             />
             <StatCard
               icon={Wallet}
               tone="primary"
-              label="Net revenue"
-              value={formatMoney(totals!.totalNet)}
-              hint="Money in minus refunds"
+              label={t("stats.net")}
+              value={f.money(totals!.totalNet)}
+              hint={t("stats.netHint")}
             />
             <StatCard
               icon={Hash}
               tone="warning"
-              label="Payments"
-              value={totals!.paymentCount}
-              hint={`Recorded ${periodText}`}
+              label={t("stats.count")}
+              value={f.number(totals!.paymentCount)}
+              hint={t("stats.countHint", { period: periodText })}
             />
           </>
         )}
@@ -333,14 +330,14 @@ export function PaymentsAdmin() {
 
       {payments.isError ? (
         <QueryError
-          title="We couldn't load the payments"
+          title={t("loadError")}
           error={payments.error}
           onRetry={() => void payments.refetch()}
           retrying={payments.isFetching}
         />
       ) : (
         <DataTable
-          label="Payments"
+          label={t("title")}
           columns={columns}
           data={payments.data?.items}
           getRowId={(p) => String(p.id)}
@@ -351,22 +348,22 @@ export function PaymentsAdmin() {
             filtered ? (
               <EmptyState
                 icon={SearchX}
-                title="No payments match"
-                description={`Nothing was recorded ${periodText} with these filters. Try a longer period.`}
+                title={t("noMatchTitle")}
+                description={t("noMatchBody", { period: periodText })}
                 action={
                   <Button variant="outline" onClick={reset}>
-                    Reset filters
+                    {t("filters.resetAll")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={Receipt}
-                title="No payments this month yet"
-                description="Payments appear here as soon as a membership is sold, renewed or refunded."
+                title={t("emptyTitle")}
+                description={t("emptyBody")}
                 action={
                   <Button variant="outline" asChild>
-                    <Link href="/dashboard/memberships">Go to memberships</Link>
+                    <Link href="/dashboard/memberships">{t("emptyAction")}</Link>
                   </Button>
                 }
               />
@@ -379,7 +376,7 @@ export function PaymentsAdmin() {
                 pageSize={payments.data.pageSize}
                 totalCount={payments.data.totalCount}
                 totalPages={payments.data.totalPages}
-                itemLabel="payments"
+                itemLabel={t("itemLabel")}
                 onPageChange={setPage}
                 onPageSizeChange={(size) =>
                   params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })

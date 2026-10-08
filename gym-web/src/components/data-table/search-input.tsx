@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +11,22 @@ type SearchInputProps = {
   value: string;
   /** Called 300 ms after the user stops typing, so we don't send one request per letter. */
   onChange: (value: string) => void;
-  placeholder: string;
+  /** Defaults to "Search…" in the site language; pass a hint such as "Search by name or phone…". */
+  placeholder?: string;
   className?: string;
 };
 
 const DEBOUNCE_MS = 300;
 
 /** A search box with a clear button that waits for the user to stop typing before searching. */
-export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
+export function SearchInput({
+  value,
+  onChange,
+  placeholder: customPlaceholder,
+  className,
+}: SearchInputProps) {
+  const t = useTranslations("DataTable");
+  const placeholder = customPlaceholder ?? t("search");
   const [text, setText] = useState(value);
   // The last URL value we reacted to, and the last search we asked for.
   const [seen, setSeen] = useState(value);
@@ -70,7 +79,7 @@ export function SearchInput({ value, onChange, placeholder, className }: SearchI
             send("");
           }}
           className="absolute end-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Clear search"
+          aria-label={t("clearSearch")}
         >
           <X className="size-3.5" />
         </button>

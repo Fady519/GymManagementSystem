@@ -25,8 +25,7 @@ namespace GymManagement.Tests.Settings
             Phone: "+20 100 555 0199",
             WhatsApp: "+20 100 555 0199",
             Email: "hello@powerfitness.eg",
-            AddressEn: "12 Abbas El Akkad St, Nasr City, Cairo",
-            AddressAr: "12 شارع عباس العقاد، مدينة نصر، القاهرة",
+            Address: "12 Abbas El Akkad St, Nasr City, Cairo",
             MapUrl: "https://maps.google.com/?q=Abbas+El+Akkad+Nasr+City+Cairo",
             FacebookUrl: null,
             InstagramUrl: null,
@@ -58,8 +57,9 @@ namespace GymManagement.Tests.Settings
 
         #region Read
 
+        /// <summary>The values the AddGymSettings migration inserts (UnifyGymAddress kept the English address).</summary>
         [Fact]
-        public async Task Migration_SeedsTheSingleRow_WithArabicAddress()
+        public async Task Migration_SeedsTheSingleRow()
         {
             await factory.WithDbAsync(async db =>
             {
@@ -68,7 +68,7 @@ namespace GymManagement.Tests.Settings
                 var settings = Assert.Single(rows);
                 Assert.Equal(GymSettings.SingletonId, settings.Id);
                 Assert.Equal("Power Fitness", settings.GymName);
-                Assert.Equal(Seed.AddressAr, settings.AddressAr); // nvarchar: no "????"
+                Assert.Equal(Seed.Address, settings.Address);
             });
         }
 
@@ -84,8 +84,7 @@ namespace GymManagement.Tests.Settings
                     GymName = "Another gym",
                     Phone = "0225551234",
                     Email = "other@gym.com",
-                    AddressEn = "Somewhere",
-                    AddressAr = "مكان ما",
+                    Address = "Somewhere",
                     WeekdayOpensAt = new TimeOnly(8, 0),
                     WeekdayClosesAt = new TimeOnly(20, 0),
                 });
@@ -102,7 +101,7 @@ namespace GymManagement.Tests.Settings
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var settings = await response.ReadAsAsync<GymSettingsResponse>();
             Assert.Equal(Seed.GymName, settings.GymName);
-            Assert.Equal(Seed.AddressAr, settings.AddressAr);
+            Assert.Equal(Seed.Address, settings.Address);
             Assert.Equal(new TimeOnly(6, 0), settings.WeekdayOpensAt);
             Assert.Equal(new TimeOnly(22, 0), settings.FridayClosesAt);
         }
@@ -120,8 +119,7 @@ namespace GymManagement.Tests.Settings
                 Phone = "02-2555-1234",
                 WhatsApp = "+201005550100",
                 Email = "info@newgym.eg",
-                AddressEn = "5 Tahrir Sq, Cairo",
-                AddressAr = "5 ميدان التحرير، القاهرة",
+                Address = "5 Tahrir Sq, Cairo",
                 FacebookUrl = "https://facebook.com/newgym",
                 InstagramUrl = "https://instagram.com/newgym",
                 WeekdayOpensAt = new TimeOnly(7, 30),
@@ -138,7 +136,7 @@ namespace GymManagement.Tests.Settings
             Assert.Equal(request.Phone, saved.Phone);
             Assert.Equal(request.WhatsApp, saved.WhatsApp);
             Assert.Equal(request.Email, saved.Email);
-            Assert.Equal(request.AddressAr, saved.AddressAr);
+            Assert.Equal(request.Address, saved.Address);
             Assert.Equal(request.FacebookUrl, saved.FacebookUrl);
             Assert.Equal(request.InstagramUrl, saved.InstagramUrl);
             Assert.Equal(request.WeekdayOpensAt, saved.WeekdayOpensAt);
@@ -152,6 +150,22 @@ namespace GymManagement.Tests.Settings
             // The public website shows the new values at once.
             var publicGym = await factory.CreateHttpsClient().GetFromJsonAsync<GymSettingsResponse>("/api/public/gym", Json);
             Assert.Equal(saved, publicGym);
+        }
+
+        [Fact]
+        public async Task Put_ArabicAddress_IsStoredExactlyAsTyped()
+        {
+            // One address in any language (here Arabic mixed with a number), never translated or duplicated.
+            const string arabic = "5 ميدان التحرير، القاهرة";
+
+            var response = await PutAsync(Seed with { Address = arabic });
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(arabic, (await response.ReadAsAsync<GymSettingsResponse>()).Address);
+
+            // nvarchar column: the Arabic letters are not saved as "????".
+            await factory.WithDbAsync(async db =>
+                Assert.Equal(arabic, (await db.GymSettings.SingleAsync()).Address));
         }
 
         [Fact]
@@ -203,7 +217,7 @@ namespace GymManagement.Tests.Settings
         [InlineData("bad-email", "email")]
         [InlineData("missing-email", "email")]
         [InlineData("missing-name", "gymName")]
-        [InlineData("missing-address-ar", "addressAr")]
+        [InlineData("missing-address", "address")]
         [InlineData("bad-phone", "phone")]
         [InlineData("short-phone", "phone")]
         [InlineData("bad-whatsapp", "whatsApp")]
@@ -222,7 +236,7 @@ namespace GymManagement.Tests.Settings
                 "bad-email" => Seed with { Email = "not-an-email" },
                 "missing-email" => Seed with { Email = "  " },
                 "missing-name" => Seed with { GymName = "" },
-                "missing-address-ar" => Seed with { AddressAr = "   " },
+                "missing-address" => Seed with { Address = "   " },
                 "bad-phone" => Seed with { Phone = "call us" },
                 "short-phone" => Seed with { Phone = "12345" },
                 "bad-whatsapp" => Seed with { WhatsApp = "wa.me/2010" },

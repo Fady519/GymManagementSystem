@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { ClipboardList, LogIn, ScanLine, SearchX, ShieldX, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,35 +23,21 @@ import { checkInParams, type CheckInFilters } from "@/features/check-ins/api";
 import {
   CHECK_IN_RESULTS,
   CheckInResultBadge,
-  DENY_REASON_LABEL,
 } from "@/features/check-ins/components/check-in-badges";
 import { useCheckIns } from "@/features/check-ins/queries";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
-import {
-  addDays,
-  cairoToday,
-  formatPlainDate,
-  isPlainDate,
-  startOfMonth,
-  startOfWeek,
-} from "@/lib/cairo-time";
-import { formatDate, formatDateTime, formatTime } from "@/lib/format";
+import { addDays, cairoToday, isPlainDate, startOfMonth, startOfWeek } from "@/lib/cairo-time";
 import type { CheckInResponse, CheckInResult } from "@/types";
 import { Link } from "@/i18n/navigation";
 
 const col = createColumns<CheckInResponse>();
 const DEFAULT_PAGE_SIZE = 20;
 
-const RANGES = [
-  { value: "today", label: "Today", text: "today" },
-  { value: "week", label: "This week", text: "this week" },
-  { value: "month", label: "This month", text: "this month" },
-  { value: "30d", label: "Last 30 days", text: "in the last 30 days" },
-  { value: "all", label: "All time", text: "since the gym opened" },
-  { value: "custom", label: "Custom dates", text: "in the chosen dates" },
-] as const;
-type Range = (typeof RANGES)[number]["value"];
+/** The period picker values. Their words are in CheckIns.log.ranges.{value}.label / .text. */
+const RANGES = ["today", "week", "month", "30d", "all", "custom"] as const;
+type Range = (typeof RANGES)[number];
 
 /** A period -> the gym-local days (both inclusive) the check-ins API filters with. */
 function rangeToDays(range: Range, customFrom: string, customTo: string) {
@@ -76,13 +63,19 @@ function rangeToDays(range: Range, customFrom: string, customTo: string) {
 
 /** /dashboard/check-ins: every scan at the door (let in and turned away), filtered and exportable. */
 export function CheckInsLog() {
+  const t = useTranslations("CheckIns");
+  const tResult = useTranslations("Enums.CheckInResult");
+  const tReason = useTranslations("Enums.CheckInDenyReason");
+  const f = useFormat();
   const params = useListParams();
   const rawRange = params.string("range", "today");
-  const range: Range = RANGES.some((r) => r.value === rawRange) ? (rawRange as Range) : "today";
+  const range: Range = (RANGES as readonly string[]).includes(rawRange)
+    ? (rawRange as Range)
+    : "today";
   const customFrom = params.string("from");
   const customTo = params.string("to");
   const rawResult = params.string("result");
-  const result = CHECK_IN_RESULTS.some((r) => r.value === rawResult)
+  const result = (CHECK_IN_RESULTS as readonly string[]).includes(rawResult)
     ? (rawResult as CheckInResult)
     : null;
   const memberId = params.number("memberId", 0) || null;
@@ -113,22 +106,22 @@ export function CheckInsLog() {
     () =>
       col.columns([
         col.accessor("checkedInAt", {
-          header: "Time",
+          header: t("log.columns.time"),
           cell: ({ getValue }) => (
             <>
               {/* Phones: time on top, date underneath, to keep the table narrow. */}
               <span className="flex flex-col tabular-nums sm:hidden">
-                <span className="font-medium">{formatTime(getValue())}</span>
-                <span className="text-xs text-muted-foreground">{formatDate(getValue())}</span>
+                <span className="font-medium">{f.time(getValue())}</span>
+                <span className="text-xs text-muted-foreground">{f.date(getValue())}</span>
               </span>
               <span className="hidden whitespace-nowrap tabular-nums sm:inline">
-                {formatDateTime(getValue())}
+                {f.dateTime(getValue())}
               </span>
             </>
           ),
         }),
         col.accessor("memberName", {
-          header: "Member",
+          header: t("log.columns.member"),
           cell: ({ row }) => (
             <div className="flex items-center gap-3 sm:min-w-40">
               <MemberAvatar
@@ -140,36 +133,34 @@ export function CheckInsLog() {
                 href={`/dashboard/members/${row.original.memberId}`}
                 className="truncate font-medium hover:underline"
               >
-                {row.original.memberName}
+                <bdi>{row.original.memberName}</bdi>
               </Link>
             </div>
           ),
         }),
         col.accessor("result", {
-          header: "Result",
+          header: t("log.columns.result"),
           cell: ({ getValue }) => <CheckInResultBadge result={getValue()} />,
         }),
         col.accessor("denyReason", {
-          header: "Reason",
+          header: t("log.columns.reason"),
           meta: { className: "hidden md:table-cell" },
           cell: ({ getValue }) => {
             const reason = getValue();
-            return (
-              <span className="text-muted-foreground">
-                {reason ? DENY_REASON_LABEL[reason] : "—"}
-              </span>
-            );
+            return <span className="text-muted-foreground">{reason ? tReason(reason) : "—"}</span>;
           },
         }),
         col.accessor("checkedBy", {
-          header: "Scanned by",
+          header: t("log.columns.scannedBy"),
           meta: { className: "hidden lg:table-cell" },
           cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{getValue() ?? "—"}</span>
+            <span className="text-muted-foreground">
+              <bdi>{getValue() ?? "—"}</bdi>
+            </span>
           ),
         }),
       ]),
-    [],
+    [t, tReason, f],
   );
 
   const total = (allowed.data?.totalCount ?? 0) + (denied.data?.totalCount ?? 0);
@@ -182,31 +173,37 @@ export function CheckInsLog() {
   const filtered = range !== "today" || Boolean(result || memberId);
   const reset = () =>
     params.set({ range: null, from: null, to: null, result: null, memberId: null });
+  // Plain "YYYY-MM-DD" days: noon UTC is the same calendar day in Cairo, so f.date shows that day.
+  const plainDate = (day: string) => f.date(`${day}T12:00:00Z`);
   const periodText =
     range === "custom" && days.from && days.to && !badCustomRange
-      ? `from ${formatPlainDate(days.from)} to ${formatPlainDate(days.to)}`
-      : RANGES.find((r) => r.value === range)!.text;
+      ? t("log.customPeriod", { from: plainDate(days.from), to: plainDate(days.to) })
+      : t(`log.ranges.${range}.text`);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Attendance log"
+        title={t("log.title")}
         description={
           checkIns.data
-            ? `${checkIns.data.totalCount} ${checkIns.data.totalCount === 1 ? "scan" : "scans"} ${periodText}${result ? `, ${CHECK_IN_RESULTS.find((r) => r.value === result)!.label.toLowerCase()} only` : ""}.`
-            : "Every scan at the door, including members who were turned away."
+            ? t("log.summary", {
+                count: checkIns.data.totalCount,
+                period: periodText,
+                result: result ?? "none",
+              })
+            : t("log.intro")
         }
         actions={
           <>
             <ExportButton
               name="check-ins"
-              itemLabel="check-ins"
+              itemLabel={t("log.itemLabel")}
               filters={checkInParams(filters)}
               disabled={badCustomRange || checkIns.data?.totalCount === 0}
             />
             <Button asChild>
               <Link href="/dashboard/check-in">
-                <ScanLine /> Open check-in desk
+                <ScanLine /> {t("log.openDesk")}
               </Link>
             </Button>
           </>
@@ -218,13 +215,13 @@ export function CheckInsLog() {
           value={range}
           onValueChange={(value) => params.set({ range: value === "today" ? null : value })}
         >
-          <SelectTrigger className="w-full lg:w-44" aria-label="Period">
+          <SelectTrigger className="w-full lg:w-44" aria-label={t("log.periodLabel")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {RANGES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
-                {r.label}
+            {RANGES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t(`log.ranges.${value}.label`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -233,16 +230,16 @@ export function CheckInsLog() {
           <div className="flex items-center gap-2">
             <Input
               type="date"
-              aria-label="From"
+              aria-label={t("log.from")}
               value={customFrom}
               max={customTo || undefined}
               onChange={(event) => params.set({ from: event.target.value || null })}
               className="w-40"
             />
-            <span className="text-sm text-muted-foreground">to</span>
+            <span className="text-sm text-muted-foreground">{t("log.toSeparator")}</span>
             <Input
               type="date"
-              aria-label="To"
+              aria-label={t("log.to")}
               value={customTo}
               min={customFrom || undefined}
               onChange={(event) => params.set({ to: event.target.value || null })}
@@ -254,26 +251,31 @@ export function CheckInsLog() {
           value={result ?? "all"}
           onValueChange={(value) => params.set({ result: value === "all" ? null : value })}
         >
-          <SelectTrigger className="w-full lg:w-44" aria-label="Result">
+          <SelectTrigger className="w-full lg:w-44" aria-label={t("log.resultLabel")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All results</SelectItem>
-            {CHECK_IN_RESULTS.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
-                {r.label}
+            <SelectItem value="all">{t("log.allResults")}</SelectItem>
+            {CHECK_IN_RESULTS.map((value) => (
+              <SelectItem key={value} value={value}>
+                {tResult(value)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {memberId && (
           <span className="inline-flex h-9 items-center gap-2 rounded-md border bg-muted/50 ps-3 pe-1 text-sm">
-            Member: <span className="font-medium">{memberName ?? `#${memberId}`}</span>
+            <span>
+              {t.rich("log.member", {
+                name: memberName ?? `#${memberId}`,
+                b: (chunks) => <bdi className="font-medium">{chunks}</bdi>,
+              })}
+            </span>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="Show all members"
+              aria-label={t("log.showAllMembers")}
               onClick={() => params.set({ memberId: null })}
             >
               <X />
@@ -282,19 +284,17 @@ export function CheckInsLog() {
         )}
         {filtered && (
           <Button variant="ghost" onClick={reset}>
-            Reset
+            {t("log.reset")}
           </Button>
         )}
       </div>
-      {badCustomRange && (
-        <p className="text-sm text-destructive">The end date must be on or after the start date.</p>
-      )}
+      {badCustomRange && <p className="text-sm text-destructive">{t("log.badRange")}</p>}
 
       <div className="grid gap-4 sm:grid-cols-3">
         {totalsError ? (
           <div className="sm:col-span-3">
             <QueryError
-              title="We couldn't load the totals"
+              title={t("log.totalsError")}
               error={totalsError}
               onRetry={() => void Promise.all([allowed.refetch(), denied.refetch()])}
               retrying={allowed.isFetching || denied.isFetching}
@@ -306,23 +306,25 @@ export function CheckInsLog() {
           <>
             <StatCard
               icon={ClipboardList}
-              label="Total scans"
-              value={total}
-              hint={`Recorded ${periodText}`}
+              label={t("stats.total")}
+              value={f.number(total)}
+              hint={t("log.recorded", { period: periodText })}
             />
             <StatCard
               icon={LogIn}
               tone="success"
-              label="Let in"
-              value={allowed.data.totalCount}
-              hint={total > 0 ? `${allowedShare}% of all scans` : "No scans in this period"}
+              label={t("stats.letIn")}
+              value={f.number(allowed.data.totalCount)}
+              hint={
+                total > 0 ? t("log.share", { percent: f.percent(allowedShare) }) : t("log.noScans")
+              }
             />
             <StatCard
               icon={ShieldX}
               tone="destructive"
-              label="Turned away"
-              value={denied.data.totalCount}
-              hint="Refused at the door, with the reason logged"
+              label={t("stats.turnedAway")}
+              value={f.number(denied.data.totalCount)}
+              hint={t("log.turnedAwayHint")}
             />
           </>
         )}
@@ -330,14 +332,14 @@ export function CheckInsLog() {
 
       {checkIns.isError ? (
         <QueryError
-          title="We couldn't load the check-ins"
+          title={t("log.loadError")}
           error={checkIns.error}
           onRetry={() => void checkIns.refetch()}
           retrying={checkIns.isFetching}
         />
       ) : (
         <DataTable
-          label="Check-ins"
+          label={t("log.tableLabel")}
           columns={columns}
           data={checkIns.data?.items}
           getRowId={(c) => String(c.id)}
@@ -348,22 +350,22 @@ export function CheckInsLog() {
             filtered ? (
               <EmptyState
                 icon={SearchX}
-                title="No check-ins match"
-                description={`Nobody was scanned ${periodText} with these filters. Try a longer period.`}
+                title={t("log.noMatchTitle")}
+                description={t("log.noMatch", { period: periodText })}
                 action={
                   <Button variant="outline" onClick={reset}>
-                    Reset filters
+                    {t("log.resetFilters")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={ScanLine}
-                title="No check-ins yet today"
-                description="Scans from the check-in desk appear here the moment they happen."
+                title={t("log.emptyTitle")}
+                description={t("log.empty")}
                 action={
                   <Button variant="outline" asChild>
-                    <Link href="/dashboard/check-in">Open check-in desk</Link>
+                    <Link href="/dashboard/check-in">{t("log.openDesk")}</Link>
                   </Button>
                 }
               />
@@ -376,7 +378,7 @@ export function CheckInsLog() {
                 pageSize={checkIns.data.pageSize}
                 totalCount={checkIns.data.totalCount}
                 totalPages={checkIns.data.totalPages}
-                itemLabel="check-ins"
+                itemLabel={t("log.itemLabel")}
                 onPageChange={setPage}
                 onPageSizeChange={(size) =>
                   params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })

@@ -83,7 +83,7 @@ function PlanCards({ plans }: { plans: PlanResponse[] }) {
                     {t("perMonth", { price: f.money(perMonth) })}
                     {savingPercent > 0 && (
                       <span className="ms-2 rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
-                        {t("save", { percent: savingPercent })}
+                        {t("save", { percent: f.percent(savingPercent) })}
                       </span>
                     )}
                   </p>

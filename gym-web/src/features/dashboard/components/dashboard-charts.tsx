@@ -15,6 +15,7 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,9 @@ import { previousRange, type DayRange } from "@/features/dashboard/range";
 import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { useMembershipActions } from "@/features/memberships/components/membership-actions";
 import { useExpiringSoon } from "@/features/memberships/queries";
-import { daysUntil, formatMoney } from "@/lib/format";
+import { useFormat } from "@/hooks/use-format";
+import { useNow } from "@/hooks/use-now";
+import { daysUntil } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 
@@ -138,11 +141,15 @@ function ChartBody<T>({
   );
 }
 
-const sellAction = (
-  <Button variant="outline" size="sm" asChild>
-    <Link href="/dashboard/memberships">Go to memberships</Link>
-  </Button>
-);
+/** The button under the empty revenue / plan charts. */
+function SellAction() {
+  const t = useTranslations("Dashboard.actions");
+  return (
+    <Button variant="outline" size="sm" asChild>
+      <Link href="/dashboard/memberships">{t("memberships")}</Link>
+    </Button>
+  );
+}
 
 // ------------------------------------------------------------------------------------------
 // Revenue
@@ -152,15 +159,20 @@ const sellAction = (
 function TrendBadge({
   current,
   previous,
-  label,
+  lastYear,
 }: {
   current: number;
   previous: number;
-  label: string;
+  /** true: compared with the same dates last year (12-month view), false: the period right before. */
+  lastYear: boolean;
 }) {
+  const t = useTranslations("Dashboard.revenue");
+  const f = useFormat();
   if (previous <= 0) {
     return (
-      <span className="text-xs text-muted-foreground">No revenue in the {label} to compare</span>
+      <span className="text-xs text-muted-foreground">
+        {lastYear ? t("noCompareLastYear") : t("noComparePrevious")}
+      </span>
     );
   }
   const change = Math.round(((current - previous) / previous) * 100);
@@ -178,10 +190,13 @@ function TrendBadge({
         )}
       >
         <Icon className="size-3" />
-        {up ? "+" : ""}
-        {change}%
+        {/* dir="ltr" keeps the sign in front of the number in Arabic too: "+12%". */}
+        <span dir="ltr">
+          {up ? "+" : "-"}
+          {f.number(Math.abs(change))}%
+        </span>
       </Badge>
-      vs. the {label}
+      {lastYear ? t("compareLastYear") : t("comparePrevious")}
     </span>
   );
 }
@@ -195,54 +210,58 @@ export function RevenueCard({
   rangeText: string;
   className?: string;
 }) {
+  const t = useTranslations("Dashboard");
+  const f = useFormat();
   const revenue = useRevenue(range);
   const previous = useRevenue(previousRange(range));
   const data = revenue.data;
-  const compareLabel = range.period === "Monthly" ? "same period last year" : "previous period";
 
   return (
     <Card className={className}>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle>Revenue</CardTitle>
-            <CardDescription>Net income after refunds {rangeText}.</CardDescription>
+            <CardTitle>{t("revenue.title")}</CardTitle>
+            <CardDescription>{t("revenue.description", { range: rangeText })}</CardDescription>
           </div>
           <div className="flex items-center gap-4">
-            <LegendDot color="var(--chart-1)" label="Income" />
-            <LegendDot color="var(--destructive)" label="Refunds" />
+            <LegendDot color="var(--chart-1)" label={t("charts.income")} />
+            <LegendDot color="var(--destructive)" label={t("charts.refunds")} />
           </div>
         </div>
         {data && (
           <div className="flex flex-wrap items-end gap-x-4 gap-y-2 pt-2">
             <p className="text-3xl font-bold tracking-tight">
-              <AnimatedNumber value={data.totalNet} format={formatMoney} />
+              <AnimatedNumber value={data.totalNet} format={f.money} />
             </p>
             {previous.data && (
               <TrendBadge
                 current={data.totalNet}
                 previous={previous.data.totalNet}
-                label={compareLabel}
+                lastYear={range.period === "Monthly"}
               />
             )}
           </div>
         )}
         {data && (
           <p className="text-xs text-muted-foreground">
-            {formatMoney(data.totalIncome)} in · {formatMoney(data.totalRefunds)} refunded
+            {t("revenue.breakdown", {
+              income: f.money(data.totalIncome),
+              refunds: f.money(data.totalRefunds),
+            })}
           </p>
         )}
       </CardHeader>
       <CardContent>
         <ChartBody
           query={revenue}
-          errorTitle="We couldn't load the revenue"
+          errorTitle={t("revenue.loadError")}
           isEmpty={(d) => d.points.every((p) => p.income === 0 && p.refunds === 0)}
           empty={{
             icon: Wallet,
-            title: "No payments in this period",
-            description: "Revenue appears here as soon as a membership is sold or renewed.",
-            action: sellAction,
+            title: t("revenue.emptyTitle"),
+            description: t("revenue.empty"),
+            action: <SellAction />,
           }}
         >
           {(d) => <RevenueChart data={d} />}
@@ -259,6 +278,8 @@ export function RevenueCard({
 const GROWTH_MONTHS = 12;
 
 export function MembersGrowthCard({ className }: { className?: string }) {
+  const t = useTranslations("Dashboard");
+  const f = useFormat();
   const growth = useMembersGrowth(GROWTH_MONTHS);
   const points = growth.data ?? [];
   const latest = points.at(-1);
@@ -269,22 +290,29 @@ export function MembersGrowthCard({ className }: { className?: string }) {
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle>Member growth</CardTitle>
-            <CardDescription>New sign-ups per month over the last 12 months.</CardDescription>
+            <CardTitle>{t("growth.title")}</CardTitle>
+            <CardDescription>{t("growth.description")}</CardDescription>
           </div>
           <div className="flex items-center gap-4">
-            <LegendDot color="var(--chart-3)" label="New members" />
-            <LegendDot color="var(--chart-1)" label="Total members" />
+            <LegendDot color="var(--chart-3)" label={t("charts.newMembers")} />
+            <LegendDot color="var(--chart-1)" label={t("charts.totalMembers")} />
           </div>
         </div>
         {latest && (
           <div className="flex flex-wrap items-end gap-x-4 gap-y-1 pt-2">
             <p className="text-3xl font-bold tracking-tight">
-              <AnimatedNumber value={latest.totalMembers} />
+              <AnimatedNumber value={latest.totalMembers} format={(n) => f.number(Math.round(n))} />
             </p>
             <span className="text-xs text-muted-foreground">
-              members today · <span className="font-semibold text-success">+{joined}</span> joined
-              in 12 months
+              {t.rich("growth.summary", {
+                count: latest.totalMembers,
+                joined: f.number(joined),
+                b: (chunks) => (
+                  <span dir="ltr" className="font-semibold text-success">
+                    {chunks}
+                  </span>
+                ),
+              })}
             </span>
           </div>
         )}
@@ -292,15 +320,15 @@ export function MembersGrowthCard({ className }: { className?: string }) {
       <CardContent>
         <ChartBody
           query={growth}
-          errorTitle="We couldn't load member growth"
+          errorTitle={t("growth.loadError")}
           isEmpty={(d) => d.every((p) => p.newMembers === 0 && p.totalMembers === 0)}
           empty={{
             icon: UserPlus,
-            title: "No members yet",
-            description: "Add your first member and the growth chart starts here.",
+            title: t("growth.emptyTitle"),
+            description: t("growth.empty"),
             action: (
               <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/members/new">Add member</Link>
+                <Link href="/dashboard/members/new">{t("actions.addMember")}</Link>
               </Button>
             ),
           }}
@@ -317,24 +345,25 @@ export function MembersGrowthCard({ className }: { className?: string }) {
 // ------------------------------------------------------------------------------------------
 
 export function PlansCard({ className }: { className?: string }) {
+  const t = useTranslations("Dashboard.plans");
   const plans = usePlansDistribution();
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Plan mix</CardTitle>
-        <CardDescription>Running memberships by plan, right now.</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartBody
           query={plans}
           height={300}
-          errorTitle="We couldn't load the plan mix"
+          errorTitle={t("loadError")}
           isEmpty={(d) => d.length === 0}
           empty={{
             icon: PieIcon,
-            title: "No running memberships",
-            description: "Once members are on a plan, you'll see which plans sell best.",
-            action: sellAction,
+            title: t("emptyTitle"),
+            description: t("empty"),
+            action: <SellAction />,
           }}
         >
           {(d) => <PlansDistributionChart data={d} />}
@@ -357,37 +386,40 @@ export function AttendanceCard({
   rangeText: string;
   className?: string;
 }) {
+  const t = useTranslations("Dashboard");
+  const f = useFormat();
   const attendance = useAttendanceRate(range);
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle>Class attendance</CardTitle>
-        <CardDescription>Booked members who showed up {rangeText}.</CardDescription>
+        <CardTitle>{t("attendance.title")}</CardTitle>
+        <CardDescription>{t("attendance.description", { range: rangeText })}</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartBody
           query={attendance}
           height={200}
-          errorTitle="We couldn't load attendance"
+          errorTitle={t("attendance.loadError")}
           isEmpty={(d) => d.bookings === 0}
           empty={{
             icon: CircleCheck,
-            title: "No finished classes yet",
-            description: "Attendance is measured once booked classes in this period have ended.",
+            title: t("attendance.emptyTitle"),
+            description: t("attendance.empty"),
           }}
         >
           {(d) => (
             <div className="space-y-5">
               <AttendanceGauge data={d} />
-              <dl className="grid grid-cols-3 divide-x rounded-lg border text-center">
+              {/* divide-x draws a physical left border: flip it in RTL so the lines stay between cells. */}
+              <dl className="grid grid-cols-3 divide-x rounded-lg border text-center rtl:divide-x-reverse">
                 {[
-                  { label: "Booked", value: d.bookings },
-                  { label: "Attended", value: d.attended },
-                  { label: "No-shows", value: d.noShows },
+                  { key: "booked", label: t("charts.booked"), value: d.bookings },
+                  { key: "attended", label: t("charts.attended"), value: d.attended },
+                  { key: "noShows", label: t("charts.noShows"), value: d.noShows },
                 ].map((item) => (
-                  <div key={item.label} className="px-2 py-3">
+                  <div key={item.key} className="px-2 py-3">
                     <dt className="text-xs text-muted-foreground">{item.label}</dt>
-                    <dd className="text-lg font-semibold tabular-nums">{item.value}</dd>
+                    <dd className="text-lg font-semibold tabular-nums">{f.number(item.value)}</dd>
                   </div>
                 ))}
               </dl>
@@ -412,18 +444,19 @@ export function TopCategoriesCard({
   rangeText: string;
   className?: string;
 }) {
+  const t = useTranslations("Dashboard");
   const categories = useTopCategories(range);
   return (
     <Card className={className}>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle>Popular classes</CardTitle>
-            <CardDescription>Most booked categories {rangeText}.</CardDescription>
+            <CardTitle>{t("categories.title")}</CardTitle>
+            <CardDescription>{t("categories.description", { range: rangeText })}</CardDescription>
           </div>
           <div className="flex items-center gap-3">
-            <LegendDot color="var(--chart-2)" label="Booked" />
-            <LegendDot color="var(--chart-4)" label="Attended" />
+            <LegendDot color="var(--chart-2)" label={t("charts.booked")} />
+            <LegendDot color="var(--chart-4)" label={t("charts.attended")} />
           </div>
         </div>
       </CardHeader>
@@ -431,16 +464,16 @@ export function TopCategoriesCard({
         <ChartBody
           query={categories}
           height={200}
-          errorTitle="We couldn't load the popular classes"
+          errorTitle={t("categories.loadError")}
           isEmpty={(d) => d.length === 0}
           empty={{
             icon: BarChart3,
-            title: "No bookings in this period",
-            description: "Schedule classes and let members book them to see what's popular.",
+            title: t("categories.emptyTitle"),
+            description: t("categories.empty"),
             action: (
               <Button variant="outline" size="sm" asChild>
                 <Link href="/dashboard/sessions">
-                  <CalendarPlus /> Open the schedule
+                  <CalendarPlus /> {t("categories.openSchedule")}
                 </Link>
               </Button>
             ),
@@ -461,6 +494,8 @@ const RENEWALS_SHOWN = 5;
 
 /** Memberships ending within a week with no renewal yet, with a one-click Renew. */
 export function RenewalsDueCard({ className }: { className?: string }) {
+  const t = useTranslations("Dashboard.renewals");
+  const now = useNow();
   const expiring = useExpiringSoon();
   const actions = useMembershipActions();
   const list = expiring.data ?? [];
@@ -471,19 +506,15 @@ export function RenewalsDueCard({ className }: { className?: string }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <AlarmClock className="size-4 text-amber-600 dark:text-amber-400" /> Renewals due
+              <AlarmClock className="size-4 text-amber-600 dark:text-amber-400" /> {t("title")}
             </CardTitle>
             <CardDescription>
-              {expiring.data
-                ? list.length > 0
-                  ? `${list.length} ${list.length === 1 ? "membership ends" : "memberships end"} within 7 days with no renewal yet.`
-                  : "Memberships ending within 7 days with no renewal yet."
-                : "Checking who needs a renewal…"}
+              {expiring.data ? t("count", { count: list.length }) : t("checking")}
             </CardDescription>
           </div>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard/memberships?state=Active">
-              All memberships <ArrowRight className="rtl:rotate-180" />
+              {t("allMemberships")} <ArrowRight className="rtl:rotate-180" />
             </Link>
           </Button>
         </div>
@@ -497,7 +528,7 @@ export function RenewalsDueCard({ className }: { className?: string }) {
           </div>
         ) : expiring.isError ? (
           <QueryError
-            title="We couldn't load the renewals"
+            title={t("loadError")}
             error={expiring.error}
             onRetry={() => void expiring.refetch()}
             retrying={expiring.isFetching}
@@ -505,15 +536,16 @@ export function RenewalsDueCard({ className }: { className?: string }) {
         ) : list.length === 0 ? (
           <EmptyState
             icon={CircleCheck}
-            title="You're all caught up"
-            description="No membership ends in the next 7 days without a renewal."
+            title={t("emptyTitle")}
+            description={t("empty")}
             className="py-8"
           />
         ) : (
           <ul className="divide-y">
             {list.slice(0, RENEWALS_SHOWN).map((m) => {
-              const days = daysUntil(m.endDate);
-              const urgent = days <= 2;
+              // The days left need the clock: unknown (no badge) until the page is in the browser.
+              const days = now ? daysUntil(m.endDate, now) : null;
+              const urgent = days !== null && days <= 2;
               return (
                 <li key={m.id} className="flex items-center gap-3 py-3">
                   <MemberAvatar name={m.memberName} photoUrl={null} />
@@ -522,23 +554,27 @@ export function RenewalsDueCard({ className }: { className?: string }) {
                       href={`/dashboard/members/${m.memberId}`}
                       className="block truncate text-sm font-medium hover:underline"
                     >
-                      {m.memberName}
+                      <bdi>{m.memberName}</bdi>
                     </Link>
-                    <p className="truncate text-xs text-muted-foreground">{m.planName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      <bdi>{m.planName}</bdi>
+                    </p>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "hidden sm:inline-flex",
-                      urgent
-                        ? "border-destructive/30 bg-destructive/10 text-destructive"
-                        : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                    )}
-                  >
-                    {days <= 1 ? "Ends tomorrow" : `Ends in ${days} days`}
-                  </Badge>
+                  {days !== null && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "hidden sm:inline-flex",
+                        urgent
+                          ? "border-destructive/30 bg-destructive/10 text-destructive"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                      )}
+                    >
+                      {days <= 1 ? t("endsTomorrow") : t("endsIn", { count: days })}
+                    </Badge>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => actions.run("renew", m)}>
-                    <RefreshCcw /> Renew
+                    <RefreshCcw /> {t("renew")}
                   </Button>
                 </li>
               );
@@ -547,7 +583,7 @@ export function RenewalsDueCard({ className }: { className?: string }) {
         )}
         {list.length > RENEWALS_SHOWN && (
           <p className="pt-3 text-xs text-muted-foreground">
-            And {list.length - RENEWALS_SHOWN} more on the memberships page.
+            {t("more", { count: list.length - RENEWALS_SHOWN })}
           </p>
         )}
         {actions.dialogs}

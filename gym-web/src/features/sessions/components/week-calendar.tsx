@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   SESSION_STATE_STYLE,
   SessionStateBadge,
 } from "@/features/sessions/components/session-badges";
+import { useFormat } from "@/hooks/use-format";
+import { useNow } from "@/hooks/use-now";
 import {
   addDays,
   cairoMinuteOfDay,
   cairoToUtc,
   cairoToday,
-  formatPlainDay,
-  formatWeekday,
   utcToCairoInputs,
 } from "@/lib/cairo-time";
-import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { isolate } from "@/lib/bidi";
 import type { SessionResponse } from "@/types";
 
 /** Height of one hour on the grid, in pixels. */
@@ -79,16 +80,6 @@ function placeDay(sessions: SessionResponse[]): PlacedSession[] {
   return placed;
 }
 
-/** The current time, updated every minute (drives the red "now" line and which slots are past). */
-function useNow() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-  return now;
-}
-
 type WeekCalendarProps = {
   /** The Saturday that starts the week, "YYYY-MM-DD". */
   weekStart: string;
@@ -99,6 +90,11 @@ type WeekCalendarProps = {
   onSlotClick: (date: string, time: string) => void;
 };
 
+/**
+ * The week as a time grid (phones get one list per day). It works in both directions: the
+ * grid columns follow the page direction, so in Arabic Saturday is on the right and the hour
+ * column sits on the start side; blocks are placed with logical properties (inset-inline-start).
+ */
 export function WeekCalendar({
   weekStart,
   sessions,
@@ -106,12 +102,17 @@ export function WeekCalendar({
   onSessionClick,
   onSlotClick,
 }: WeekCalendarProps) {
+  const t = useTranslations("Sessions.calendar");
+  const f = useFormat();
+  // The current time (drives the red "now" line and which slots are past); null for a moment on load.
   const now = useNow();
-  const today = cairoToday(now);
+  const today = now ? cairoToday(now) : null;
   const days = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
+  // Noon Cairo time of a plain date, so the formatters show that same calendar day.
+  const noonOf = (day: string) => cairoToUtc(day, "12:00");
 
   // Group the week's classes by their Cairo day.
   const byDay = useMemo(() => {
@@ -142,7 +143,7 @@ export function WeekCalendar({
 
   const hours = Array.from({ length: lastHour - firstHour }, (_, i) => firstHour + i);
   const gridHeight = hours.length * HOUR_PX;
-  const nowMinute = cairoMinuteOfDay(now);
+  const nowMinute = now ? cairoMinuteOfDay(now) : null;
 
   return (
     <>
@@ -161,7 +162,7 @@ export function WeekCalendar({
                     isToday ? "text-primary" : "text-muted-foreground",
                   )}
                 >
-                  {formatWeekday(day)}
+                  {f.weekday(noonOf(day))}
                 </p>
                 <p
                   className={cn(
@@ -169,10 +170,10 @@ export function WeekCalendar({
                     isToday && "bg-primary text-primary-foreground",
                   )}
                 >
-                  {formatPlainDay(day)}
+                  {f.dayMonth(noonOf(day))}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {count === 0 ? "No classes" : `${count} ${count === 1 ? "class" : "classes"}`}
+                  {t("classCount", { count })}
                 </p>
               </div>
             );
@@ -184,11 +185,12 @@ export function WeekCalendar({
             className="relative grid grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]"
             style={{ height: gridHeight }}
           >
-            {/* Hour labels */}
+            {/* Hour labels (on the start side: left in English, right in Arabic). */}
             <div className="relative">
               {hours.map((hour, i) => (
                 <span
                   key={hour}
+                  dir="ltr"
                   className="absolute end-2 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums"
                   style={{ top: i * HOUR_PX }}
                 >
@@ -204,14 +206,19 @@ export function WeekCalendar({
                   {/* One clickable cell per hour (empty future slots schedule a class there). */}
                   {hours.map((hour, i) => {
                     const time = `${String(hour).padStart(2, "0")}:00`;
-                    const past = new Date(cairoToUtc(day, time)).getTime() <= now.getTime();
+                    // Until the browser knows the time, every slot counts as past (not clickable).
+                    const past =
+                      now === null || new Date(cairoToUtc(day, time)).getTime() <= now.getTime();
                     return (
                       <button
                         key={hour}
                         type="button"
                         disabled={past}
                         onClick={() => onSlotClick(day, time)}
-                        aria-label={`Schedule a class on ${formatWeekday(day)} ${formatPlainDay(day)} at ${time}`}
+                        aria-label={t("slotLabel", {
+                          day: f.day(noonOf(day)),
+                          time: f.time(cairoToUtc(day, time)),
+                        })}
                         className={cn(
                           "group absolute inset-x-0 flex items-start justify-end border-t border-dashed border-border/60 p-1",
                           past ? "cursor-default bg-muted/20" : "hover:bg-primary/5",
@@ -226,15 +233,18 @@ export function WeekCalendar({
                   })}
 
                   {/* The red "now" line on today's column. */}
-                  {isToday && nowMinute >= firstHour * 60 && nowMinute <= lastHour * 60 && (
-                    <div
-                      className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
-                      style={{ top: ((nowMinute - firstHour * 60) / 60) * HOUR_PX }}
-                    >
-                      <span className="-ms-1 size-2 rounded-full bg-destructive" />
-                      <span className="h-px flex-1 bg-destructive" />
-                    </div>
-                  )}
+                  {isToday &&
+                    nowMinute !== null &&
+                    nowMinute >= firstHour * 60 &&
+                    nowMinute <= lastHour * 60 && (
+                      <div
+                        className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
+                        style={{ top: ((nowMinute - firstHour * 60) / 60) * HOUR_PX }}
+                      >
+                        <span className="-ms-1 size-2 rounded-full bg-destructive" />
+                        <span className="h-px flex-1 bg-destructive" />
+                      </div>
+                    )}
 
                   {placedByDay.get(day)?.map(({ session, startMin, endMin, lane, lanes }) => {
                     const top = ((startMin - firstHour * 60) / 60) * HOUR_PX;
@@ -245,7 +255,12 @@ export function WeekCalendar({
                         key={session.id}
                         type="button"
                         onClick={() => onSessionClick(session)}
-                        title={`${session.categoryName} · ${session.trainerName} · ${formatTime(session.startDate)}–${formatTime(session.endDate)}`}
+                        title={t("blockTitle", {
+                          category: isolate(session.categoryName),
+                          trainer: isolate(session.trainerName),
+                          start: f.time(session.startDate),
+                          end: f.time(session.endDate),
+                        })}
                         className={cn(
                           "absolute z-10 overflow-hidden rounded-md border-s-[3px] px-1.5 py-1 text-start text-[11px] leading-tight shadow-xs transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                           SESSION_STATE_STYLE[session.state].block,
@@ -253,6 +268,7 @@ export function WeekCalendar({
                         style={{
                           top: top + 1,
                           height,
+                          // Logical position: lane 0 hugs the start edge (right side in Arabic).
                           insetInlineStart: `calc(${(lane / lanes) * 100}% + 2px)`,
                           width: `calc(${100 / lanes}% - 4px)`,
                         }}
@@ -263,17 +279,24 @@ export function WeekCalendar({
                             session.state === "Cancelled" && "line-through",
                           )}
                         >
-                          {session.categoryName}
+                          <bdi>{session.categoryName}</bdi>
                         </p>
                         {!short && (
                           <>
                             <p className="truncate text-muted-foreground tabular-nums">
-                              {formatTime(session.startDate)}–{formatTime(session.endDate)}
+                              <span dir="ltr">
+                                {f.time(session.startDate)}–{f.time(session.endDate)}
+                              </span>
                             </p>
-                            <p className="truncate text-muted-foreground">{session.trainerName}</p>
+                            <p className="truncate text-muted-foreground">
+                              <bdi>{session.trainerName}</bdi>
+                            </p>
                             {session.state !== "Cancelled" && (
                               <p className="truncate font-medium tabular-nums">
-                                {session.bookedCount}/{session.capacity} booked
+                                {t("booked", {
+                                  booked: f.number(session.bookedCount),
+                                  capacity: f.number(session.capacity),
+                                })}
                               </p>
                             )}
                           </>
@@ -303,14 +326,14 @@ export function WeekCalendar({
           return (
             <section key={day}>
               <h3 className={cn("mb-2 text-sm font-semibold", day === today && "text-primary")}>
-                {formatWeekday(day)} {formatPlainDay(day)}
-                {day === today && " · Today"}
+                {f.day(noonOf(day))}
+                {day === today && ` · ${t("today")}`}
               </h3>
               {isPending ? (
                 <Skeleton className="h-16 w-full rounded-lg" />
               ) : list.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-                  No classes.
+                  {t("noClasses")}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -325,10 +348,14 @@ export function WeekCalendar({
                       )}
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{session.categoryName}</p>
+                        <p className="truncate text-sm font-semibold">
+                          <bdi>{session.categoryName}</bdi>
+                        </p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {formatTime(session.startDate)}–{formatTime(session.endDate)} ·{" "}
-                          {session.trainerName}
+                          <span dir="ltr" className="tabular-nums">
+                            {f.time(session.startDate)}–{f.time(session.endDate)}
+                          </span>{" "}
+                          · <bdi>{session.trainerName}</bdi>
                         </p>
                       </div>
                       <SessionStateBadge state={session.state} />

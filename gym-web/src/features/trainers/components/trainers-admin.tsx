@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { Dumbbell, Mail, Pencil, Plus, SearchX, Trash2, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -25,16 +26,24 @@ import { useCategories } from "@/features/categories/queries";
 import { TrainerFormSheet } from "@/features/trainers/components/trainer-form-sheet";
 import { useDeleteTrainer, useSendTrainerInvite, useTrainers } from "@/features/trainers/queries";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { pageSizeFrom, useClampPage, useListParams } from "@/hooks/use-list-params";
-import { formatDate, initialsOf } from "@/lib/format";
+import { initialsOf } from "@/lib/format";
 import { isAlreadyActivated, toastError, toastInvite } from "@/lib/notify";
+import { isolate } from "@/lib/bidi";
 import type { TrainerResponse } from "@/types";
 
 const col = createColumns<TrainerResponse>();
 const DEFAULT_PAGE_SIZE = 10;
 
+/** For rich messages: <bdi>name</bdi> keeps a stored name's own direction inside a translated sentence. */
+const bdi = (chunks: React.ReactNode) => <bdi>{chunks}</bdi>;
+
 /** The admin trainers page: searched, filtered and paged by the API, with the state in the URL. */
 export function TrainersAdmin() {
+  const t = useTranslations("Trainers");
+  const tInvite = useTranslations("Trainers.invite");
+  const f = useFormat();
   const params = useListParams();
   const search = params.string("search");
   const categoryId = params.number("categoryId", 0) || null;
@@ -61,20 +70,19 @@ export function TrainersAdmin() {
           toastInvite(result.trainer.name, result.trainer.email, result.inviteSent),
         onError: (error) =>
           isAlreadyActivated(error)
-            ? toast.info(`${trainer.name} already set a password`, {
-                description:
-                  "Their login is active. If they forgot it, they can use “Forgot password”.",
+            ? toast.info(tInvite("alreadyActive", { name: isolate(trainer.name) }), {
+                description: tInvite("alreadyActiveDescription"),
               })
-            : toastError(`Couldn't send the invite to ${trainer.name}`, error),
+            : toastError(tInvite("failed", { name: isolate(trainer.name) }), error),
       }),
-    [sendInvite],
+    [sendInvite, tInvite],
   );
 
   const columns = useMemo(
     () =>
       col.columns([
         col.accessor("name", {
-          header: "Trainer",
+          header: t("columns.trainer"),
           cell: ({ row }) => (
             <div className="flex min-w-52 items-center gap-3">
               <Avatar className="size-9">
@@ -83,58 +91,70 @@ export function TrainersAdmin() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="truncate font-medium">{row.original.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{row.original.email}</p>
+                <p className="truncate font-medium">
+                  <bdi>{row.original.name}</bdi>
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  <bdi dir="ltr">{row.original.email}</bdi>
+                </p>
               </div>
             </div>
           ),
         }),
         col.accessor("phone", {
-          header: "Phone",
+          header: t("columns.phone"),
           meta: { className: "hidden md:table-cell" },
-          cell: ({ getValue }) => <span className="tabular-nums">{getValue()}</span>,
+          cell: ({ getValue }) => (
+            <span dir="ltr" className="tabular-nums">
+              {getValue()}
+            </span>
+          ),
         }),
         col.accessor("categoryName", {
-          header: "Speciality",
-          cell: ({ getValue }) => <Badge variant="secondary">{getValue()}</Badge>,
+          header: t("columns.speciality"),
+          cell: ({ getValue }) => (
+            <Badge variant="secondary">
+              <bdi>{getValue()}</bdi>
+            </Badge>
+          ),
         }),
         col.accessor("hasAccount", {
-          header: "Login",
+          header: t("columns.login"),
           meta: { className: "hidden lg:table-cell" },
           cell: ({ getValue }) =>
             getValue() ? (
               <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
-                Has login
+                {t("hasLogin")}
               </Badge>
             ) : (
               <Badge variant="outline" className="text-muted-foreground">
-                No login
+                {t("noLogin")}
               </Badge>
             ),
         }),
         col.accessor("createdAt", {
-          header: "Joined",
+          header: t("columns.joined"),
           meta: { className: "hidden xl:table-cell" },
           cell: ({ getValue }) => (
-            <span className="text-muted-foreground">{formatDate(getValue())}</span>
+            <span className="text-muted-foreground">{f.date(getValue())}</span>
           ),
         }),
         col.display({
           id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
+          header: () => <span className="sr-only">{t("columns.actions")}</span>,
           meta: { className: "w-12 text-end" },
           cell: ({ row }) => (
             <RowActions
-              label={`Actions for ${row.original.name}`}
+              label={t("actions.label", { name: isolate(row.original.name) })}
               actions={[
-                { label: "Edit details", icon: Pencil, onSelect: () => showForm(row.original) },
+                { label: t("actions.edit"), icon: Pencil, onSelect: () => showForm(row.original) },
                 {
-                  label: row.original.hasAccount ? "Resend invite" : "Send login invite",
+                  label: row.original.hasAccount ? t("actions.resendInvite") : t("actions.invite"),
                   icon: row.original.hasAccount ? Mail : UserPlus,
                   onSelect: () => onInvite(row.original),
                 },
                 {
-                  label: "Remove trainer",
+                  label: t("actions.remove"),
                   icon: Trash2,
                   destructive: true,
                   onSelect: () => showDelete(row.original),
@@ -144,7 +164,7 @@ export function TrainersAdmin() {
           ),
         }),
       ]),
-    [showForm, showDelete, onInvite],
+    [t, f, showForm, showDelete, onInvite],
   );
 
   const data = trainers.data;
@@ -155,17 +175,17 @@ export function TrainersAdmin() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Trainers"
+        title={t("title")}
         description={
           data
             ? filtered
-              ? `${data.totalCount} ${data.totalCount === 1 ? "trainer matches" : "trainers match"} your filters.`
-              : `${data.totalCount} coaches on the team.`
-            : "Your coaching team and their specialities."
+              ? t("descriptionFiltered", { count: data.totalCount })
+              : t("descriptionCount", { count: data.totalCount })
+            : t("description")
         }
         actions={
           <Button onClick={() => form.show(null)}>
-            <Plus /> Add trainer
+            <Plus /> {t("add")}
           </Button>
         }
       />
@@ -174,42 +194,42 @@ export function TrainersAdmin() {
         <SearchInput
           value={search}
           onChange={(value) => params.set({ search: value })}
-          placeholder="Search by name, email or phone"
+          placeholder={t("search")}
           className="sm:max-w-sm sm:flex-1"
         />
         <Select
           value={categoryId ? String(categoryId) : "all"}
           onValueChange={(value) => params.set({ categoryId: value === "all" ? null : value })}
         >
-          <SelectTrigger className="w-full sm:w-52" aria-label="Filter by speciality">
+          <SelectTrigger className="w-full sm:w-52" aria-label={t("filterSpeciality")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All specialities</SelectItem>
+            <SelectItem value="all">{t("allSpecialities")}</SelectItem>
             {categories.data?.map((category) => (
               <SelectItem key={category.id} value={String(category.id)}>
-                {category.name} ({category.trainersCount})
+                <bdi>{category.name}</bdi> ({f.number(category.trainersCount)})
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {filtered && (
           <Button variant="ghost" onClick={() => params.set({ search: null, categoryId: null })}>
-            Clear filters
+            {t("clearFilters")}
           </Button>
         )}
       </div>
 
       {trainers.isError ? (
         <QueryError
-          title="We couldn't load the trainers"
+          title={t("loadError")}
           error={trainers.error}
           onRetry={() => void trainers.refetch()}
           retrying={trainers.isFetching}
         />
       ) : (
         <DataTable
-          label="Trainers"
+          label={t("title")}
           columns={columns}
           data={data?.items}
           getRowId={(t) => String(t.id)}
@@ -221,29 +241,37 @@ export function TrainersAdmin() {
             filtered ? (
               <EmptyState
                 icon={SearchX}
-                title="No trainers match"
+                title={t("empty.filteredTitle")}
                 description={
                   search
-                    ? `Nobody${categoryName ? ` in ${categoryName}` : ""} matches “${search}”. Check the spelling or search by phone number.`
-                    : `No trainer has ${categoryName ?? "this category"} as their speciality yet.`
+                    ? categoryName
+                      ? t.rich("empty.searchInCategory", {
+                          query: search,
+                          category: categoryName,
+                          bdi,
+                        })
+                      : t.rich("empty.search", { query: search, bdi })
+                    : categoryName
+                      ? t.rich("empty.category", { category: categoryName, bdi })
+                      : t("empty.categoryUnknown")
                 }
                 action={
                   <Button
                     variant="outline"
                     onClick={() => params.set({ search: null, categoryId: null })}
                   >
-                    Clear filters
+                    {t("clearFilters")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={Dumbbell}
-                title="No trainers yet"
-                description="Add your coaches so you can schedule classes with them. Each one gets their own login."
+                title={t("empty.title")}
+                description={t("empty.description")}
                 action={
                   <Button onClick={() => form.show(null)}>
-                    <Plus /> Add the first trainer
+                    <Plus /> {t("empty.action")}
                   </Button>
                 }
               />
@@ -256,7 +284,7 @@ export function TrainersAdmin() {
                 pageSize={data.pageSize}
                 totalCount={data.totalCount}
                 totalPages={data.totalPages}
-                itemLabel="trainers"
+                itemLabel={t("itemLabel")}
                 onPageChange={setPage}
                 onPageSizeChange={(size) =>
                   params.set({ pageSize: size === DEFAULT_PAGE_SIZE ? null : size })
@@ -272,16 +300,17 @@ export function TrainersAdmin() {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title={`Remove ${toDelete?.name ?? "trainer"}?`}
-        description="They leave the team list and their login is turned off. Past classes keep their history. If they still have upcoming classes, reassign or cancel those first."
-        confirmLabel="Remove trainer"
+        title={t("remove.title", { name: isolate(toDelete?.name ?? "") })}
+        description={t("remove.description")}
+        confirmLabel={t("actions.remove")}
         destructive
         pending={deleteTrainer.isPending}
         onConfirm={() => {
           if (!toDelete) return;
           deleteTrainer.mutate(toDelete.id, {
-            onSuccess: () => toast.success(`${toDelete.name} was removed from the team`),
-            onError: (error) => toastError(`Couldn't remove ${toDelete.name}`, error),
+            onSuccess: () => toast.success(t("remove.done", { name: isolate(toDelete.name) })),
+            onError: (error) =>
+              toastError(t("remove.failed", { name: isolate(toDelete.name) }), error),
             onSettled: () => confirmDelete.setOpen(false),
           });
         }}

@@ -225,6 +225,25 @@ namespace GymManagement.Tests.Members
         }
 
         [Fact]
+        public async Task Gender_RoundTrips_AndIsStoredAsText()
+        {
+            var created = await CreateMemberAsync(NewRequest() with { Gender = Gender.Female });
+
+            // The API sends the enum NAME ("Female"), never a number: the frontend translates it.
+            var json = await _admin.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/members/{created.Id}", Json);
+            Assert.Equal("Female", json.GetProperty("gender").GetString());
+
+            // The column is nvarchar since StoreGenderAsString, so SQL shows the readable value too.
+            await factory.WithDbAsync(async db =>
+            {
+                var stored = await db.Database
+                    .SqlQuery<string>($"SELECT Gender AS [Value] FROM Members WHERE Id = {created.Id}")
+                    .SingleAsync();
+                Assert.Equal("Female", stored);
+            });
+        }
+
+        [Fact]
         public async Task GetAll_PageSizeTooBig_Returns400()
         {
             var response = await _admin.GetAsync("/api/members?pageSize=1000");

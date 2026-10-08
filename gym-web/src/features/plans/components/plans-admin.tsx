@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { BadgePercent, Pencil, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -15,19 +16,17 @@ import { QueryError } from "@/components/shared/query-error";
 import { PlanFormSheet } from "@/features/plans/components/plan-form-sheet";
 import { useDeletePlan, usePlans, useSetPlanStatus } from "@/features/plans/queries";
 import { useDialogState } from "@/hooks/use-dialog-state";
+import { useFormat } from "@/hooks/use-format";
 import { useListParams } from "@/hooks/use-list-params";
-import { formatDuration, formatMoney, monthlyPrice } from "@/lib/format";
+import { monthlyPrice } from "@/lib/format";
 import { toastError } from "@/lib/notify";
+import { isolate } from "@/lib/bidi";
 import type { PlanResponse } from "@/types";
 
 const col = createColumns<PlanResponse>();
 
 type StatusFilter = "all" | "active" | "inactive";
-const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "active", label: "On sale" },
-  { value: "inactive", label: "Hidden" },
-];
+const STATUS_FILTERS: StatusFilter[] = ["all", "active", "inactive"];
 
 /**
  * The admin plans page. A gym has a handful of plans, so we load them all in one request and
@@ -35,6 +34,8 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
  * large (members, trainers) are filtered and paged by the API instead.
  */
 export function PlansAdmin() {
+  const t = useTranslations("Plans");
+  const f = useFormat();
   const params = useListParams();
   const rawStatus = params.string("status");
   // Anything else typed into the URL falls back to "all".
@@ -76,38 +77,40 @@ export function PlansAdmin() {
     () =>
       col.columns([
         col.accessor("name", {
-          header: "Plan",
+          header: t("columns.plan"),
           cell: ({ row }) => (
             <div className="max-w-md min-w-48">
-              <p className="font-medium">{row.original.name}</p>
+              <p className="font-medium">
+                <bdi>{row.original.name}</bdi>
+              </p>
               <p className="line-clamp-1 text-xs text-muted-foreground">
-                {row.original.description}
+                <bdi>{row.original.description}</bdi>
               </p>
             </div>
           ),
         }),
         col.accessor("durationDays", {
-          header: "Duration",
-          cell: ({ getValue }) => formatDuration(getValue()),
+          header: t("columns.duration"),
+          cell: ({ getValue }) => f.duration(getValue()),
         }),
         col.accessor("price", {
-          header: "Price",
+          header: t("columns.price"),
           cell: ({ getValue }) => (
-            <span className="font-semibold tabular-nums">{formatMoney(getValue())}</span>
+            <span className="font-semibold tabular-nums">{f.money(getValue())}</span>
           ),
         }),
         col.display({
           id: "perMonth",
-          header: "Per month",
+          header: t("columns.perMonth"),
           meta: { className: "hidden md:table-cell" },
           cell: ({ row }) => (
             <span className="text-muted-foreground tabular-nums">
-              {formatMoney(monthlyPrice(row.original.price, row.original.durationDays))}
+              {f.money(monthlyPrice(row.original.price, row.original.durationDays))}
             </span>
           ),
         }),
         col.accessor("isActive", {
-          header: "On sale",
+          header: t("columns.onSale"),
           cell: ({ row }) => {
             const plan = row.original;
             const busy = statusPending && statusVars?.id === plan.id;
@@ -116,7 +119,7 @@ export function PlansAdmin() {
                 <Switch
                   checked={plan.isActive}
                   disabled={busy}
-                  aria-label={`${plan.name} on sale`}
+                  aria-label={t("onSaleLabel", { name: isolate(plan.name) })}
                   onCheckedChange={(isActive) =>
                     changeStatus(
                       { id: plan.id, isActive },
@@ -124,21 +127,21 @@ export function PlansAdmin() {
                         onSuccess: (saved) =>
                           toast.success(
                             saved.isActive
-                              ? `${saved.name} is on sale again`
-                              : `${saved.name} is hidden from sale`,
+                              ? t("status.onSale", { name: isolate(saved.name) })
+                              : t("status.hidden", { name: isolate(saved.name) }),
                             {
                               description: saved.isActive
-                                ? "Reception can sell it and visitors see it on the website."
-                                : "Current members keep their memberships until they end.",
+                                ? t("status.onSaleDescription")
+                                : t("status.hiddenDescription"),
                             },
                           ),
-                        onError: (error) => toastError("Couldn't change the plan status", error),
+                        onError: (error) => toastError(t("status.failed"), error),
                       },
                     )
                   }
                 />
                 <span className="hidden text-xs text-muted-foreground lg:inline">
-                  {plan.isActive ? "On sale" : "Hidden"}
+                  {plan.isActive ? t("filters.active") : t("filters.inactive")}
                 </span>
               </div>
             );
@@ -146,15 +149,15 @@ export function PlansAdmin() {
         }),
         col.display({
           id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
+          header: () => <span className="sr-only">{t("columns.actions")}</span>,
           meta: { className: "w-12 text-end" },
           cell: ({ row }) => (
             <RowActions
-              label={`Actions for ${row.original.name}`}
+              label={t("actions.label", { name: isolate(row.original.name) })}
               actions={[
-                { label: "Edit plan", icon: Pencil, onSelect: () => showForm(row.original) },
+                { label: t("actions.edit"), icon: Pencil, onSelect: () => showForm(row.original) },
                 {
-                  label: "Delete plan",
+                  label: t("actions.delete"),
                   icon: Trash2,
                   destructive: true,
                   onSelect: () => showDelete(row.original),
@@ -164,7 +167,7 @@ export function PlansAdmin() {
           ),
         }),
       ]),
-    [changeStatus, statusPending, statusVars, showForm, showDelete],
+    [t, f, changeStatus, statusPending, statusVars, showForm, showDelete],
   );
 
   const toDelete = confirmDelete.item;
@@ -172,17 +175,21 @@ export function PlansAdmin() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Membership plans"
+        title={t("title")}
         description={
           all
             ? counts.active > 0
-              ? `${counts.active} of ${counts.all} plans on sale, from ${formatMoney(cheapestMonthly ?? 0)} per month.`
-              : "No plan is on sale right now. Add one or turn an existing plan back on."
-            : "Set the prices and durations members can buy."
+              ? t("descriptionOnSale", {
+                  active: counts.active,
+                  total: counts.all,
+                  price: f.money(cheapestMonthly ?? 0),
+                })
+              : t("descriptionNone")
+            : t("description")
         }
         actions={
           <Button onClick={() => form.show(null)}>
-            <Plus /> New plan
+            <Plus /> {t("add")}
           </Button>
         }
       />
@@ -193,10 +200,10 @@ export function PlansAdmin() {
       >
         <TabsList>
           {STATUS_FILTERS.map((filter) => (
-            <TabsTrigger key={filter.value} value={filter.value}>
-              {filter.label}
+            <TabsTrigger key={filter} value={filter}>
+              {t(`filters.${filter}`)}
               <span className="ms-1.5 rounded-full bg-background/60 px-1.5 text-xs text-muted-foreground tabular-nums">
-                {counts[filter.value]}
+                {f.number(counts[filter])}
               </span>
             </TabsTrigger>
           ))}
@@ -205,14 +212,14 @@ export function PlansAdmin() {
 
       {plans.isError ? (
         <QueryError
-          title="We couldn't load the plans"
+          title={t("loadError")}
           error={plans.error}
           onRetry={() => void plans.refetch()}
           retrying={plans.isFetching}
         />
       ) : (
         <DataTable
-          label="Membership plans"
+          label={t("title")}
           columns={columns}
           data={visible}
           getRowId={(plan) => String(plan.id)}
@@ -224,26 +231,22 @@ export function PlansAdmin() {
             counts.all === 0 ? (
               <EmptyState
                 icon={BadgePercent}
-                title="No plans yet"
-                description="Plans are what members buy: a duration and a price. Create the first one to start selling memberships."
+                title={t("empty.title")}
+                description={t("empty.description")}
                 action={
                   <Button onClick={() => form.show(null)}>
-                    <Plus /> Create the first plan
+                    <Plus /> {t("empty.action")}
                   </Button>
                 }
               />
             ) : (
               <EmptyState
                 icon={BadgePercent}
-                title={status === "active" ? "No plan is on sale" : "No hidden plans"}
-                description={
-                  status === "active"
-                    ? "Every plan is hidden right now, so nothing can be sold. Turn one back on."
-                    : "Every plan is on sale. Switch a plan off to stop selling it without deleting it."
-                }
+                title={status === "active" ? t("empty.activeTitle") : t("empty.inactiveTitle")}
+                description={status === "active" ? t("empty.active") : t("empty.inactive")}
                 action={
                   <Button variant="outline" onClick={() => params.set({ status: null })}>
-                    Show all plans
+                    {t("empty.showAll")}
                   </Button>
                 }
               />
@@ -257,16 +260,17 @@ export function PlansAdmin() {
       <ConfirmDialog
         open={confirmDelete.open}
         onOpenChange={confirmDelete.setOpen}
-        title={`Delete ${toDelete?.name ?? "plan"}?`}
-        description="The plan disappears from the list and can't be sold anymore. Members who already bought it keep their memberships and payment history. If people still have active memberships on it, hide it instead."
-        confirmLabel="Delete plan"
+        title={t("delete.title", { name: isolate(toDelete?.name ?? "") })}
+        description={t("delete.description")}
+        confirmLabel={t("actions.delete")}
         destructive
         pending={deletePlan.isPending}
         onConfirm={() => {
           if (!toDelete) return;
           deletePlan.mutate(toDelete.id, {
-            onSuccess: () => toast.success(`${toDelete.name} was deleted`),
-            onError: (error) => toastError(`Couldn't delete ${toDelete.name}`, error),
+            onSuccess: () => toast.success(t("delete.done", { name: isolate(toDelete.name) })),
+            onError: (error) =>
+              toastError(t("delete.failed", { name: isolate(toDelete.name) }), error),
             onSettled: () => confirmDelete.setOpen(false),
           });
         }}

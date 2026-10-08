@@ -24,7 +24,10 @@ export function formatNumber(value: number, locale?: string): string {
   return new Intl.NumberFormat(intlLocale(locale)).format(value);
 }
 
-/** Turns a plan length into words: 30 -> "1 month", 90 -> "3 months", 365 -> "1 year", 10 -> "10 days". */
+/**
+ * Turns a plan length into words: 30 -> "1 month", 90 -> "3 months", 365 -> "1 year", 10 -> "10 days".
+ * @deprecated English only: use useFormat().duration(days), which follows the site language.
+ */
 export function formatDuration(days: number): string {
   if (days === 365) return "1 year";
   if (days % 30 === 0) {
@@ -39,7 +42,10 @@ export function monthlyPrice(price: number, days: number): number {
   return Math.round((price / days) * 30);
 }
 
-/** A day count with the right word: 1 -> "1 day", 5 -> "5 days". */
+/**
+ * A day count with the right word: 1 -> "1 day", 5 -> "5 days".
+ * @deprecated English only: use useFormat().days(count), which follows the site language.
+ */
 export function formatDays(days: number): string {
   return days === 1 ? "1 day" : `${days} days`;
 }
@@ -145,7 +151,10 @@ export function dayPart(now: Date = new Date()): "morning" | "afternoon" | "even
   return "evening";
 }
 
-/** "Good morning" / "Good afternoon" / "Good evening", by the time in Cairo. Browser only (uses the clock). */
+/**
+ * "Good morning" / "Good afternoon" / "Good evening", by the time in Cairo. Browser only (uses the clock).
+ * @deprecated English only: use useFormat().greeting(now), which follows the site language.
+ */
 export function greeting(now: Date = new Date()): string {
   const part = dayPart(now);
   return part === "morning"

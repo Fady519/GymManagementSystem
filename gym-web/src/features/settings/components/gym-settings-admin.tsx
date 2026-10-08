@@ -36,8 +36,7 @@ const FIELDS = [
   "phone",
   "whatsApp",
   "email",
-  "addressEn",
-  "addressAr",
+  "address",
   "mapUrl",
   "facebookUrl",
   "instagramUrl",
@@ -134,7 +133,7 @@ function GymSettingsForm({ settings }: { settings: GymSettingsResponse }) {
     options: {
       maxLength?: number;
       type?: string;
-      dir?: "ltr" | "rtl";
+      dir?: "ltr" | "rtl" | "auto";
       hint?: string;
       placeholder?: string;
     } = {},
@@ -185,8 +184,8 @@ function GymSettingsForm({ settings }: { settings: GymSettingsResponse }) {
         </SettingsCard>
 
         <SettingsCard icon={<MapPin />} title={t("location")} description={t("locationHint")}>
-          {text("addressEn", { dir: "ltr", maxLength: ADDRESS_MAX })}
-          {text("addressAr", { dir: "rtl", maxLength: ADDRESS_MAX })}
+          {/* One address in any language: dir="auto" follows the text the admin types. */}
+          {text("address", { dir: "auto", maxLength: ADDRESS_MAX })}
           {text("mapUrl", {
             type: "url",
             dir: "ltr",

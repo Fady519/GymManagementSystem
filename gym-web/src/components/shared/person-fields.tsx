@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { FormField, fieldProps } from "@/components/shared/form-field";
 import { GENDERS, type AddressFields } from "@/lib/validation";
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 /** Two big "Male / Female" buttons (real radio inputs underneath, so the keyboard works). */
 export function GenderField() {
+  const t = useTranslations("Shared.gender");
+  const tGender = useTranslations("Enums.Gender");
   const {
     register,
     formState: { errors },
@@ -22,7 +25,7 @@ export function GenderField() {
 
   return (
     <fieldset className="grid gap-2">
-      <legend className="mb-2 text-sm leading-none font-medium">Gender</legend>
+      <legend className="mb-2 text-sm leading-none font-medium">{t("legend")}</legend>
       <div className="grid grid-cols-2 gap-2">
         {GENDERS.map((gender) => (
           <label
@@ -41,7 +44,8 @@ export function GenderField() {
               aria-describedby={error ? "gender-error" : undefined}
               {...register("gender")}
             />
-            {gender}
+            {/* The API value stays "Male"/"Female"; only what the user reads is translated. */}
+            {tGender(gender)}
           </label>
         ))}
       </div>
@@ -56,6 +60,8 @@ export function GenderField() {
 
 /** Building number, street and city. Optional: leave all three empty to skip. */
 export function AddressFieldset({ showHeading = true }: { showHeading?: boolean }) {
+  const t = useTranslations("Shared.address");
+  const tCommon = useTranslations("Common");
   const {
     register,
     formState: { errors },
@@ -66,35 +72,38 @@ export function AddressFieldset({ showHeading = true }: { showHeading?: boolean 
     <fieldset className="grid gap-4">
       {showHeading && (
         <legend className="mb-1">
-          <span className="text-sm font-semibold">Address</span>
-          <span className="ms-2 text-xs text-muted-foreground">Optional</span>
+          <span className="text-sm font-semibold">{t("legend")}</span>
+          <span className="ms-2 text-xs text-muted-foreground">{tCommon("optional")}</span>
         </legend>
       )}
       <div className="grid grid-cols-[7rem_1fr] gap-4">
-        <FormField id="address-building" label="Building no." error={e?.buildingNumber?.message}>
+        <FormField id="address-building" label={t("building")} error={e?.buildingNumber?.message}>
           <Input
             {...fieldProps("address-building", e?.buildingNumber?.message)}
             inputMode="numeric"
-            placeholder="12"
+            dir="ltr"
+            placeholder={t("buildingPlaceholder")}
             maxLength={4}
             {...register("address.buildingNumber")}
           />
         </FormField>
-        <FormField id="address-street" label="Street" error={e?.street?.message}>
+        <FormField id="address-street" label={t("street")} error={e?.street?.message}>
           <Input
             {...fieldProps("address-street", e?.street?.message)}
             autoComplete="address-line1"
-            placeholder="e.g. El-Tahrir St."
+            dir="auto"
+            placeholder={t("streetPlaceholder")}
             maxLength={50}
             {...register("address.street")}
           />
         </FormField>
       </div>
-      <FormField id="address-city" label="City" error={e?.city?.message}>
+      <FormField id="address-city" label={t("city")} error={e?.city?.message}>
         <Input
           {...fieldProps("address-city", e?.city?.message)}
           autoComplete="address-level2"
-          placeholder="e.g. Cairo"
+          dir="auto"
+          placeholder={t("cityPlaceholder")}
           maxLength={30}
           {...register("address.city")}
         />

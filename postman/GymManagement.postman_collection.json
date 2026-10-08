@@ -931,7 +931,7 @@
           "request": {
             "method": "PUT",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"gymName\": \"Power Fitness\",\n  \"phone\": \"+20 100 555 0199\",\n  \"whatsApp\": \"+20 100 555 0199\",\n  \"email\": \"hello@powerfitness.eg\",\n  \"addressEn\": \"12 Abbas El Akkad St, Nasr City, Cairo\",\n  \"addressAr\": \"12 شارع عباس العقاد، مدينة نصر، القاهرة\",\n  \"mapUrl\": \"https://maps.google.com/?q=Abbas+El+Akkad+Nasr+City+Cairo\",\n  \"facebookUrl\": null,\n  \"instagramUrl\": null,\n  \"weekdayOpensAt\": \"06:00:00\",\n  \"weekdayClosesAt\": \"23:00:00\",\n  \"fridayOpensAt\": \"14:00:00\",\n  \"fridayClosesAt\": \"22:00:00\"\n}" },
+            "body": { "mode": "raw", "raw": "{\n  \"gymName\": \"Power Fitness\",\n  \"phone\": \"+20 100 555 0199\",\n  \"whatsApp\": \"+20 100 555 0199\",\n  \"email\": \"hello@powerfitness.eg\",\n  \"address\": \"12 Abbas El Akkad St, Nasr City, Cairo\",\n  \"mapUrl\": \"https://maps.google.com/?q=Abbas+El+Akkad+Nasr+City+Cairo\",\n  \"facebookUrl\": null,\n  \"instagramUrl\": null,\n  \"weekdayOpensAt\": \"06:00:00\",\n  \"weekdayClosesAt\": \"23:00:00\",\n  \"fridayOpensAt\": \"14:00:00\",\n  \"fridayClosesAt\": \"22:00:00\"\n}" },
             "url": "{{baseUrl}}/api/settings/gym"
           }
         }

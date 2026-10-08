@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { Eye, RefreshCcw, Snowflake, Sun, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { RowAction } from "@/components/data-table/row-actions";
 import {
   CancelMembershipDialog,
@@ -32,11 +33,12 @@ export function allowedActions(m: MembershipResponse): Kind[] {
   }
 }
 
-const META: Record<Kind, { label: string; icon: typeof Eye; destructive?: boolean }> = {
-  renew: { label: "Renew", icon: RefreshCcw },
-  freeze: { label: "Freeze", icon: Snowflake },
-  unfreeze: { label: "Unfreeze", icon: Sun },
-  cancel: { label: "Cancel membership", icon: XCircle, destructive: true },
+/** Icon and style per action (the label is under Memberships.actions.<kind>). */
+const META: Record<Kind, { icon: typeof Eye; destructive?: boolean }> = {
+  renew: { icon: RefreshCcw },
+  freeze: { icon: Snowflake },
+  unfreeze: { icon: Sun },
+  cancel: { icon: XCircle, destructive: true },
 };
 
 /**
@@ -47,6 +49,7 @@ const META: Record<Kind, { label: string; icon: typeof Eye; destructive?: boolea
  *   {actions.dialogs}      -> render once in the page
  */
 export function useMembershipActions() {
+  const t = useTranslations("Memberships.actions");
   const details = useDialogState<MembershipResponse>();
   const renew = useDialogState<MembershipResponse>();
   const freeze = useDialogState<MembershipResponse>();
@@ -71,15 +74,15 @@ export function useMembershipActions() {
 
   const rowActions = useCallback(
     (membership: MembershipResponse): RowAction[] => [
-      { label: "View details", icon: Eye, onSelect: () => showDetails(membership) },
+      { label: t("details"), icon: Eye, onSelect: () => showDetails(membership) },
       ...allowedActions(membership).map((kind) => ({
-        label: META[kind].label,
+        label: t(kind),
         icon: META[kind].icon,
         destructive: META[kind].destructive,
         onSelect: () => run(kind, membership),
       })),
     ],
-    [run, showDetails],
+    [run, showDetails, t],
   );
 
   const detailsMembership = details.item;
@@ -106,7 +109,7 @@ export function useMembershipActions() {
                 }
                 onClick={() => run(kind, detailsMembership)}
               >
-                <Icon /> {META[kind].label}
+                <Icon /> {t(kind)}
               </Button>
             );
           })

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, CameraOff, Loader2, ScanLine, TriangleAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { Html5Qrcode } from "html5-qrcode";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,22 +13,17 @@ const CAMERA_PREF_KEY = "pf-checkin-camera";
 
 type Status = "idle" | "starting" | "running" | "error";
 
-/** The browser's camera errors -> a sentence the reception staff can act on. */
-function cameraErrorMessage(error: unknown): string {
+/** Which camera problem happened. The sentence for each is in CheckIns.camera.errors. */
+type CameraError = "insecure" | "blocked" | "notFound" | "inUse" | "generic";
+
+/** The browser's camera errors -> a problem the reception staff can act on. */
+function cameraError(error: unknown): CameraError {
   const text = String(error instanceof Error ? `${error.name} ${error.message}` : error);
-  if (typeof navigator !== "undefined" && !navigator.mediaDevices) {
-    return "The camera only works on a secure (HTTPS) connection. Use the code box instead.";
-  }
-  if (/NotAllowed|Permission/i.test(text)) {
-    return "Camera access is blocked. Allow the camera in your browser's site settings, then try again.";
-  }
-  if (/NotFound|Requested device|no camera/i.test(text)) {
-    return "No camera was found on this device. Connect one, or use the code box below.";
-  }
-  if (/NotReadable|in use|Could not start/i.test(text)) {
-    return "The camera is being used by another app. Close it, then try again.";
-  }
-  return "The camera couldn't start. Try again, or use the code box below.";
+  if (typeof navigator !== "undefined" && !navigator.mediaDevices) return "insecure";
+  if (/NotAllowed|Permission/i.test(text)) return "blocked";
+  if (/NotFound|Requested device|no camera/i.test(text)) return "notFound";
+  if (/NotReadable|in use|Could not start/i.test(text)) return "inUse";
+  return "generic";
 }
 
 function readPref(): boolean {
@@ -63,10 +59,12 @@ export function QrScanner({
   busy: boolean;
   onScan: (text: string) => void;
 }) {
+  const t = useTranslations("CheckIns.camera");
+  const tCommon = useTranslations("Common");
   // useId gives something like "«r3»": keep only characters that are valid in an element id.
   const regionId = `qr-region-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [status, setStatus] = useState<Status>(() => (readPref() ? "starting" : "idle"));
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<CameraError | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -130,7 +128,7 @@ export function QrScanner({
             // Nothing was drawn yet: nothing to clean up.
           }
           scannerRef.current = null;
-          setError(cameraErrorMessage(err));
+          setError(cameraError(err));
           setStatus("error");
           writePref(false);
         }
@@ -187,9 +185,7 @@ export function QrScanner({
               />
             </div>
             <p className="absolute bottom-3 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-              {paused
-                ? "Paused while the result is shown"
-                : "Hold the member's QR code inside the frame"}
+              {paused ? t("paused") : t("hint")}
             </p>
           </div>
         )}
@@ -199,7 +195,7 @@ export function QrScanner({
             {status === "starting" ? (
               <>
                 <Loader2 className="size-10 animate-spin text-white" />
-                <p className="text-sm">Starting the camera… allow access if your browser asks.</p>
+                <p className="text-sm">{t("starting")}</p>
               </>
             ) : status === "error" ? (
               <>
@@ -207,10 +203,10 @@ export function QrScanner({
                   <TriangleAlert className="size-7 text-amber-400" />
                 </span>
                 <p className="max-w-sm text-sm" role="alert">
-                  {error}
+                  {t(`errors.${error ?? "generic"}`)}
                 </p>
                 <Button onClick={turnOn} variant="secondary">
-                  <Camera /> Try again
+                  <Camera /> {tCommon("retry")}
                 </Button>
               </>
             ) : (
@@ -219,13 +215,11 @@ export function QrScanner({
                   <ScanLine className="size-8 text-white" />
                 </span>
                 <div className="space-y-1">
-                  <p className="font-semibold text-white">Ready when you are</p>
-                  <p className="max-w-xs text-sm">
-                    Turn on the camera and members can scan the QR code from their app.
-                  </p>
+                  <p className="font-semibold text-white">{t("readyTitle")}</p>
+                  <p className="max-w-xs text-sm">{t("readyText")}</p>
                 </div>
                 <Button onClick={turnOn}>
-                  <Camera /> Start camera
+                  <Camera /> {t("start")}
                 </Button>
               </>
             )}
@@ -235,7 +229,7 @@ export function QrScanner({
         {busy && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-900">
-              <Loader2 className="size-4 animate-spin" /> Checking…
+              <Loader2 className="size-4 animate-spin" /> {t("checking")}
             </span>
           </div>
         )}
@@ -248,10 +242,10 @@ export function QrScanner({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
               <span className="relative inline-flex size-2.5 rounded-full bg-success" />
             </span>
-            Camera on, scanning
+            {t("running")}
           </span>
           <Button variant="ghost" size="sm" onClick={turnOff}>
-            <CameraOff /> Stop camera
+            <CameraOff /> {t("stop")}
           </Button>
         </div>
       )}

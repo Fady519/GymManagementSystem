@@ -1,16 +1,26 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormError, FormField, fieldProps } from "@/components/shared/form-field";
 import { FormSheet } from "@/components/shared/form-sheet";
 import { useSavePlan } from "@/features/plans/queries";
-import { planSchema, type PlanValues } from "@/features/plans/schemas";
+import {
+  PLAN_DAYS_MAX,
+  PLAN_DESCRIPTION_MAX,
+  PLAN_NAME_MAX,
+  planSchema,
+  type PlanValues,
+} from "@/features/plans/schemas";
+import { useFormat } from "@/hooks/use-format";
 import { applyServerErrors } from "@/lib/form-errors";
-import { formatDuration, formatMoney, monthlyPrice } from "@/lib/format";
+import { monthlyPrice } from "@/lib/format";
+import { isolate } from "@/lib/bidi";
 import type { PlanResponse } from "@/types";
 
 const FORM_ID = "plan-form";
@@ -23,6 +33,15 @@ type PlanFormProps = {
 };
 
 function PlanForm({ plan, save, onSaved }: PlanFormProps) {
+  const t = useTranslations("Plans.form");
+  const tErrors = useTranslations("Plans.errors");
+  const tValidation = useTranslations("Validation");
+  const f = useFormat();
+  // The rules with messages in the current language.
+  const schema = useMemo(
+    () => planSchema(tErrors, tValidation, f.money),
+    [tErrors, tValidation, f.money],
+  );
   const {
     register,
     handleSubmit,
@@ -30,7 +49,7 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
     control,
     formState: { errors },
   } = useForm<PlanValues>({
-    resolver: zodResolver(planSchema),
+    resolver: zodResolver(schema),
     defaultValues: plan
       ? {
           name: plan.name,
@@ -45,7 +64,8 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
   const [days, price] = useWatch({ control, name: ["durationDays", "price"] });
   const daysNumber = Number(days);
   const priceNumber = Number(price);
-  const canPreview = daysNumber >= 1 && daysNumber <= 365 && priceNumber > 0;
+  const validDays = daysNumber >= 1 && daysNumber <= PLAN_DAYS_MAX;
+  const canPreview = validDays && priceNumber > 0;
 
   const onSubmit = async (values: PlanValues) => {
     try {
@@ -58,10 +78,10 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
           price: Number(values.price),
         },
       });
-      toast.success(plan ? "Plan updated" : "Plan created", {
+      toast.success(plan ? t("updated") : t("created"), {
         description: plan
-          ? `${saved.name} now costs ${formatMoney(saved.price)}. Existing memberships keep their old price.`
-          : `${saved.name} is active and ready to sell.`,
+          ? t("updatedDescription", { name: isolate(saved.name), price: f.money(saved.price) })
+          : t("createdDescription", { name: isolate(saved.name) }),
       });
       onSaved();
     } catch (error) {
@@ -73,27 +93,30 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
     <form id={FORM_ID} onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5">
       <FormError message={errors.root?.server?.message} />
 
-      <FormField id="plan-name" label="Plan name" error={errors.name?.message}>
+      <FormField id="plan-name" label={t("name")} error={errors.name?.message}>
         <Input
           {...fieldProps("plan-name", errors.name?.message)}
-          placeholder="e.g. Quarterly"
-          maxLength={50}
+          placeholder={t("namePlaceholder")}
+          maxLength={PLAN_NAME_MAX}
           autoFocus
+          // Text side follows what is typed (Arabic or English); an empty box keeps the page side.
+          className="[unicode-bidi:plaintext]"
           {...register("name")}
         />
       </FormField>
 
       <FormField
         id="plan-description"
-        label="Description"
+        label={t("description")}
         error={errors.description?.message}
-        description="Shown to visitors on the pricing section of the website."
+        description={t("descriptionHint")}
       >
         <Textarea
           {...fieldProps("plan-description", errors.description?.message, true)}
-          placeholder="e.g. Full gym access for 3 months, all classes included."
-          maxLength={200}
+          placeholder={t("descriptionPlaceholder")}
+          maxLength={PLAN_DESCRIPTION_MAX}
           rows={3}
+          className="[unicode-bidi:plaintext]"
           {...register("description")}
         />
       </FormField>
@@ -101,15 +124,16 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
       <div className="grid gap-5 sm:grid-cols-2">
         <FormField
           id="plan-duration"
-          label="Duration (days)"
+          label={t("duration")}
           error={errors.durationDays?.message}
           description={
-            daysNumber >= 1 && daysNumber <= 365 ? formatDuration(daysNumber) : "1–365 days"
+            validDays ? f.duration(daysNumber) : t("durationRange", { max: PLAN_DAYS_MAX })
           }
         >
           <Input
             {...fieldProps("plan-duration", errors.durationDays?.message, true)}
             inputMode="numeric"
+            dir="ltr"
             maxLength={3}
             {...register("durationDays")}
           />
@@ -117,17 +141,18 @@ function PlanForm({ plan, save, onSaved }: PlanFormProps) {
 
         <FormField
           id="plan-price"
-          label="Price (EGP)"
+          label={t("price")}
           error={errors.price?.message}
           description={
             canPreview
-              ? `≈ ${formatMoney(monthlyPrice(priceNumber, daysNumber))} per month`
-              : "The full price paid upfront"
+              ? t("perMonthPreview", { price: f.money(monthlyPrice(priceNumber, daysNumber)) })
+              : t("priceHint")
           }
         >
           <Input
             {...fieldProps("plan-price", errors.price?.message, true)}
             inputMode="decimal"
+            dir="ltr"
             placeholder="1500"
             maxLength={9}
             {...register("price")}
@@ -147,20 +172,18 @@ type PlanFormSheetProps = {
 
 /** The side panel for adding or editing a plan. */
 export function PlanFormSheet({ open, onOpenChange, plan }: PlanFormSheetProps) {
+  const t = useTranslations("Plans.form");
+  const tCommon = useTranslations("Common");
   const save = useSavePlan();
 
   return (
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={plan ? `Edit ${plan.name}` : "New plan"}
-      description={
-        plan
-          ? "Changes apply to new sales and renewals. Members who already paid keep what they bought."
-          : "Create a membership plan. It goes on sale as soon as you save it."
-      }
+      title={plan ? t("titleEdit", { name: isolate(plan.name) }) : t("titleNew")}
+      description={plan ? t("descriptionEdit") : t("descriptionNew")}
       formId={FORM_ID}
-      submitLabel={plan ? "Save changes" : "Create plan"}
+      submitLabel={plan ? tCommon("save") : t("submitNew")}
       submitting={save.isPending}
     >
       {/* The sheet unmounts its content when closed, so the form starts fresh every time it opens. */}

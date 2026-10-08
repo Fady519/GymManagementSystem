@@ -44,8 +44,7 @@ namespace GymManagementBLL.BusinessServices.Implementation
             settings.Phone = request.Phone.Trim();
             settings.WhatsApp = GymSettingsRules.Clean(request.WhatsApp);
             settings.Email = request.Email.Trim();
-            settings.AddressEn = request.AddressEn.Trim();
-            settings.AddressAr = request.AddressAr.Trim();
+            settings.Address = request.Address.Trim();
             settings.MapUrl = GymSettingsRules.Clean(request.MapUrl);
             settings.FacebookUrl = GymSettingsRules.Clean(request.FacebookUrl);
             settings.InstagramUrl = GymSettingsRules.Clean(request.InstagramUrl);
