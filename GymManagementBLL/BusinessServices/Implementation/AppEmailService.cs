@@ -47,14 +47,14 @@ namespace GymManagementBLL.BusinessServices.Implementation
         }
 
         public async Task<int> SendSessionCancelledAsync(IReadOnlyList<EmailRecipient> recipients, string session, DateTime startUtc,
-            CancellationToken ct = default)
+            string reason, CancellationToken ct = default)
         {
             var localStart = ToGymTime(startUtc).ToString("dddd d MMM yyyy, h:mm tt", CultureInfo.InvariantCulture);
             var sent = 0;
 
             foreach (var recipient in recipients)
             {
-                var (subject, html) = EmailTemplates.SessionCancelled(_options.GymName, recipient.Name, session, localStart);
+                var (subject, html) = EmailTemplates.SessionCancelled(_options.GymName, recipient.Name, session, localStart, reason);
                 if (await _sender.SendAsync(new EmailMessage(recipient.Email, recipient.Name, subject, html), ct))
                     sent++;
             }

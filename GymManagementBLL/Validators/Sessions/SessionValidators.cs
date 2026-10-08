@@ -41,6 +41,19 @@ namespace GymManagementBLL.Validators.Sessions
         }
     }
 
+    public sealed class CancelSessionRequestValidator : AbstractValidator<CancelSessionRequest>
+    {
+        public CancelSessionRequestValidator()
+        {
+            // Stop at the first failure, so Must() never calls Trim() on a missing reason.
+            RuleLevelCascadeMode = CascadeMode.Stop;
+
+            // Required: every booked member receives it by email, so "cancelled" alone isn't enough.
+            RuleFor(x => x.Reason).NotEmpty().WithMessage("Tell members why the session is cancelled.")
+                .Must(r => r.Trim().Length is >= 3 and <= 200).WithMessage("The reason must be 3–200 characters.");
+        }
+    }
+
     public sealed class SessionQueryValidator : AbstractValidator<SessionQuery>
     {
         public SessionQueryValidator()

@@ -25,6 +25,11 @@ export function monthlyPrice(price: number, days: number): number {
   return Math.round((price / days) * 30);
 }
 
+/** A day count with the right word: 1 -> "1 day", 5 -> "5 days". */
+export function formatDays(days: number): string {
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
 /** Formats a UTC date from the API as a Cairo date, e.g. "7 Oct 2026". */
 export function formatDate(utc: string | Date): string {
   return new Intl.DateTimeFormat("en-GB", {

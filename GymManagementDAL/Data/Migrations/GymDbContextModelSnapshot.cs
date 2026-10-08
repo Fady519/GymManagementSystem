@@ -675,6 +675,11 @@ namespace GymManagementDAL.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(200)
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
 

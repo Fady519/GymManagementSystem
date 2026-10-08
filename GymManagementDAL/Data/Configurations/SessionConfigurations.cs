@@ -13,6 +13,8 @@ namespace GymManagementDAL.Data.Configurations
             // Enums are stored as text ("Scheduled") so the table is readable in SQL.
             builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
 
+            builder.Property(x => x.CancelReason).HasMaxLength(200).IsUnicode();
+
             builder.Property(x => x.RowVersion).IsRowVersion();
 
             builder.ToTable(t =>

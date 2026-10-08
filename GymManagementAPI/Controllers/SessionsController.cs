@@ -61,15 +61,19 @@ namespace GymManagementAPI.Controllers
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
 
-        /// <summary>Cancels an upcoming session and all its bookings (nothing is deleted).</summary>
+        /// <summary>
+        /// Cancels an upcoming session and all its bookings (nothing is deleted).
+        /// The reason is saved on the session and emailed to every booked member.
+        /// </summary>
         [HttpPost("{id:int}/cancel")]
         [Authorize(Policy = AppPolicies.AdminAccess)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
         [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
-        public async Task<IActionResult> Cancel(int id, CancellationToken ct)
+        public async Task<IActionResult> Cancel(int id, CancelSessionRequest request, CancellationToken ct)
         {
-            var result = await sessionService.CancelAsync(id, ct);
+            var result = await sessionService.CancelAsync(id, request, ct);
             return result.IsSuccess ? NoContent() : Problem(result.Error);
         }
 

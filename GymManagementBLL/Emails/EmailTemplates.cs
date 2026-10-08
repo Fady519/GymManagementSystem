@@ -34,11 +34,13 @@ namespace GymManagementBLL.Emails
             return ("Reset your " + gymName + " password", Layout(gymName, body));
         }
 
-        public static (string Subject, string Html) SessionCancelled(string gymName, string name, string session, string localStart)
+        public static (string Subject, string Html) SessionCancelled(string gymName, string name, string session, string localStart,
+            string reason)
         {
             var body =
                 "<p>Hi " + E(name) + ",</p>" +
                 "<p>Sorry, the session <b>" + E(session) + "</b> on <b>" + E(localStart) + "</b> was cancelled.</p>" +
+                "<p><b>Reason:</b> " + E(reason) + "</p>" +
                 "<p>Your booking was cancelled too. You can book another session from your account.</p>";
 
             return ("Session cancelled: " + session, Layout(gymName, body));

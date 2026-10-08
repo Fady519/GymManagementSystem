@@ -9,6 +9,7 @@ import type {
   MemberSortBy,
   MemberWithAccountResponse,
   MembershipResponsePagedResult,
+  MyBookingItemPagedResult,
   PaymentResponse,
   UpdateMemberRequest,
 } from "@/types";
@@ -97,6 +98,22 @@ export async function getMemberPayments(id: number): Promise<PaymentResponse[]> 
 export async function getMemberMemberships(id: number): Promise<MembershipResponsePagedResult> {
   const response = await apiClient.get<MembershipResponsePagedResult>("/api/memberships", {
     params: { memberId: id, pageSize: 100 },
+  });
+  return response.data;
+}
+
+export type MemberBookingsParams = { upcoming: boolean; page: number; pageSize: number };
+
+/**
+ * GET /api/members/{id}/bookings: the member's classes. upcoming = only active bookings of
+ * classes that haven't started (soonest first); otherwise everything, newest first.
+ */
+export async function getMemberBookings(
+  id: number,
+  params: MemberBookingsParams,
+): Promise<MyBookingItemPagedResult> {
+  const response = await apiClient.get<MyBookingItemPagedResult>(`/api/members/${id}/bookings`, {
+    params,
   });
   return response.data;
 }

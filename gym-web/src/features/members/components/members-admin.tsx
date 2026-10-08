@@ -175,7 +175,7 @@ export function MembersAdmin() {
         value={state ?? "all"}
         onValueChange={(value) => params.set({ state: value === "all" ? null : value })}
       >
-        <TabsList className="h-auto flex-wrap">
+        <TabsList className="h-auto! flex-wrap">
           <TabsTrigger value="all">All</TabsTrigger>
           {MEMBER_STATES.map((s) => (
             <TabsTrigger key={s} value={s}>

@@ -162,7 +162,7 @@ namespace GymManagement.Tests.Portals
                 cancelledEmail = cancelled.Email;
             });
 
-            var response = await admin.PostAsync($"/api/sessions/{sessionId}/cancel", null);
+            var response = await admin.PostAsJsonAsync($"/api/sessions/{sessionId}/cancel", new CancelSessionRequest("Trainer is ill"), Json);
 
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
             var email = Assert.Single(factory.Emails.SentTo(bookedEmail));
@@ -190,7 +190,7 @@ namespace GymManagement.Tests.Portals
             factory.Emails.SimulateFailure = true;
             try
             {
-                Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"/api/sessions/{sessionId}/cancel", null)).StatusCode);
+                Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsJsonAsync($"/api/sessions/{sessionId}/cancel", new CancelSessionRequest("Trainer is ill"), Json)).StatusCode);
             }
             finally
             {

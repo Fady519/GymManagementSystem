@@ -16,5 +16,8 @@ namespace GymManagementBLL.BusinessServices.Interfaces
 
         /// <summary>The bookings of one member (the member portal passes the id from the token).</summary>
         Task<PagedResult<MyBookingItem>> GetMemberBookingsAsync(int memberId, MyBookingsQuery query, CancellationToken ct = default);
+
+        /// <summary>The same list for an admin looking at a member's profile, or Member.NotFound.</summary>
+        Task<Result<PagedResult<MyBookingItem>>> GetForMemberAsync(int memberId, MyBookingsQuery query, CancellationToken ct = default);
     }
 }

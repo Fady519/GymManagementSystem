@@ -1,6 +1,7 @@
 using GymManagementAPI.Infrastructure;
 using GymManagementBLL.BusinessServices.Interfaces;
 using GymManagementBLL.Common;
+using GymManagementBLL.DTOs.Bookings;
 using GymManagementBLL.DTOs.Common;
 using GymManagementBLL.DTOs.Members;
 using GymManagementBLL.DTOs.Payments;
@@ -120,6 +121,21 @@ namespace GymManagementAPI.Controllers
             [FromServices] IPaymentService paymentService, CancellationToken ct)
         {
             var result = await paymentService.GetByMemberAsync(id, ct);
+            return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
+        }
+
+        /// <summary>
+        /// The member's bookings, newest session first (upcoming=true: only active bookings of
+        /// sessions that haven't started, soonest first). Same list the member sees in their portal.
+        /// </summary>
+        [HttpGet("{id:int}/bookings")]
+        [ProducesResponseType<PagedResult<MyBookingItem>>(StatusCodes.Status200OK)]
+        [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+        public async Task<ActionResult<PagedResult<MyBookingItem>>> GetBookings(int id, [FromQuery] MyBookingsQuery query,
+            [FromServices] IBookingService bookingService, CancellationToken ct)
+        {
+            var result = await bookingService.GetForMemberAsync(id, query, ct);
             return result.IsSuccess ? Ok(result.Value) : Problem(result.Error);
         }
 

@@ -22,6 +22,7 @@ namespace GymManagementBLL.DTOs.Sessions
         DateTime StartDate,
         DateTime EndDate,
         SessionState State,
+        string? CancelReason,
         int CategoryId,
         string CategoryName,
         int TrainerId,
@@ -36,6 +37,9 @@ namespace GymManagementBLL.DTOs.Sessions
         DateTime EndDate,
         int CategoryId,
         int TrainerId);
+
+    /// <summary>The reason is emailed to every booked member and shown on the session.</summary>
+    public sealed record CancelSessionRequest(string Reason);
 
     /// <summary>Filters for the sessions list ([FromQuery]).</summary>
     public sealed class SessionQuery

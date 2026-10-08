@@ -36,6 +36,7 @@ import { MemberAvatar } from "@/features/members/components/member-avatar";
 import { MemberEditSheet } from "@/features/members/components/member-edit-sheet";
 import { MemberStateBadge } from "@/features/members/components/member-state-badge";
 import {
+  BookingsTab,
   HealthTab,
   MembershipsTab,
   OverviewTab,
@@ -56,7 +57,7 @@ import { formatDate } from "@/lib/format";
 import { isAlreadyActivated, toastError, toastInvite } from "@/lib/notify";
 import type { MemberResponse } from "@/types";
 
-const TABS = ["overview", "memberships", "payments", "health"] as const;
+const TABS = ["overview", "memberships", "bookings", "payments", "health"] as const;
 type Tab = (typeof TABS)[number];
 
 function DetailsSkeleton() {
@@ -253,9 +254,10 @@ function MemberProfile({ member }: { member: MemberResponse }) {
         value={tab}
         onValueChange={(value) => params.set({ tab: value === "overview" ? null : value })}
       >
-        <TabsList className="h-auto flex-wrap">
+        <TabsList className="h-auto! flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="memberships">Memberships</TabsTrigger>
+          <TabsTrigger value="bookings">Bookings</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="health">Health</TabsTrigger>
         </TabsList>
@@ -264,6 +266,9 @@ function MemberProfile({ member }: { member: MemberResponse }) {
         </TabsContent>
         <TabsContent value="memberships" className="mt-4">
           <MembershipsTab member={member} />
+        </TabsContent>
+        <TabsContent value="bookings" className="mt-4">
+          <BookingsTab member={member} />
         </TabsContent>
         <TabsContent value="payments" className="mt-4">
           <PaymentsTab member={member} />

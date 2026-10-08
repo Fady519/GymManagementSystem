@@ -22,7 +22,7 @@ namespace GymManagementBLL.DTOs.Bookings
     /// <summary>POST /api/me/bookings: a member books a session for himself (no MemberId to send at all).</summary>
     public sealed record BookSessionRequest(int SessionId);
 
-    /// <summary>One row of "my bookings" in the member portal.</summary>
+    /// <summary>One row of a member's bookings (member portal and the admin's member profile).</summary>
     public sealed record MyBookingItem(
         int Id,
         int SessionId,
@@ -32,6 +32,7 @@ namespace GymManagementBLL.DTOs.Bookings
         DateTime SessionStartDate,
         DateTime SessionEndDate,
         SessionStatus SessionStatus,
+        string? SessionCancelReason,
         BookingStatus Status,
         DateTime CreatedAt);
 
