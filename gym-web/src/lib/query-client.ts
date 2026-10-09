@@ -18,3 +18,16 @@ export function makeQueryClient() {
     },
   });
 }
+
+let browserQueryClient: QueryClient | undefined;
+
+/**
+ * A fresh client on the server, but ONE per browser tab in the browser (the pattern TanStack Query
+ * recommends for Next.js). Same reason as getStore in store.ts: switching language can keep two copies
+ * of the layout alive, and they must share one cache (and one logout must clear both).
+ */
+export function getQueryClient(): QueryClient {
+  if (typeof window === "undefined") return makeQueryClient();
+  browserQueryClient ??= makeQueryClient();
+  return browserQueryClient;
+}
