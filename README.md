@@ -1,6 +1,6 @@
 > [!IMPORTANT]
 > **This branch is the legacy v1 (ASP.NET Core MVC).** The project was rebuilt as a full stack app (ASP.NET Core 10 Web API + Next.js 16).
-> 👉 **Live demo:** https://power-fitness-gym.vercel.app · **Code & docs:** the [ullstack](https://github.com/Fady519/GymManagementSystem/tree/fullstack) branch.
+> 👉 **Live demo:** https://power-fitness-gym.vercel.app · **Code & docs:** the [fullstack branch](https://github.com/Fady519/GymManagementSystem/tree/fullstack).
 
 <div align="center">
 
