@@ -1,0 +1,8 @@
+# Used by "vercel deploy" from the repo root (CLI uploads). Only the Next.js app is needed;
+# never upload the API, local secrets (_deploy), backups or build output.
+/*
+!/gym-web
+/gym-web/node_modules
+/gym-web/.next
+/gym-web/.env*.local
+/gym-web/e2e/.results

@@ -27,19 +27,26 @@ async function getPublic<T>(path: string): Promise<T | null> {
   cacheTag("public-site");
 
   try {
-    const response = await fetch(`${API_URL}${path}`, { headers: { Accept: "application/json" } });
+    // The API is on a free host that can take a few seconds to wake up. Without a limit, a hanging
+    // request would block the page (and fail the production build, which pre-renders this page).
+    const response = await fetch(`${API_URL}${path}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(15_000),
+    });
     if (response.ok) {
       cacheLife("minutes");
       return (await response.json()) as T;
     }
   } catch {
-    // The API is down or unreachable: fall through and return null.
+    // The API is down, unreachable or too slow: fall through and return null.
   }
 
   // Don't keep a failure as long as real data: the next visit after ~10 seconds rebuilds this
-  // in the background, so a short API restart can't leave "section unavailable" on the page.
-  // (expire stays at 5 minutes so the page can still be pre-rendered as static HTML.)
-  cacheLife({ stale: 10, revalidate: 10, expire: 300 });
+  // in the background (revalidate), so a short API restart can't leave "section unavailable" on the page.
+  // stale and expire must stay at 5 minutes or more: Next.js treats a "use cache" entry with a shorter
+  // stale (< 30 s) or expire (< 5 min) as dynamic data, and the production build then fails with
+  // "uncached data during prerendering" whenever the API is offline.
+  cacheLife({ stale: 300, revalidate: 10, expire: 3600 });
   return null;
 }
 
