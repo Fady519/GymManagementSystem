@@ -27,6 +27,16 @@ const nextConfig: NextConfig = {
       { source: "/uploads/:path*", destination: `${apiUrl}/uploads/:path*` },
     ];
   },
+  // Files in public/ are revalidated on every visit by default. The font files never change (a new
+  // version would get a new file name), so the browser may keep them for a year without asking.
+  async headers() {
+    return [
+      {
+        source: "/fonts/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

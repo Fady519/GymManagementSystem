@@ -20,7 +20,7 @@ export function CtaBand({ whatsApp }: { whatsApp: string | null }) {
             <h2 className="text-3xl font-bold tracking-tight text-balance md:text-4xl">
               {t("title")}
             </h2>
-            <p className="text-lg text-pretty opacity-90">{t("body")}</p>
+            <p className="text-lg text-pretty">{t("body")}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" variant="secondary" asChild>
@@ -28,11 +28,14 @@ export function CtaBand({ whatsApp }: { whatsApp: string | null }) {
                 {t("primary")} <ArrowRight className="rtl:rotate-180" />
               </Link>
             </Button>
+            {/* bg-primary (not transparent): the decorative glow sits behind this corner and would
+                lighten the background under the text below the 4.5:1 contrast minimum. The dark: classes
+                override the outline variant's own dark-mode background, which is semi-transparent. */}
             {whatsApp && (
               <Button
                 size="lg"
                 variant="outline"
-                className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                className="border-primary-foreground/40 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground dark:border-primary-foreground/40 dark:bg-primary dark:hover:bg-primary-foreground/10"
                 asChild
               >
                 <a href={whatsAppLink(whatsApp)} target="_blank" rel="noopener noreferrer">

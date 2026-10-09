@@ -4,10 +4,71 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * IBM Plex Sans Arabic, self-hosted from public/fonts (OFL licence, see public/fonts/OFL.txt).
+ * Why not next/font like Inter? next/font preloads a font on EVERY page and also ships Plex's
+ * Latin letters, so English pages downloaded ~140 KB of Arabic fonts for nothing and Arabic pages
+ * drew numbers with a late-loading Plex Latin file, which made the hero jump (layout shift).
+ * Here unicode-range limits Plex to Arabic characters only: Latin letters and digits fall through
+ * to Inter, and the Arabic files are preloaded only on Arabic pages ([locale]/layout.tsx).
+ */
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-arabic-400.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011,
+    U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-arabic-500.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011,
+    U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-arabic-600.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011,
+    U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+@font-face {
+  font-family: "IBM Plex Sans Arabic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-arabic-700.woff2") format("woff2");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011,
+    U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC;
+}
+
+/* Arabic pages put Plex first in the font list (see --font-sans below). */
+html[lang="ar"] {
+  --font-arabic: "IBM Plex Sans Arabic";
+}
+
+/* An Arabic snippet on an English page, such as the "العربية" language button. */
+:not(html)[lang="ar"] {
+  font-family: "IBM Plex Sans Arabic", var(--font-latin), ui-sans-serif, system-ui, sans-serif;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Arabic pages: Plex for Arabic letters, then Inter for Latin ones. English pages: Inter only. */
+  --font-sans:
+    var(--font-arabic, var(--font-latin)), var(--font-latin), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -100,7 +161,13 @@
   --card-foreground: oklch(0.97 0.005 269);
   --popover: oklch(0.21 0.025 269);
   --popover-foreground: oklch(0.97 0.005 269);
-  --primary: oklch(0.62 0.19 269);
+  /*
+   * One blue can't do both jobs on a dark page: white text on a blue button needs a darker blue
+   * (4.5:1 contrast), but blue text on the dark background needs a lighter one. So filled things
+   * (buttons, badges) use --primary, and the .text-primary rule below uses --primary-text.
+   */
+  --primary: oklch(0.54 0.19 269);
+  --primary-text: oklch(0.68 0.17 269);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.27 0.03 269);
   --secondary-foreground: oklch(0.97 0.005 269);
@@ -152,5 +219,12 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Dark mode: blue TEXT uses the lighter blue (see --primary-text above) so it stays readable. */
+@layer utilities {
+  .dark .text-primary {
+    color: var(--primary-text);
   }
 }

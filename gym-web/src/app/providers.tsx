@@ -9,7 +9,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { Direction } from "radix-ui";
 import { Toaster } from "@/components/ui/sonner";
 import { directionOf } from "@/i18n/routing";
-import { ErrorMessagesBridge } from "@/components/shared/error-messages-bridge";
 import { AuthBootstrap } from "@/features/auth/components/auth-bootstrap";
 import { injectStore } from "@/lib/api-client";
 import { makeQueryClient } from "@/lib/query-client";
@@ -44,8 +43,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             enableSystem
             disableTransitionOnChange
           >
-            {/* Lets API errors and toasts (plain functions) speak the visitor's language. */}
-            <ErrorMessagesBridge />
             <AuthBootstrap />
             {children}
             <Toaster
