@@ -41,6 +41,7 @@
     "plans": "Plans",
     "categories": "Categories",
     "gymSettings": "Gym settings",
+    "accounts": "Accounts",
     "mySchedule": "My schedule",
     "classHistory": "Class history",
     "overview": "Overview",
@@ -1596,6 +1597,71 @@
     },
     "errors": {
       "category": "Choose the trainer's speciality."
+    }
+  },
+  "Users": {
+    "title": "Accounts",
+    "description": "Every login in the system: admins, trainers and members.",
+    "descriptionCount": "{count, plural, =0 {No accounts yet.} one {# account in the system.} other {# accounts in the system.}}",
+    "descriptionFiltered": "{count, plural, =0 {No accounts match the filters.} one {# account matches the filters.} other {# accounts match the filters.}}",
+    "addAdmin": "Add admin",
+    "search": "Search by name or email",
+    "filterRole": "Filter by role",
+    "allRoles": "All roles",
+    "clearFilters": "Clear filters",
+    "loadError": "We couldn't load the accounts",
+    "itemLabel": "accounts",
+    "columns": {
+      "account": "Account",
+      "role": "Role",
+      "status": "Status",
+      "created": "Created",
+      "actions": "Actions"
+    },
+    "state": {
+      "active": "Active",
+      "invitePending": "Invite pending",
+      "locked": "Locked for now",
+      "disabled": "Disabled"
+    },
+    "actions": {
+      "label": "Actions for {name}",
+      "resendInvite": "Resend invite",
+      "disable": "Disable account",
+      "enable": "Enable account"
+    },
+    "empty": {
+      "filteredTitle": "No matching accounts",
+      "search": "Nobody matches “<bdi>{query}</bdi>”. Check the spelling or search by email.",
+      "role": "No account has this role yet.",
+      "title": "No accounts yet",
+      "description": "Accounts appear here as you add admins, trainers and members."
+    },
+    "disable": {
+      "title": "Disable {name}?",
+      "description": "They can't log in anymore and are signed out of every device within a few minutes. Their data stays, and you can enable the account again at any time."
+    },
+    "status": {
+      "disabled": "{name}'s account was disabled",
+      "enabled": "{name}'s account was enabled",
+      "failed": "Couldn't change {name}'s account"
+    },
+    "invite": {
+      "failed": "Couldn't send the invite to {name}"
+    },
+    "forbidden": {
+      "title": "Super admin only",
+      "description": "Only the super admin can manage login accounts. Ask them if you need a new admin."
+    },
+    "form": {
+      "title": "Add admin",
+      "description": "An admin runs the gym day to day: members, classes, payments and settings.",
+      "name": "Full name",
+      "namePlaceholder": "e.g. Omar Khaled",
+      "email": "Email",
+      "inviteNote": "We'll email them a link to choose their own password. Nobody else, not even you, will know it.",
+      "submit": "Add admin",
+      "created": "{name} was added as an admin"
     }
   },
   "Plans": {

@@ -124,3 +124,10 @@ export type PublicTrainerResponse = Schemas["PublicTrainerResponse"];
 // Member portal
 export type CheckInCodeResponse = Schemas["CheckInCodeResponse"];
 export type UpdateMyProfileRequest = WithNullable<Schemas["UpdateMyProfileRequest"], "address">;
+
+// Login accounts (Super admin only)
+export type UserResponse = Schemas["UserResponse"];
+export type UserResponsePagedResult = Schemas["UserResponsePagedResult"];
+export type CreateAdminRequest = Schemas["CreateAdminRequest"];
+export type CreatedUserResponse = Schemas["CreatedUserResponse"];
+export type InviteResponse = Schemas["InviteResponse"];
