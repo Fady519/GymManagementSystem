@@ -3,6 +3,7 @@ using GymManagementBLL.DTOs.Auth;
 using GymManagementDAL.Entities.Enums;
 using GymManagementDAL.Entities.Identity;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Net;
@@ -367,6 +368,54 @@ namespace GymManagement.Tests.Auth
 
             var blocked = await client.PostAsync("/api/auth/refresh", null);
             await AssertProblemAsync(blocked, HttpStatusCode.TooManyRequests, "RateLimit.Exceeded");
+        }
+
+        [Fact]
+        public async Task BehindProxy_EachClientIpHasItsOwnLoginLimit()
+        {
+            // Production: every request comes from the Next.js server, the real visitor IP is in X-Forwarded-For.
+            await using var proxiedApp = LimitedApp(trustForwardedHeaders: true);
+            var request = new LoginRequest("nobody@test.com", "Wrong@12345");
+
+            var visitorA = ClientFrom(proxiedApp, "203.0.113.10");
+            for (var i = 0; i < 2; i++)
+                await visitorA.PostAsJsonAsync("/api/auth/login", request);
+            Assert.Equal(HttpStatusCode.TooManyRequests, (await visitorA.PostAsJsonAsync("/api/auth/login", request)).StatusCode);
+
+            // Visitor A used up THEIR limit; visitor B (another IP, same proxy) can still log in.
+            var visitorB = ClientFrom(proxiedApp, "198.51.100.20");
+            Assert.Equal(HttpStatusCode.Unauthorized, (await visitorB.PostAsJsonAsync("/api/auth/login", request)).StatusCode);
+        }
+
+        [Fact]
+        public async Task WithoutProxySetting_ForwardedForIsIgnored()
+        {
+            // Off by default: otherwise anybody could send a new fake IP on every request and never be limited.
+            await using var app = LimitedApp(trustForwardedHeaders: false);
+            var request = new LoginRequest("nobody@test.com", "Wrong@12345");
+
+            for (var i = 0; i < 2; i++)
+                await ClientFrom(app, $"203.0.113.{i + 1}").PostAsJsonAsync("/api/auth/login", request);
+
+            var faked = await ClientFrom(app, "203.0.113.99").PostAsJsonAsync("/api/auth/login", request);
+            Assert.Equal(HttpStatusCode.TooManyRequests, faked.StatusCode);
+        }
+
+        /// <summary>An app instance with a login limit of 2 per minute.</summary>
+        private WebApplicationFactory<Program> LimitedApp(bool trustForwardedHeaders) =>
+            factory.WithWebHostBuilder(builder =>
+                builder.ConfigureAppConfiguration((_, config) =>
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["RateLimiting:AuthPermitLimit"] = "2",
+                        ["ReverseProxy:TrustForwardedHeaders"] = trustForwardedHeaders.ToString(),
+                    })));
+
+        private static HttpClient ClientFrom(WebApplicationFactory<Program> app, string clientIp)
+        {
+            var client = app.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
+            client.DefaultRequestHeaders.Add("X-Forwarded-For", clientIp);
+            return client;
         }
     }
 }

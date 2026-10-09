@@ -505,3 +505,6 @@ logs/
 # Personal interview-prep notes: kept on this machine only, not published.
 /docs/
 
+
+# Deployment secrets (publish profiles, connection strings, passwords): this machine only.
+/_deploy/
