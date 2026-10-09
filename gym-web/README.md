@@ -30,7 +30,7 @@ so the Next.js server can forward `/api/*` to `https://localhost:7080`.
 | `npm run build`   | Production build (also type-checks)                          |
 | `npm run lint`    | ESLint                                                       |
 | `npm run format`  | Prettier (also sorts Tailwind classes)                       |
-| `npm run gen:api` | Regenerates `src/types/api.d.ts` from `../docs/openapi.json` |
+| `npm run gen:api` | Regenerates `src/types/api.d.ts` from `../GymManagement.Tests/Snapshots/openapi.json` |
 
 ## How it talks to the API
 
