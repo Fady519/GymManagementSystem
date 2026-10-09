@@ -4,7 +4,7 @@ namespace GymManagement.Tests.Infrastructure
 {
     /// <summary>
     /// "Snapshot" files are documents that are generated from the running API and committed
-    /// to the repo (docs/openapi.json, docs/ENDPOINTS.md). A test fails when the code changed
+    /// to the repo (GymManagement.Tests/Snapshots: openapi.json, ENDPOINTS.md). A test fails when the code changed
     /// but the file was not regenerated, so the docs can never silently go out of date.
     ///
     /// To regenerate after an intended change (PowerShell):

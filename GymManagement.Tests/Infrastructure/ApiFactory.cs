@@ -191,7 +191,18 @@ namespace GymManagement.Tests.Infrastructure
             return WithToken(CreateHttpsClient(), (await LoginAsync(email)).AccessToken);
         }
 
-        Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
+        /// <summary>
+        /// Stops the in-memory API, then drops the test database so it doesn't stay behind in
+        /// SQL Server after the run (InitializeAsync creates it again at the start of the next run).
+        /// </summary>
+        async Task IAsyncLifetime.DisposeAsync()
+        {
+            await DisposeAsync();
+
+            var options = new DbContextOptionsBuilder<GymDbContext>().UseSqlServer(ConnectionString).Options;
+            await using var db = new GymDbContext(options);
+            await db.Database.EnsureDeletedAsync();
+        }
     }
 
     [CollectionDefinition(Name)]

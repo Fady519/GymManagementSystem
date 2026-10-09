@@ -99,7 +99,15 @@ namespace GymManagement.Tests.Data
             return client;
         }
 
-        Task IAsyncLifetime.DisposeAsync() => DisposeAsync().AsTask();
+        /// <summary>Stops the API, then drops GymManagement_DemoTests so it doesn't stay in SQL Server.</summary>
+        async Task IAsyncLifetime.DisposeAsync()
+        {
+            await DisposeAsync();
+
+            var options = new DbContextOptionsBuilder<GymDbContext>().UseSqlServer(ConnectionString).Options;
+            await using var db = new GymDbContext(options);
+            await db.Database.EnsureDeletedAsync();
+        }
     }
 
     public sealed class DemoDataTests(DemoDataFactory factory) : IClassFixture<DemoDataFactory>

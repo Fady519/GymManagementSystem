@@ -106,7 +106,7 @@ namespace GymManagement.Tests.Security
             foreach (var r in rows)
                 sb.AppendLine($"| {r.Method} | `{r.Route}` | {r.Access} | {r.Roles} | {r.RateLimit} |");
 
-            Snapshot.AssertMatches("docs/ENDPOINTS.md", sb.ToString());
+            Snapshot.AssertMatches("GymManagement.Tests/Snapshots/ENDPOINTS.md", sb.ToString());
         }
 
         private sealed record EndpointRow(string Method, string Route, string Access, string Roles, string RateLimit)

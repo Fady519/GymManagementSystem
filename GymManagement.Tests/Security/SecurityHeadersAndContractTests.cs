@@ -44,7 +44,7 @@ namespace GymManagement.Tests.Security
     }
 
     /// <summary>
-    /// docs/openapi.json is the contract the Next.js frontend generates its TypeScript types from.
+    /// Snapshots/openapi.json is the contract the Next.js frontend generates its TypeScript types from.
     /// </summary>
     [Collection(ApiCollection.Name)]
     public sealed class OpenApiContractTests(ApiFactory factory)
@@ -56,7 +56,7 @@ namespace GymManagement.Tests.Security
         {
             var json = await _client.GetStringAsync("/swagger/v1/swagger.json");
 
-            Snapshot.AssertMatches("docs/openapi.json", json + Environment.NewLine);
+            Snapshot.AssertMatches("GymManagement.Tests/Snapshots/openapi.json", json + Environment.NewLine);
         }
 
         [Fact]
