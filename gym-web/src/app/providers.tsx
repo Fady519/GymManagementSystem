@@ -11,8 +11,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { directionOf } from "@/i18n/routing";
 import { AuthBootstrap } from "@/features/auth/components/auth-bootstrap";
 import { injectStore } from "@/lib/api-client";
-import { makeQueryClient } from "@/lib/query-client";
-import { makeStore } from "@/store/store";
+import { getQueryClient } from "@/lib/query-client";
+import { getStore } from "@/store/store";
 
 /**
  * Everything the client side of the app needs, in one place:
@@ -20,15 +20,15 @@ import { makeStore } from "@/store/store";
  * AuthBootstrap restores the logged-in session when the page loads.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
-  // useState(() => ...) creates the store and query client once per browser tab, not on every render.
-  const [store] = useState(makeStore);
-  const [queryClient] = useState(makeQueryClient);
+  // One store and one query client per browser tab (see getStore for why it can't be one per Providers).
+  // useState keeps the same objects for the life of this component.
+  const [store] = useState(getStore);
+  const [queryClient] = useState(getQueryClient);
   const locale = useLocale();
   const tCommon = useTranslations("Common");
 
-  // Give the API client the store React actually kept. (In development, React's Strict Mode runs the
-  // initializer above twice and throws one store away, so we must not inject from inside it.)
-  // Assigning the same store again on later renders is harmless.
+  // Give the API client the store. In the browser it's always the same one, so this is harmless
+  // on every render; on the server it's the store of the current render.
   injectStore(store);
 
   return (
