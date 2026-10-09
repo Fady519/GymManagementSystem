@@ -2,8 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { ACCOUNT_NAV, AREA_NAV, isNavActive, type NavItem } from "@/components/layout/nav-config";
+import { useAuth } from "@/features/auth/hooks";
 import { Link, usePathname } from "@/i18n/navigation";
-import { AREA_HOME, type Area } from "@/lib/roles";
+import { AREA_HOME, roleKey, type Area } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,6 +15,10 @@ export function SidebarNav({ area, onNavigate }: { area: Area; onNavigate?: () =
   const t = useTranslations("Nav");
   // The path without the language prefix ("/dashboard", also when browsing /ar/dashboard).
   const pathname = usePathname();
+  const { user } = useAuth();
+  const isSuperAdmin = user ? roleKey(user.roles) === "superAdmin" : false;
+  // Links like "Accounts" exist only for the Super admin; normal Admins never see them.
+  const items = AREA_NAV[area].filter((item) => !item.superAdminOnly || isSuperAdmin);
 
   const renderLink = (item: NavItem) => {
     const active = isNavActive(pathname, item, item.href === AREA_HOME[area]);
@@ -40,7 +45,7 @@ export function SidebarNav({ area, onNavigate }: { area: Area; onNavigate?: () =
 
   return (
     <nav aria-label={t("main")} className="flex flex-1 flex-col gap-6">
-      <ul className="grid gap-1">{AREA_NAV[area].map(renderLink)}</ul>
+      <ul className="grid gap-1">{items.map(renderLink)}</ul>
       <ul className="mt-auto grid gap-1">{renderLink(ACCOUNT_NAV)}</ul>
     </nav>
   );

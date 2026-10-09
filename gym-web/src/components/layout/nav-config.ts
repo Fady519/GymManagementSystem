@@ -13,6 +13,7 @@ import {
   Receipt,
   ScanLine,
   Settings2,
+  ShieldCheck,
   Tags,
   UserCog,
   UserRound,
@@ -25,8 +26,17 @@ import type { Area } from "@/lib/roles";
 /** A key of the "Nav" messages, e.g. "members" (the sidebar shows it in the current language). */
 export type NavLabel = keyof Messages["Nav"];
 
-/** `activeUnder`: extra path prefixes that also highlight this link (pages that belong to it). */
-export type NavItem = { href: string; label: NavLabel; icon: LucideIcon; activeUnder?: string[] };
+/**
+ * `activeUnder`: extra path prefixes that also highlight this link (pages that belong to it).
+ * `superAdminOnly`: hidden from normal Admins (the API would answer 403 for them anyway).
+ */
+export type NavItem = {
+  href: string;
+  label: NavLabel;
+  icon: LucideIcon;
+  activeUnder?: string[];
+  superAdminOnly?: boolean;
+};
 
 /**
  * The sidebar links for each area. Only pages that exist are listed:
@@ -45,6 +55,7 @@ export const AREA_NAV: Record<Area, NavItem[]> = {
     { href: "/dashboard/plans", label: "plans", icon: BadgePercent },
     { href: "/dashboard/categories", label: "categories", icon: Tags },
     { href: "/dashboard/settings", label: "gymSettings", icon: Settings2 },
+    { href: "/dashboard/users", label: "accounts", icon: ShieldCheck, superAdminOnly: true },
   ],
   trainer: [
     // A class roster (/trainer/classes/5) is opened from "My schedule", so that link stays highlighted.
