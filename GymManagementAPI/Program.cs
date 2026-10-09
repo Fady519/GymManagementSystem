@@ -1,5 +1,6 @@
 using GymManagementAPI.Extensions;
 using GymManagementAPI.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
 
@@ -30,16 +31,38 @@ if (args.Contains("--seed-demo"))
 }
 
 // ---- HTTP pipeline (order matters) ----
+
+// In production the browser talks to the Next.js server (Vercel), and Next.js forwards /api to us.
+// So every request arrives from Vercel's IP, and the per-IP login rate limit would be shared by ALL
+// visitors. The proxy sends the real client IP in X-Forwarded-For (and "https" in X-Forwarded-Proto);
+// reading them must be FIRST, so the rate limiter, the logs and HTTPS redirection see the real values.
+// It is off by default: without a proxy in front, anybody could fake these headers.
+if (app.Configuration.GetValue<bool>("ReverseProxy:TrustForwardedHeaders"))
+{
+    var forwarded = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = 1,   // only the last hop (the address the proxy added)
+    };
+    // By default only localhost proxies are trusted; Vercel's IPs are not fixed, so trust any.
+    forwarded.KnownIPNetworks.Clear();
+    forwarded.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwarded);
+}
+
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseSerilogRequestLogging();
 
+// "Hosting:HttpsRedirection" = false is for a host that has no HTTPS certificate yet:
+// redirecting to https there would break every request.
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
+    if (app.Configuration.GetValue("Hosting:HttpsRedirection", defaultValue: true))
+        app.UseHttpsRedirection();
 }
 
 // Swagger is on in every environment: the API documentation is part of the portfolio.
