@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **This branch is the legacy v1 (ASP.NET Core MVC).** The project was rebuilt as a full stack app (ASP.NET Core 10 Web API + Next.js 16).
+> 👉 **Live demo:** https://power-fitness-gym.vercel.app · **Code & docs:** the [ullstack](https://github.com/Fady519/GymManagementSystem/tree/fullstack) branch.
+
 <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:16A34A,50:15803D,100:14532D&height=220&section=header&text=Gym%20Management%20System&fontSize=52&fontColor=ffffff&fontAlignY=38&desc=ASP.NET%20Core%20MVC%20%7C%20EF%20Core%20%7C%20SQL%20Server%20%7C%20ASP.NET%20Identity&descSize=16&descAlignY=58&descColor=ffffff" width="100%"/>
@@ -6,7 +10,7 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-Visit%20Now-16A34A?style=for-the-badge)](http://gymmanagementsystem54.runasp.net/)
+[![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-Visit%20Now-16A34A?style=for-the-badge)](https://power-fitness-gym.vercel.app)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Source%20Code-181717?style=for-the-badge&logo=github)](https://github.com/Fady519/GymManagementSystem)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Fady%20Kaiser-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/fady-kaiser/)
 
@@ -29,7 +33,7 @@ Built to handle real gym operations with enterprise-level code quality.
 
 <div align="center">
 
-> 🔗 **[gymmanagementsystem54.runasp.net](http://gymmanagementsystem54.runasp.net/)**
+> 🔗 **[power-fitness-gym.vercel.app](https://power-fitness-gym.vercel.app)**
 
 > _Add screenshots here_
 
