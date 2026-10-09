@@ -1559,3 +1559,67 @@ Next.js 16 مع **Cache Components** بيعمل Prerender للصفحة وقت ا
 مش كل حاجة لازم تتترجم: الإيميلات اللي السيرفر بيبعتها وعناوين الأعمدة في ملفات Excel/CSV لسه إنجليزي، لأنها بتتولد في الـ Backend من غير ما يكون فيه Request بلغة الواجهة، وترجمتها محتاجة قرار (لغة مفضلة محفوظة لكل مستخدم). وكمان البيانات نفسها زي أسماء الأعضاء والباقات بتفضل زي ما اتكتبت. ده قرار موثّق مش نسيان.
 
 > Server emails and export column headers stay in English because they are generated in the backend without a UI language; localizing them would need a stored per-user language preference. User data stays as typed. These are documented decisions, not omissions.
+
+# F7: Quality, Performance and Accessibility
+
+## 146. Error, Loading and Not-Found Pages
+
+في Next.js كل مجلد في `app` ممكن يبقى له ملفات خاصة: `not-found.tsx` بيظهر لأي رابط مش موجود (وعملنا `[...rest]/page.tsx` بينادي `notFound()` عشان أي عنوان غلط جوه اللغة يوصل له)، و`error.tsx` بيمسك أي Crash وقت الرسم ويعرض رسالة مترجمة وزرار "حاول مرة أخرى" بينادي `retry()`، و`loading.tsx` بيعرض Skeleton لحد ما الصفحة تجهز. عملنا `error.tsx` تاني جوه `(app)` عشان الـ Sidebar يفضل ظاهر لو صفحة في لوحة التحكم وقعت، و`global-error.tsx` كآخر خط دفاع لو الـ Layout نفسه وقع، وده لازم يرسم `<html>` و`<body>` بنفسه ومفيهوش next-intl، فالنص فيه مكتوب باللغتين.
+
+> not-found, error and loading files give every route a translated 404, a crash screen with a retry button and a skeleton while loading. The logged-in area has its own error boundary so the sidebar stays, and global-error is the last resort with its own document and bilingual static text.
+
+---
+
+## 147. Measuring Before Optimizing (Lighthouse)
+
+قبل ما نغير أي حاجة قسنا بـ Lighthouse على نسخة Production (مش Dev، لأن الـ Dev Server أبطأ بكتير ومش بيعبر عن الحقيقة). الصفحة العربية كانت 51 في الأداء، والسبب مكانش واضح من الرقم لوحده، فقرينا التفاصيل: الـ CLS كان جاي من خط بيتحمل متأخر، والـ LCP كله "Render Delay" يعني المتصفح مستني JavaScript وخطوط مش مستني الصورة. القاعدة: اقرأ الـ Audit اللي واقع واعرف سببه الأول، وبعد كل تعديل قيس تاني، ولاحظ إن الأرقام بتتغير من تشغيل للتاني فلازم تقيس أكتر من مرة.
+
+> We measured the production build with Lighthouse before changing anything and read the failing audits to find the real causes (a late font causing layout shift, render delay from JavaScript and fonts). Every change was re-measured, several runs each, because mobile scores vary between runs.
+
+---
+
+## 148. Self-Hosting the Arabic Font with unicode-range
+
+`next/font` ممتاز بس بيعمل Preload للخط في كل الصفحات، فالصفحة الإنجليزي كانت بتنزل حوالي 140 KB خطوط عربي على الفاضي. وكمان خط IBM Plex Arabic فيه حروف لاتينية، فالأرقام في الصفحة العربي كانت بتترسم بملف متأخر وبعدين تتغير، وده اللي كان عامل الـ Layout Shift. الحل: حطينا ملفات الخط العربي في `public/fonts` وكتبنا `@font-face` بنفسنا مع `unicode-range` للحروف العربي بس، فالحروف اللاتينية والأرقام بتنزل لـ Inter، وعملنا Preload للملفات دي في الصفحات العربي بس عن طريق `preload()` من `react-dom`، وزودنا Cache Header لمدة سنة.
+
+> next/font preloads a font on every page and Plex Arabic also ships Latin glyphs, which caused wasted bytes on English pages and a layout shift on Arabic ones. We self-host the Arabic files with an Arabic-only unicode-range, so Latin letters and digits fall through to Inter, preload them only on Arabic pages and cache them for a year. CLS went from 0.19 to 0.
+
+---
+
+## 149. Sending Only the Messages a Page Needs
+
+`NextIntlClientProvider` كان بيبعت كل ملف الترجمة (138 KB في العربي) جوه كل صفحة، حتى الصفحة الرئيسية اللي بتستخدم جزء صغير منه. دلوقتي الـ Root Layout بيبعت الـ Namespaces العامة بس (`pickMessages`)، ولوحة التحكم وصفحات تسجيل الدخول بيضيفوا الباقي في الـ Layout بتاعهم. ده بيصغر الـ HTML اللي بيوصل للزائر في الصفحة العامة.
+
+> The root layout now sends only the namespaces the public pages use; the logged-in and auth layouts add the rest. The full message file is no longer inlined into the public home page.
+
+---
+
+## 150. Loading Code on Interaction (Lazy Loading)
+
+قائمة الثيم (Dropdown) وقائمة الموبايل (Sheet) محتاجين مكتبات Radix وFloating UI، وأغلب الزوار مش بيفتحوهم. فقسمناهم: الزرار نفسه بيتحمل مع الصفحة، والقائمة بتتحمل بـ `next/dynamic` أول ما المستخدم يضغط، وبنبدأ التحميل بدري على Hover أو Focus عشان تفتح فورًا. والـ framer-motion اتشال من الصفحة الرئيسية خالص: عداد الأرقام بقى `requestAnimationFrame` بسيط وبيحترم `prefers-reduced-motion`.
+
+> The theme dropdown and the phone menu are split out with next/dynamic and loaded on first click (prefetched on hover or focus), so their libraries are not in the first load. The count-up animation no longer needs framer-motion; it uses requestAnimationFrame and respects reduced motion.
+
+---
+
+## 151. Accessibility Fixes Found by Audits
+
+Lighthouse وaxe لقوا حاجات صغيرة بس مهمة: لون الـ Primary في الوضع الداكن كان التباين بتاعه مع الأبيض 3.6 (المطلوب 4.5)، فعملنا درجة أغمق للخلفيات ودرجة أفتح للنص (`--primary-text`). وكمان `opacity` على نص فوق خلفية ملونة كان بيقلل التباين فشلناه. وزرار تغيير اللغة كان الـ aria-label بتاعه مش فيه الكلمة الظاهرة، وده بيضر اللي بيستخدموا التحكم بالصوت (لازم الاسم يحتوي على النص المرئي)، فبقى النص الظاهر جزء من الاسم ومعاه شرح مخفي لقارئ الشاشة. النتيجة: Accessibility 100 في الصفحتين.
+
+> Audits found low contrast (dark-mode primary at 3.6:1 and text with opacity on coloured backgrounds) and a language button whose accessible name did not include its visible text (bad for voice control). After the fixes both home pages score 100 in accessibility.
+
+---
+
+## 152. Honest Numbers: Mobile vs Desktop
+
+على الـ Desktop الأداء بقى 99 للإنجليزي و98 للعربي، والباقي (Accessibility وBest Practices وSEO) 100. على الموبايل (Lighthouse بيبطأ المعالج 4 مرات وبيحاكي شبكة 4G بطيئة) الأرقام اتحسنت (العربي من 51 لما بين 60 و68، والإنجليزي بين 66 و85 حسب التشغيلة، والـ CLS بقى صفر) بس لسه تحت 90، لأن الجزء الأكبر الباقي هو React وNext.js نفسهم وهم بيجهزوا الصفحة (Hydration)، والجهاز اللي بنقيس عليه لابتوب ضعيف وعليه سيرفرات تانية شغالة. في المقابلة الأفضل تقول الأرقام زي ما هي وتشرح السبب وإيه اللي اتعمل، بدل ما تقول رقم مش حقيقي. القياس الحقيقي هيكون بـ PageSpeed Insights بعد الرفع على الإنترنت.
+
+> Desktop performance is 99 (English) and 98 (Arabic), with 100 in the other three categories. Mobile improved (Arabic from 51 to 60-68, English 66-85 depending on the run, CLS 0) but stays under 90 because most of the remaining cost is React and Next.js hydration under a 4x CPU slowdown on a modest laptop. State real numbers and their causes; the final check will be PageSpeed Insights after deployment.
+
+---
+
+## 153. End-to-End Smoke Tests with Playwright
+
+ضفنا Playwright بـ `channel: "msedge"` عشان يستخدم Edge المتسطب على الجهاز من غير ما ينزل متصفحات. الاختبارات بتفتح الموقع فعلًا وبتضغط زي المستخدم: الصفحة الرئيسية باللغتين، وزرار تغيير اللغة وإنه بيفتكر الاختيار، وصفحة 404، وتسجيل الدخول الغلط والصح لكل دور، وإن الصفحات الخاصة بتحول على Login، وقايمة الأعضاء، وإن فورم إضافة عضو بيمنع الإرسال وهو فاضي. الاختبارات بتقرا بس ومش بتضيف أو تمسح بيانات، فآمن تشغيلها على الداتا بيز التجريبية. التشغيل: `npm run test:e2e`.
+
+> Playwright smoke tests (using the installed Edge) cover both home pages, the language switcher and its saved choice, the 404 page, wrong and correct logins for each role, the login redirect for private pages, the members list and the add-member validation. They are read-only, so they are safe on the demo database. Run with npm run test:e2e.

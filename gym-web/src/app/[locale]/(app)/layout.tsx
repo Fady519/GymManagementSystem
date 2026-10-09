@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
 import { AppShell } from "@/components/layout/app-shell";
+import { ErrorMessagesBridge } from "@/components/shared/error-messages-bridge";
 import { LoadingScreen } from "@/components/shared/loading-screen";
 
 // Private pages: keep them out of search engines.
@@ -19,8 +21,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // such as /dashboard/members/[id], the path is unknown at build time, so Next.js needs a
   // Suspense boundary here. The fallback is the same loading screen the shell shows anyway.
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <AppShell>{children}</AppShell>
-    </Suspense>
+    // All messages here (the root layout only sends the ones the public pages need), plus the
+    // bridge that lets API errors and toasts speak the visitor's language.
+    <NextIntlClientProvider>
+      <ErrorMessagesBridge />
+      <Suspense fallback={<LoadingScreen />}>
+        <AppShell>{children}</AppShell>
+      </Suspense>
+    </NextIntlClientProvider>
   );
 }

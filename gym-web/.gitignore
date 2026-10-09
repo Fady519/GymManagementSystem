@@ -43,3 +43,7 @@ next-env.d.ts
 # local copy of the ASP.NET Core dev certificate (scripts/ensure-dev-cert.mjs)
 /.certs/
 !.env.example
+
+# Playwright output (screenshots/traces of failed runs)
+/e2e/.results/
+/playwright-report/

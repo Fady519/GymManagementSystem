@@ -27,18 +27,19 @@ export function LocaleSwitcher({ className }: { className?: string }) {
   };
 
   return (
+    // The accessible name must contain the visible word ("English" / "العربية") so voice-control
+    // users can say what they see; the longer hint follows for screen readers only.
     <Button
       variant="outline"
       size="sm"
       onClick={onSwitch}
       disabled={pending}
-      aria-label={t("switchToLabel")}
       title={t("switchToLabel")}
-      lang={next}
       className={cn("gap-1.5 font-semibold", className)}
     >
-      <Languages />
-      {t("switchTo")}
+      <Languages aria-hidden />
+      <span lang={next}>{t("switchTo")}</span>
+      <span className="sr-only">{t("switchToLabel")}</span>
     </Button>
   );
 }

@@ -8,6 +8,7 @@
     "build": "cross-env NODE_EXTRA_CA_CERTS=.certs/aspnet-dev.pem next build",
     "start": "cross-env NODE_EXTRA_CA_CERTS=.certs/aspnet-dev.pem next start",
     "lint": "eslint && node scripts/check-messages.mjs",
+    "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:api": "openapi-typescript ../docs/openapi.json -o src/types/api.d.ts --properties-required-by-default"
@@ -40,6 +41,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

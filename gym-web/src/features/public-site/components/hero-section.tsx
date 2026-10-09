@@ -55,8 +55,10 @@ export function HeroSection({
             </Button>
           </div>
 
+          {/* On tablets (md) the hero splits into text + photo, so the text column is narrow again:
+              2 tiles per row there, and 4 per row once there is room (lg). */}
           {(tiles.length > 0 || stats?.fromMonthlyPrice) && (
-            <dl className="grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 border-t pt-6 sm:grid-cols-4">
+            <dl className="grid max-w-xl grid-cols-2 gap-x-6 gap-y-4 border-t pt-6 sm:grid-cols-4 md:grid-cols-2 lg:grid-cols-4">
               {tiles.map((tile) => (
                 <div key={tile.key}>
                   <dt className="text-xs text-muted-foreground">{tile.label}</dt>

@@ -61,11 +61,9 @@ export function ScheduleTabs({ sessions }: { sessions: SessionResponse[] }) {
               value={key}
               className="h-auto min-w-24 flex-none flex-col gap-0.5 rounded-xl border-border bg-card px-4 py-2.5 data-active:border-primary data-active:bg-primary data-active:text-primary-foreground dark:data-active:border-primary dark:data-active:bg-primary"
             >
-              <span className="text-xs font-medium opacity-80">{weekday.format(date)}</span>
+              <span className="text-xs font-medium">{weekday.format(date)}</span>
               <span className="text-base font-bold">{dayNumber.format(date)}</span>
-              <span className="text-[11px] opacity-80">
-                {t("dayCount", { count: items.length })}
-              </span>
+              <span className="text-[11px]">{t("dayCount", { count: items.length })}</span>
             </TabsTrigger>
           );
         })}

@@ -24,7 +24,8 @@
     "notSet": "Not set",
     "optional": "Optional",
     "loading": "Loading…",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "loadingPage": "Loading the page…"
   },
   "Nav": {
     "main": "Main navigation",
@@ -2181,5 +2182,20 @@
     "emptyTitle": "No payments this month yet",
     "emptyBody": "Payments appear here as soon as a membership is sold, renewed or refunded.",
     "emptyAction": "Go to memberships"
+  },
+  "NotFound": {
+    "metaTitle": "Page not found",
+    "code": "404",
+    "title": "We couldn't find that page",
+    "description": "The link may be broken, or the page may have been moved or removed.",
+    "home": "Go to the home page",
+    "back": "Go back"
+  },
+  "ErrorPage": {
+    "title": "Something went wrong",
+    "description": "An unexpected error stopped this page from loading. Please try again; if it keeps happening, contact the front desk.",
+    "retry": "Try again",
+    "home": "Go to the home page",
+    "reference": "Error reference: {id}"
   }
 }

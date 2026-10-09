@@ -1,28 +1,29 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Menu } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { LocaleSwitcher } from "@/components/shared/locale-switcher";
-import { Logo } from "@/components/shared/logo";
-import { AuthNavButtons } from "@/features/auth/components/auth-nav-buttons";
-import { directionOf } from "@/i18n/routing";
 
 export type SectionLink = { href: string; label: string };
+
+// Starts downloading the panel code. Called on touch/hover/focus so it is usually ready by the click.
+const loadSheet = () =>
+  import("@/features/public-site/components/site-mobile-nav-sheet").then(
+    (m) => m.SiteMobileNavSheet,
+  );
+
+// The panel uses the Radix dialog (~25 KB). Most visitors never open the menu, so it is fetched on
+// demand instead of with the page; that keeps the first load on phones lighter.
+const SiteMobileNavSheet = dynamic(loadSheet, { ssr: false });
 
 /** The section links in a slide-out menu on phones (the header shows them inline on wider screens). */
 export function SiteMobileNav({ links }: { links: SectionLink[] }) {
   const t = useTranslations("Nav");
-  const locale = useLocale();
   const [open, setOpen] = useState(false);
+  // Becomes true on the first tap and stays true, so the panel can animate closed and reopen.
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <>
@@ -31,43 +32,17 @@ export function SiteMobileNav({ links }: { links: SectionLink[] }) {
         size="icon"
         className="lg:hidden"
         aria-label={t("openMenu")}
-        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        onPointerDown={() => void loadSheet()}
+        onFocus={() => void loadSheet()}
+        onClick={() => {
+          setLoaded(true);
+          setOpen(true);
+        }}
       >
-        <Menu />
+        <Menu aria-hidden />
       </Button>
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side={directionOf(locale) === "rtl" ? "right" : "left"}
-          className="flex w-72 flex-col gap-6 p-4"
-        >
-          <SheetHeader className="p-0 pt-1">
-            <SheetTitle asChild>
-              <div>
-                <Logo />
-              </div>
-            </SheetTitle>
-            <SheetDescription className="sr-only">{t("main")}</SheetDescription>
-          </SheetHeader>
-          <nav aria-label={t("main")} className="flex flex-col gap-1">
-            {links.map((link) => (
-              // Closing the menu first lets the page scroll smoothly to the section.
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-md px-3 py-2.5 text-base font-medium transition-colors hover:bg-accent"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-          {/* On phones the header has no room for these, so they live at the bottom of the menu. */}
-          <div className="mt-auto flex flex-col gap-3 border-t pt-4">
-            <AuthNavButtons />
-            <LocaleSwitcher className="w-full" />
-          </div>
-        </SheetContent>
-      </Sheet>
+      {loaded && <SiteMobileNavSheet links={links} open={open} onOpenChange={setOpen} />}
     </>
   );
 }
